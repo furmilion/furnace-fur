@@ -2,16 +2,16 @@ name: Build furnace
 
 on:
   push:
-    branches: [master, locale]
+    branches: [ymf278b, locale]
   pull_request:
-    branches: master
+    branches: ymf278b
 
 defaults:
   run:
     shell: bash
 
 env:
-  BUILD_TYPE: Debug
+  BUILD_TYPE: RelWithDebInfo
 
 jobs:
   build:
