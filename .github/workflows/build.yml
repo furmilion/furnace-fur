@@ -1,7 +1,7 @@
 name: Build furnace
 
 on:
-  push:
+  push: 
     branches: [master, ymf278b, upsideDown]
   pull_request:
     branches: ymf278b
