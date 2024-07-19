@@ -228,12 +228,12 @@ void DivPlatformOPL::acquire_nuked(short** buf, size_t len) {
     }
     if (chipType==4) {
       pcm.generateMix(o[0],o[1],o[4],o[5],o[6],o[7],pcmBuf);
-      os[0]+=o[4];
-      os[1]+=o[5];
-      os[2]+=o[2];
-      os[3]+=o[3];
-      os[4]+=o[6];
-      os[5]+=o[7];
+      os[0]+=o[4]; // FM + PCM left
+      os[1]+=o[5]; // FM + PCM right
+      os[2]+=o[2]; // FM left
+      os[3]+=o[3]; // FM right
+      os[4]+=o[6]; // PCM left
+      os[5]+=o[7]; // PCM right
     } else {
       os[0]+=o[0];
       os[1]+=o[1];
@@ -646,7 +646,7 @@ void DivPlatformOPL::acquire_ymfm4(short** buf, size_t len) {
       chOut+=pcmChan[i]->debug_output(1);
       chOut+=pcmChan[i]->debug_output(2);
       chOut+=pcmChan[i]->debug_output(3);
-      oscBuf[oscOffs]->data[oscBuf[oscOffs]->needle++]=CLAMP(chOut,-32768,32767);
+      oscBuf[oscOffs]->data[oscBuf[oscOffs]->needle++]=CLAMP(chOut<<1,-32768,32767);
     }
   }
 }
@@ -2430,12 +2430,16 @@ int DivPlatformOPL::dispatch(DivCommand c) {
       break;
     case DIV_CMD_MULTIPCM_MIX_FM:
       if (chipType==4) {
-        rWrite(PCM_ADDR_MIX_FM,(CLAMP((0x70-(c.value&0x70)),0,0x70)>>1)|(CLAMP((7-(c.value&7)),0,7)));
+        fmMixL=CLAMP((c.value&0x70)>>4,0,7);
+        fmMixR=CLAMP((c.value&0x7),0,7);
+        immWrite(PCM_ADDR_MIX_FM,((7-fmMixR)<<3)|(7-fmMixL));
       }
       break;
     case DIV_CMD_MULTIPCM_MIX_PCM:
       if (chipType==4) {
-        rWrite(PCM_ADDR_MIX_PCM,(CLAMP((0x70-(c.value&0x70)),0,0x70)>>1)|(CLAMP((7-(c.value&7)),0,7)));
+        pcmMixL=CLAMP((c.value&0x70)>>4,0,7);
+        pcmMixR=CLAMP((c.value&0x7),0,7);
+        immWrite(PCM_ADDR_MIX_PCM,((7-pcmMixR)<<3)|(7-pcmMixL));
       }
       break;
     case DIV_CMD_MULTIPCM_LFO:
@@ -2844,6 +2848,13 @@ void DivPlatformOPL::reset() {
       immWrite(0x105,3);
       // Reset wavetable header
       immWrite(0x202,(ramSize<=0x200000)?0x10:0x00);
+      // initialize mixer volume
+      fmMixL=7;
+      fmMixR=7;
+      pcmMixL=7;
+      pcmMixR=7;
+      immWrite(PCM_ADDR_MIX_FM,((7-fmMixR)<<3)|(7-fmMixL));
+      immWrite(PCM_ADDR_MIX_PCM,((7-pcmMixR)<<3)|(7-pcmMixL));
     } else {
       immWrite(0x105,1);
     }
