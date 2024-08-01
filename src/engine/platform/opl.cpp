@@ -2537,6 +2537,9 @@ int DivPlatformOPL::dispatch(DivCommand c) {
       return 63;
       break;
     case DIV_CMD_PRE_PORTA:
+      if (PCM_CHECK(c.chan) && chan[c.chan].active && c.value2) {
+        if (parent->song.resetMacroOnPorta) chan[c.chan].macroInit(parent->getIns(chan[c.chan].ins,DIV_INS_MULTIPCM));
+      }
       if (!chan[c.chan].inPorta && c.value && !parent->song.brokenPortaArp && chan[c.chan].std.arp.will && !NEW_ARP_STRAT) {
         chan[c.chan].baseFreq=(PCM_CHECK(c.chan))?NOTE_PCM(chan[c.chan].note):
           ((c.chan==adpcmChan)?(NOTE_ADPCMB(chan[c.chan].note)):(NOTE_FREQUENCY(chan[c.chan].note)));
@@ -2696,6 +2699,13 @@ int DivPlatformOPL::mapVelocity(int ch, float vel) {
   if (vel==0) return 0;
   if (vel>=1.0) return 63;
   return CLAMP(round(64.0-(56.0-log2(vel*127.0)*8.0)),0,63);
+}
+
+float DivPlatformOPL::getGain(int ch, int vol) {
+  if (vol==0) return 0;
+  if (PCM_CHECK(ch)) return 1.0/pow(10.0,(float)(127-vol)*0.375/20.0);
+  if (ch==adpcmChan) return (float)vol/255.0;
+  return 1.0/pow(10.0,(float)(63-vol)*0.75/20.0);
 }
 
 unsigned char* DivPlatformOPL::getRegisterPool() {
