@@ -129,7 +129,7 @@ opz_registers::opz_registers() :
 		m_waveform[5][index] = bitfield(index, 9) ? zeroval : m_waveform[1][index * 2];
 		m_waveform[6][index] = bitfield(index, 9) ? zeroval : m_waveform[0][(index * 2) & 0x1ff];
 		m_waveform[7][index] = bitfield(index, 9) ? zeroval : m_waveform[1][(index * 2) & 0x1ff];
-		m_waveform[8][index] = bitfield(index, 9) << 15;
+		// m_waveform[8][index] = bitfield(index, 9) << 15;
 	}
 
 	// create the LFO waveforms; AM in the low 8 bits, PM in the upper 8
@@ -498,8 +498,8 @@ uint32_t opz_registers::compute_phase_step(uint32_t choffs, uint32_t opoffs, opd
 		// registers, which can specify values 8-255Hz in 1Hz increments; that
 		// value is then shifted up by the 3-bit range
 		uint32_t freq = op_fix_frequency(opoffs) << 4;
-		if (freq == 0)
-			freq = 8;
+		// if (freq == 0)
+			// freq = 8;
 		freq |= op_fine(opoffs);
 		freq <<= op_fix_range(opoffs);
 
