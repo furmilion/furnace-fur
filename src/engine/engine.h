@@ -54,7 +54,7 @@ class DivWorkPool;
 
 #define DIV_UNSTABLE
 
-#define DIV_VERSION "custom build test isnt it"
+#define DIV_VERSION "YMFM OPZ WAVE TEST | KEEP OUT"
 #define DIV_ENGINE_VERSION 216
 // for imports
 #define DIV_VERSION_MOD 0xff01
