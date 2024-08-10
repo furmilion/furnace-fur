@@ -2,7 +2,7 @@ name: Build furnace
 
 on:
   push:
-    branches: [master, ymf278b]
+    branches: [master, ymf278b, ymopz_mod]
   pull_request:
     branches: ymf287b
 
