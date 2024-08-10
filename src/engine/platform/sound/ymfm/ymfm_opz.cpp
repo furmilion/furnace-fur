@@ -128,8 +128,8 @@ opz_registers::opz_registers() :
 		m_waveform[4][index] = bitfield(index, 9) ? zeroval : m_waveform[0][index * 2];
 		m_waveform[5][index] = bitfield(index, 9) ? zeroval : m_waveform[1][index * 2];
 		m_waveform[6][index] = bitfield(index, 9) ? zeroval : m_waveform[0][(index * 2) & 0x1ff];
-		m_waveform[7][index] = bitfield(index, 9) ? zeroval : m_waveform[1][(index * 2) & 0x1ff];
-		// m_waveform[8][index] = bitfield(index, 9) << 15;
+		// m_waveform[7][index] = bitfield(index, 9) ? zeroval : m_waveform[1][(index * 2) & 0x1ff];
+		m_waveform[8][index] = bitfield(index, 9) << 15;
 	}
 
 	// create the LFO waveforms; AM in the low 8 bits, PM in the upper 8
