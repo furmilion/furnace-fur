@@ -21,6 +21,7 @@
 
 #include "export/amigaValidation.h"
 #include "export/tiuna.h"
+#include "export/zsm.h"
 
 DivROMExport* DivEngine::buildROM(DivROMExportOptions sys) {
   DivROMExport* exporter=NULL;
@@ -30,6 +31,9 @@ DivROMExport* DivEngine::buildROM(DivROMExportOptions sys) {
       break;
     case DIV_ROM_TIUNA:
       exporter=new DivExportTiuna;
+      break;
+    case DIV_ROM_ZSM:
+      exporter=new DivExportZSM;
       break;
     default:
       exporter=new DivROMExport;

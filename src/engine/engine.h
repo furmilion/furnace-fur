@@ -133,7 +133,7 @@ struct DivAudioExportOptions {
 struct DivChannelState {
   std::vector<DivDelayedCommand> delayed;
   int note, oldNote, lastIns, pitch, portaSpeed, portaNote;
-  int volume, volSpeed, cut, volCut, legatoDelay, legatoTarget, rowDelay, volMax;
+  int volume, volSpeed, volSpeedTarget, cut, volCut, legatoDelay, legatoTarget, rowDelay, volMax;
   int delayOrder, delayRow, retrigSpeed, retrigTick;
   int vibratoDepth, vibratoRate, vibratoPos, vibratoPosGiant, vibratoShape, vibratoFine;
   int tremoloDepth, tremoloRate, tremoloPos;
@@ -157,6 +157,7 @@ struct DivChannelState {
     portaNote(-1),
     volume(0x7f00),
     volSpeed(0),
+    volSpeedTarget(-1),
     cut(-1),
     volCut(-1),
     legatoDelay(-1),
@@ -474,7 +475,7 @@ class DivEngine {
   int midiOutTimeRate;
   float midiVolExp;
   int softLockCount;
-  int subticks, ticks, curRow, curOrder, prevRow, prevOrder, remainingLoops, totalLoops, lastLoopPos, exportLoopCount, nextSpeed, elapsedBars, elapsedBeats, curSpeed;
+  int subticks, ticks, curRow, curOrder, prevRow, prevOrder, remainingLoops, totalLoops, lastLoopPos, exportLoopCount, curExportChan, nextSpeed, elapsedBars, elapsedBeats, curSpeed;
   size_t curSubSongIndex;
   size_t bufferPos;
   double divider;
@@ -498,6 +499,7 @@ class DivEngine {
   DivAudioExportModes exportMode;
   DivAudioExportFormats exportFormat;
   double exportFadeOut;
+  bool isFadingOut;
   int exportOutputs;
   bool exportChannelMask[DIV_MAX_CHANS];
   DivConfig conf;
@@ -579,7 +581,7 @@ class DivEngine {
   void processRow(int i, bool afterDelay);
   void nextOrder();
   void nextRow();
-  void performVGMWrite(SafeWriter* w, DivSystem sys, DivRegWrite& write, int streamOff, double* loopTimer, double* loopFreq, int* loopSample, bool* sampleDir, bool isSecond, int* pendingFreq, int* playingSample, int* setPos, unsigned int* sampleOff8, unsigned int* sampleLen8, size_t bankOffset, bool directStream);
+  void performVGMWrite(SafeWriter* w, DivSystem sys, DivRegWrite& write, int streamOff, double* loopTimer, double* loopFreq, int* loopSample, bool* sampleDir, bool isSecond, int* pendingFreq, int* playingSample, int* setPos, unsigned int* sampleOff8, unsigned int* sampleLen8, size_t bankOffset, bool directStream, bool* sampleStoppable);
   // returns true if end of song.
   bool nextTick(bool noAccum=false, bool inhibitLowLat=false);
   bool perSystemEffect(int ch, unsigned char effect, unsigned char effectVal);
@@ -619,6 +621,17 @@ class DivEngine {
   void loadFF(SafeReader& reader, std::vector<DivInstrument*>& ret, String& stripPath);
   void loadWOPL(SafeReader& reader, std::vector<DivInstrument*>& ret, String& stripPath);
   void loadWOPN(SafeReader& reader, std::vector<DivInstrument*>& ret, String& stripPath);
+ 
+ //sample banks
+  void loadP(SafeReader& reader, std::vector<DivSample*>& ret, String& stripPath);
+  void loadPPC(SafeReader& reader, std::vector<DivSample*>& ret, String& stripPath);
+  void loadPPS(SafeReader& reader, std::vector<DivSample*>& ret, String& stripPath);
+  void loadPVI(SafeReader& reader, std::vector<DivSample*>& ret, String& stripPath);
+  void loadPDX(SafeReader& reader, std::vector<DivSample*>& ret, String& stripPath);
+  void loadPZI(SafeReader& reader, std::vector<DivSample*>& ret, String& stripPath);
+  void loadP86(SafeReader& reader, std::vector<DivSample*>& ret, String& stripPath);
+
+
 
   int loadSampleROM(String path, ssize_t expectedSize, unsigned char*& ret);
 
@@ -658,6 +671,7 @@ class DivEngine {
   friend class DivROMExport;
   friend class DivExportAmigaValidation;
   friend class DivExportTiuna;
+  friend class DivExportZSM;
 
   public:
     DivSong song;
@@ -710,8 +724,6 @@ class DivEngine {
     // - -1 to auto-determine trailing
     // - -2 to add a whole loop of trailing
     SafeWriter* saveVGM(bool* sysToExport=NULL, bool loop=true, int version=0x171, bool patternHints=false, bool directStream=false, int trailingTicks=-1);
-    // dump to ZSM.
-    SafeWriter* saveZSM(unsigned int zsmrate=60, bool loop=true, bool optimize=true);
     // dump to TIunA.
     SafeWriter* saveTiuna(const bool* sysToExport, const char* baseLabel, int firstBankSize, int otherBankSize);
     // dump command stream.
@@ -805,6 +817,9 @@ class DivEngine {
 
     // find song loop position
     void walkSong(int& loopOrder, int& loopRow, int& loopEnd);
+
+    // find song length in rows (up to specified loop point), and find length of every order
+    void findSongLength(int loopOrder, int loopRow, double fadeoutLen, int& rowsForFadeout, bool& hasFFxx, std::vector<int>& orders, int& length);
 
     // play (returns whether successful)
     bool play();
@@ -997,6 +1012,24 @@ class DivEngine {
     // is exporting
     bool isExporting();
 
+    // get how many loops is left
+    void getLoopsLeft(int& loops);
+
+    // get how many loops in total export needs to do
+    void getTotalLoops(int& loops);
+
+    // get current position in song
+    void getCurSongPos(int& row, int& order);
+
+    // get how many files export needs to create
+    void getTotalAudioFiles(int& files);
+
+    // get which file is processed right now (progress for e.g. per-channel export)
+    void getCurFileIndex(int& file);
+
+    // get fadeout state
+    bool getIsFadingOut();
+
     // add instrument
     int addInstrument(int refChan=0, DivInstrumentType fallbackType=DIV_INS_STD);
 
@@ -1034,7 +1067,8 @@ class DivEngine {
     int addSamplePtr(DivSample* which);
 
     // get sample from file
-    DivSample* sampleFromFile(const char* path);
+    //DivSample* sampleFromFile(const char* path);
+    std::vector<DivSample*> sampleFromFile(const char* path);
 
     // get raw sample
     DivSample* sampleFromFileRaw(const char* path, DivSampleDepth depth, int channels, bool bigEndian, bool unsign, bool swapNibbles, int rate);
@@ -1389,6 +1423,7 @@ class DivEngine {
       totalLoops(0),
       lastLoopPos(0),
       exportLoopCount(0),
+      curExportChan(0),
       nextSpeed(3),
       elapsedBars(0),
       elapsedBeats(0),
@@ -1427,6 +1462,7 @@ class DivEngine {
       exportMode(DIV_EXPORT_MODE_ONE),
       exportFormat(DIV_EXPORT_FORMAT_S16),
       exportFadeOut(0.0),
+      isFadingOut(false),
       exportOutputs(2),
       cmdStreamInt(NULL),
       midiBaseChan(0),
