@@ -673,6 +673,7 @@ class DivEngine {
   friend class DivExportAmigaValidation;
   friend class DivExportTiuna;
   friend class DivExportZSM;
+  friend class DivExportCrapSynth;
 
   public:
     DivSong song;

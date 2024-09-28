@@ -74,6 +74,7 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
     float getGain(int ch, int vol);
     unsigned char* getRegisterPool();
     int getRegisterPoolSize();
+    int getRegisterPoolDepth();
     void reset();
     void forceIns();
     void tick(bool sysTick=true);

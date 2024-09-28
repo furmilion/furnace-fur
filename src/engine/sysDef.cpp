@@ -2317,7 +2317,7 @@ void DivEngine::registerSystems() {
 
   sysDefs[DIV_SYSTEM_STM32CRAPSYNTH]=new DivSysDef(   
     _("STM32CrapSynth"), NULL, 0xf6, 0, 11, false, true, 0, false, (1U<<DIV_SAMPLE_DEPTH_8BIT), 256, 256,
-    _("a mixed hardware/software sound source created by LTVA. it is a torture of STM32F303xE, 4 AD9833's and one MM5437."),
+    _("a mixed hardware/software sound source created by LTVA. it is a torture of STM32F303xE, 4 AD9833's and one MM5437.\n\nit also has an ungodly amount of configurable phase reset timers because hardware must be used, right?"),
     {_("Channel 1"), _("Channel 2"), _("Channel 3"), _("Channel 4"), _("Noise"), _("DAC 1"), _("DAC 2"), _("Timer 1"), _("Timer 2"), _("Timer 3"), _("Timer 4")},
     {"CH1", "CH2", "CH3", "CH4", "NOI", "PCM", "PCM", "T1", "T2", "T3", "T4"},
     {DIV_CH_WAVE, DIV_CH_WAVE, DIV_CH_WAVE, DIV_CH_WAVE, DIV_CH_NOISE, DIV_CH_PCM, DIV_CH_PCM, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE},

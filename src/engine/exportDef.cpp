@@ -60,4 +60,14 @@ void DivEngine::registerROMExports() {
     },
     false, DIV_REQPOL_ANY
   );
+
+  romExportDefs[DIV_ROM_CRAPSYNTH]=new DivROMExportDef(
+    "STM32CrapSynth playback", "LTVA",
+    "an export for STM32CrapSynth.\n"
+    "basically a prepared bundle of\n"
+    "samples and \"registers\"/wavetable data stream.\n",
+    "STM32CrapSynth playback file", ".scs",
+    {DIV_SYSTEM_STM32CRAPSYNTH},
+    true, DIV_REQPOL_EXACT
+  );
 }

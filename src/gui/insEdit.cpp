@@ -7428,7 +7428,8 @@ void FurnaceGUI::drawInsEdit() {
             ins->type==DIV_INS_NDS ||
             ins->type==DIV_INS_GBA_DMA ||
             ins->type==DIV_INS_GBA_MINMOD ||
-            ins->type==DIV_INS_SUPERVISION) {
+            ins->type==DIV_INS_SUPERVISION ||
+            ins->type==DIV_INS_STM32CRAPSYNTH) {
           insTabSample(ins);
         }
         if (ins->type==DIV_INS_N163) if (ImGui::BeginTabItem("Namco 163")) {

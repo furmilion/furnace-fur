@@ -289,9 +289,14 @@ int DivPlatformSTM32CRAPSYNTH::getRegisterPoolSize() {
   return 128;
 }
 
+int DivPlatformSTM32CRAPSYNTH::getRegisterPoolDepth()
+{
+    return 32; // some of the registers of STM32 timers are 32-bit. or 24 bit. AD9833 phase acc/frequency is 28 bits...
+}
+
 void DivPlatformSTM32CRAPSYNTH::reset() {
   writes.clear();
-  memset(regPool,0,128);
+  memset(regPool,0,128*sizeof(unsigned int));
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
     chan[i]=DivPlatformSTM32CRAPSYNTH::Channel();
     chan[i].std.setEngine(parent);

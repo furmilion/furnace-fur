@@ -34,30 +34,33 @@ void FurnaceGUI::drawRegView() {
       int depth=8;
       unsigned char* regPool=e->getRegisterPool(i,size,depth);
       unsigned short* regPoolW=(unsigned short*)regPool;
+      unsigned int* regPoolI=(unsigned int*)regPool;
       if (regPool==NULL) {
         ImGui::Text(_("- no register pool available"));
       } else {
         ImGui::PushFont(patFont);
-        if (ImGui::BeginTable("Memory",17)) {
+        if (ImGui::BeginTable("Memory",(depth == 32 ? 9 : 17))) {
           ImGui::TableSetupColumn("addr",ImGuiTableColumnFlags_WidthFixed);
           
           ImGui::TableNextRow();
           ImGui::TableNextColumn();
-          for (int i=0; i<16; i++) {
+          for (int i=0; i<(depth == 32 ? 8 : 16); i++) {
             ImGui::TableNextColumn();
-            ImGui::TextColored(uiColors[GUI_COLOR_PATTERN_ROW_INDEX]," %X",i);
+            ImGui::TextColored(uiColors[GUI_COLOR_PATTERN_ROW_INDEX],"%s%X",(depth == 32 ? "     " : " "),i);
           }
-          for (int i=0; i<=((size-1)>>4); i++) {
+          for (int i=0; i<=(depth == 32 ? ((size-1)>>3) : ((size-1)>>4)); i++) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            ImGui::TextColored(uiColors[GUI_COLOR_PATTERN_ROW_INDEX],"%.2X",i*16);
-            for (int j=0; j<16; j++) {
+            ImGui::TextColored(uiColors[GUI_COLOR_PATTERN_ROW_INDEX],"%.2X",i*(depth == 32 ? 8 : 16));
+            for (int j=0; j<(depth == 32 ? 8 : 16); j++) {
               ImGui::TableNextColumn();
-              if (i*16+j>=size) continue;
+              if (i*(depth == 32 ? 8 : 16)+j>=size) continue;
               if (depth == 8) {
                 ImGui::Text("%.2x",regPool[i*16+j]);
               } else if (depth == 16) {
                 ImGui::Text("%.4x",regPoolW[i*16+j]);
+              } else if (depth == 32) {
+                ImGui::Text("%.8x",regPoolI[i*8+j]);
               } else {
                 ImGui::Text("??");
               }
