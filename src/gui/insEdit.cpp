@@ -3045,6 +3045,7 @@ void FurnaceGUI::insTabWavetable(DivInstrument* ins)
         wavePreviewHeight=255;
         break;
       case DIV_INS_SID3:
+      case DIV_INS_STM32CRAPSYNTH:
         wavePreviewLen=256;
         wavePreviewHeight=255;
         break;
@@ -3294,7 +3295,8 @@ void FurnaceGUI::insTabSample(DivInstrument* ins) {
         ins->type==DIV_INS_SU ||
         ins->type==DIV_INS_NDS ||
         ins->type==DIV_INS_SUPERVISION ||
-        ins->type==DIV_INS_SID3) {
+        ins->type==DIV_INS_SID3 ||
+        ins->type==DIV_INS_STM32CRAPSYNTH) {
       P(ImGui::Checkbox(_("Use sample"),&ins->amiga.useSample));
       if (ins->type==DIV_INS_X1_010) {
         if (ImGui::InputInt(_("Sample bank slot##BANKSLOT"),&ins->x1_010.bankSlot,1,4)) { PARAMETER
@@ -7876,6 +7878,7 @@ void FurnaceGUI::drawInsEdit() {
             (ins->type==DIV_INS_AMIGA && ins->amiga.useWave) ||
             (ins->type==DIV_INS_GBA_DMA && ins->amiga.useWave) ||
             (ins->type==DIV_INS_X1_010 && !ins->amiga.useSample) ||
+            (ins->type==DIV_INS_STM32CRAPSYNTH && !ins->amiga.useSample) ||
             ins->type==DIV_INS_N163 ||
             ins->type==DIV_INS_FDS ||
             (ins->type==DIV_INS_SWAN && !ins->amiga.useSample) ||
@@ -8556,6 +8559,17 @@ void FurnaceGUI::drawInsEdit() {
                 macroList.push_back(FurnaceGUIMacroDesc(_("Wave Mix"),&ins->std.ex8Macro,0,4,64,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,macroSID3WaveMixMode));
               } else {
                 macroList.push_back(FurnaceGUIMacroDesc(_("Sample Mode"),&ins->std.opMacros[1].arMacro,0,1,32,uiColors[GUI_COLOR_MACRO_NOISE],false,NULL,NULL,true));
+              }
+              break;
+            case DIV_INS_STM32CRAPSYNTH:
+              macroList.push_back(FurnaceGUIMacroDesc(_("Volume"),&ins->std.volMacro,0,255,160,uiColors[GUI_COLOR_MACRO_VOLUME]));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Arpeggio"),&ins->std.arpMacro,-120,120,160,uiColors[GUI_COLOR_MACRO_PITCH],true,NULL,macroHoverNote,false,NULL,true,ins->std.arpMacro.val));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Pitch"),&ins->std.pitchMacro,-2048,2047,160,uiColors[GUI_COLOR_MACRO_PITCH],true,macroRelativeMode));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Phase Reset"),&ins->std.phaseResetMacro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true));
+              if (!ins->amiga.useSample) {
+                macroList.push_back(FurnaceGUIMacroDesc(_("Waveform"),&ins->std.waveMacro,0,waveCount,160,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,NULL,false,NULL));
+              } else {
+                macroList.push_back(FurnaceGUIMacroDesc(_("Waveform"),&ins->std.waveMacro,0,5,64,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,NULL,false,NULL));
               }
               break;
             case DIV_INS_MAX:

@@ -803,6 +803,14 @@ void DivEngine::registerSystems() {
   for (int i=0; i<16; i++) SID3PostEffectHandlerMap.emplace(0x30+i,SID3FineCutoffHandler3);
   for (int i=0; i<16; i++) SID3PostEffectHandlerMap.emplace(0x40+i,SID3FineCutoffHandler4);
 
+  EffectHandlerMap CrapSynthPostEffectHandlerMap={
+    {0x10, {DIV_CMD_WAVE, _("10xx: Set waveform (bit 0: triangle; bit 1: saw; bit 2: pulse; bit 3: noise)")}},
+  };
+  const EffectHandler CrapSynthFineDutyHandler(DIV_CMD_C64_FINE_DUTY, _("3xxx: Set pulse width (0 to FFF)"), effectValLong<12>);
+  const EffectHandler CrapSynthFineCutoffHandler(DIV_CMD_C64_FINE_CUTOFF, _("4xxx: Set cutoff (0 to FFF)"), effectValLong<11>);
+  for (int i=0; i<16; i++) CrapSynthPostEffectHandlerMap.emplace(0x30+i,CrapSynthFineDutyHandler);
+  for (int i=0; i<16; i++) CrapSynthPostEffectHandlerMap.emplace(0x40+i,CrapSynthFineCutoffHandler);
+
   // SysDefs
 
   // this chip uses YMZ ADPCM, but the emulator uses ADPCM-B because I got it wrong back then.
@@ -2305,6 +2313,18 @@ void DivEngine::registerSystems() {
     {},
     {}, 
     SID3PostEffectHandlerMap
+  );
+
+  sysDefs[DIV_SYSTEM_STM32CRAPSYNTH]=new DivSysDef(   
+    _("STM32CrapSynth"), NULL, 0xf6, 0, 11, false, true, 0, false, (1U<<DIV_SAMPLE_DEPTH_8BIT), 256, 256,
+    _("a mixed hardware/software sound source created by LTVA. it is a torture of STM32F303xE, 4 AD9833's and one MM5437."),
+    {_("Channel 1"), _("Channel 2"), _("Channel 3"), _("Channel 4"), _("Noise"), _("DAC 1"), _("DAC 2"), _("Timer 1"), _("Timer 2"), _("Timer 3"), _("Timer 4")},
+    {"CH1", "CH2", "CH3", "CH4", "NOI", "PCM", "PCM", "T1", "T2", "T3", "T4"},
+    {DIV_CH_WAVE, DIV_CH_WAVE, DIV_CH_WAVE, DIV_CH_WAVE, DIV_CH_NOISE, DIV_CH_PCM, DIV_CH_PCM, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE},
+    {DIV_INS_STM32CRAPSYNTH, DIV_INS_STM32CRAPSYNTH, DIV_INS_STM32CRAPSYNTH, DIV_INS_STM32CRAPSYNTH, DIV_INS_STM32CRAPSYNTH, DIV_INS_STM32CRAPSYNTH, DIV_INS_STM32CRAPSYNTH, DIV_INS_STM32CRAPSYNTH, DIV_INS_STM32CRAPSYNTH, DIV_INS_STM32CRAPSYNTH, DIV_INS_STM32CRAPSYNTH},
+    {},
+    {}, 
+    CrapSynthPostEffectHandlerMap
   );
 
   sysDefs[DIV_SYSTEM_DUMMY]=new DivSysDef(
