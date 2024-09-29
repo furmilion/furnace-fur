@@ -53,6 +53,10 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
   STM32CrapSynth* crap_synth;
   unsigned int regPool[128];
   unsigned int writeOscBuf;
+  DivMemoryComposition sampleMemCompo;
+  unsigned int sampleOff[256];
+  bool sampleLoaded[256];
+  size_t sampleMemLen;
   void updateWave(int ch);
   friend void putDispatchChip(void*,int);
   friend void putDispatchChan(void*,int,int);
@@ -67,6 +71,12 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
     DivDispatchOscBuffer* getOscBuffer(int chan);
     int mapVelocity(int ch, float vel);
     float getGain(int ch, int vol);
+    const void* getSampleMem(int index = 0);
+    size_t getSampleMemCapacity(int index = 0);
+    size_t getSampleMemUsage(int index = 0);
+    bool isSampleLoaded(int index, int sample);
+    const DivMemoryComposition* getMemCompo(int index);
+    void renderSamples(int chipID);
     unsigned char* getRegisterPool();
     int getRegisterPoolSize();
     int getRegisterPoolDepth();

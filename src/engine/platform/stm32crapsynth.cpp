@@ -375,6 +375,65 @@ void DivPlatformSTM32CRAPSYNTH::notifyInsDeletion(void* ins) {
   }
 }
 
+const void* DivPlatformSTM32CRAPSYNTH::getSampleMem(int index) {
+  return index == 0 ? (unsigned char*)crap_synth->sample_mem : NULL;
+}
+
+size_t DivPlatformSTM32CRAPSYNTH::getSampleMemCapacity(int index) {
+  return index == 0 ? STM32CRAPSYNTH_SAMPLE_MEM_SIZE : 0;
+}
+
+size_t DivPlatformSTM32CRAPSYNTH::getSampleMemUsage(int index) {
+  return index == 0 ? sampleMemLen : 0;
+}
+
+bool DivPlatformSTM32CRAPSYNTH::isSampleLoaded(int index, int sample) {
+  if (index!=0) return false;
+  if (sample<0 || sample>255) return false;
+  return sampleLoaded[sample];
+}
+
+const DivMemoryComposition* DivPlatformSTM32CRAPSYNTH::getMemCompo(int index) {
+  if (index!=0) return NULL;
+  return &sampleMemCompo;
+}
+
+void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
+  size_t maxPos=getSampleMemCapacity();
+  memset(crap_synth->sample_mem,0,maxPos);
+  sampleMemCompo.entries.clear();
+  sampleMemCompo.capacity=maxPos;
+
+  // dummy zero-length samples are at pos 0 as the engine still outputs them
+  size_t memPos=1;
+  for (int i=0; i<parent->song.sampleLen; i++) 
+  {
+    DivSample* s=parent->song.sample[i];
+    if (!s->renderOn[0][sysID]) 
+    {
+      sampleOff[i]=0;
+      continue;
+    }
+    int length=s->length8;
+    int actualLength=MIN((int)(maxPos-memPos),length);
+    if (actualLength>0) 
+    {
+      sampleOff[i]=memPos;
+      memcpy(&crap_synth->sample_mem[memPos],s->data8,actualLength);
+      memPos+=actualLength;
+      sampleMemCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"PCM",i,sampleOff[i],memPos));
+    }
+    if (actualLength<length) 
+    {
+      logW("out of STM32CrapSynth sample memory for sample %d!",i);
+      break;
+    }
+    sampleLoaded[i]=true;
+  }
+  sampleMemLen=memPos;
+  sampleMemCompo.used=sampleMemLen;
+}
+
 void DivPlatformSTM32CRAPSYNTH::setFlags(const DivConfig& flags) {
   chipClock=25000000;
   CHECK_CUSTOM_CLOCK;
@@ -401,6 +460,10 @@ int DivPlatformSTM32CRAPSYNTH::init(DivEngine* p, int channels, int sugRate, con
     oscBuf[i]=new DivDispatchOscBuffer;
   }
   crap_synth = crapsynth_create();
+  sampleMemCompo=DivMemoryComposition();
+  sampleMemCompo.name=_("Sample memory");
+  sampleMemCompo.capacity=STM32CRAPSYNTH_SAMPLE_MEM_SIZE;
+  sampleMemCompo.memory=(unsigned char*)crap_synth->sample_mem;
   setFlags(flags);
   reset();
   return STM32CRAPSYNTH_NUM_CHANNELS;
