@@ -22,10 +22,9 @@
 #include "../platform/stm32crapsynth.h"
 
 void DivExportCrapSynth::run() {
-
-  DivPlatformSTM32CRAPSYNTH* crapsynth=(DivPlatformSTM32CRAPSYNTH*)e->getDispatch(0);
-
-  /*e->stop();
+  /*DivPlatformSTM32CRAPSYNTH* crapsynth=(DivPlatformSTM32CRAPSYNTH*)e->getDispatch(0);
+  
+  e->stop();
   e->repeatPattern=false;
   e->setOrder(0);
   EXTERN_BUSY_BEGIN_SOFT;
