@@ -338,6 +338,28 @@ const char* sid3SpecialWaveforms[]={
   _N("Clipped Saw")
 };
 
+const char* crapSynthAD9833Waves[8]={
+  _N("None"),
+  _N("Sine"),
+  _N("Triangle"),
+  _N("Square, full volume"),
+  _N("Square, 50\% volume"),
+  NULL,
+  NULL,
+  NULL,
+};
+
+const char* crapSynthDACWaves[8]={
+  _N("None"),
+  _N("Wavetable/sample"),
+  _N("Triangle"),
+  _N("Wavetable/sample + triangle"),
+  _N("Noise"),
+  _N("Wavetable/sample + noise"),
+  _N("Pulse (through custom wavetable)"),
+  _N("Sawtooth (through custom wavetable)"),
+};
+
 const bool opIsOutput[8][4]={
   {false,false,false,true},
   {false,false,false,true},
@@ -818,6 +840,15 @@ String macroSID3WaveMixMode(int id, float val, void* u) {
   if ((int)val<0 || (int)val>4) return "???";
 
   return _(sid3WaveMixModes[(int)val]);
+}
+
+String macroCrapSynth(int id, float val, void* u) {
+  return fmt::sprintf(
+    _("Channel 1-4: %s\n"
+      "DAC1&2: %s"),
+      ((int)val>4 ? _("[doesn't exist]") : crapSynthAD9833Waves[(int)val]),
+      ((int)val>7 ? _("[doesn't exist]") : crapSynthDACWaves[(int)val])
+  );
 }
 
 void addAALine(ImDrawList* dl, const ImVec2& p1, const ImVec2& p2, const ImU32 color, float thickness=1.0f) {
@@ -3304,6 +3335,11 @@ void FurnaceGUI::insTabSample(DivInstrument* ins) {
           if (ins->x1_010.bankSlot>=7) ins->x1_010.bankSlot=7;
         }
       }
+      if (ins->type==DIV_INS_STM32CRAPSYNTH) {
+        // HACK: reset zoom and scroll in wave macro so that it draws correctly
+        ins->std.waveMacro.vZoom=-1;
+        ins->std.waveMacro.vScroll=-1;
+      }
     }
     ImGui::AlignTextToFramePadding();
     ImGui::Text(_("Sample"));
@@ -4483,7 +4519,7 @@ void FurnaceGUI::insTabFM(DivInstrument* ins) {
                   op.sus=susOn;
                   // HACK: reset zoom and scroll in fixed pitch macros so that they draw correctly
                   ins->std.opMacros[i].ssgMacro.vZoom=-1;
-                  ins->std.opMacros[i].susMacro.vZoom=-1;
+                  ins->std.opMacros[i].susMacro.vScroll=-1;
                 }
                 popWarningColor();
                 if (ImGui::IsItemHovered()) {
@@ -8570,7 +8606,7 @@ void FurnaceGUI::drawInsEdit() {
               if (!ins->amiga.useSample) {
                 macroList.push_back(FurnaceGUIMacroDesc(_("Waveform"),&ins->std.waveMacro,0,waveCount,160,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,NULL,false,NULL));
               } else {
-                macroList.push_back(FurnaceGUIMacroDesc(_("Waveform"),&ins->std.waveMacro,0,5,64,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,NULL,false,NULL));
+                macroList.push_back(FurnaceGUIMacroDesc(_("Waveform"),&ins->std.waveMacro,0,7,64,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,macroCrapSynth,false,NULL));
               }
               break;
             case DIV_INS_MAX:
