@@ -20,15 +20,24 @@ typedef struct
 {
     uint8_t wave_type;
     uint32_t acc, freq;
+    uint8_t pending_vol;
+    bool zero_cross;
+
+    uint32_t timer_acc;
+    uint32_t timer_freq; //approximation of STM32 timers...
+    uint16_t pw;
+    //timer frequency and duty will be converted to actual values during export
 } AD9833Chan;
 
 typedef struct
 {
     uint32_t lfsr;
-
+    bool zero_cross;
+    uint8_t pending_vol;
+    
     uint32_t timer_acc;
     uint32_t timer_freq; //approximation of STM32 timers...
-    uint8_t output;
+    uint16_t output;
 } NoiseChan;
 
 typedef struct
@@ -42,6 +51,7 @@ typedef struct
 
     uint32_t timer_acc;
     uint32_t timer_freq; //approximation of STM32 timers...
+    bool zero_cross;
     uint8_t output;
 } DACChan;
 

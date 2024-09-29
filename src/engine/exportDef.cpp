@@ -68,6 +68,6 @@ void DivEngine::registerROMExports() {
     "samples and \"registers\"/wavetable data stream.\n",
     "STM32CrapSynth playback file", ".scs",
     {DIV_SYSTEM_STM32CRAPSYNTH},
-    true, DIV_REQPOL_EXACT
+    false, DIV_REQPOL_EXACT
   );
 }

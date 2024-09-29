@@ -29,6 +29,7 @@
 #define ad9833_write(ch,type,val) rWrite(((ch << 8) | (type)), val)
 
 #define CHIP_FREQBASE 524288*16
+#define CHIP_TIMERS_FREQBASE 524288*64
 #define CHIP_DIVIDER 1
 
 const char* regCheatSheetCrapSynth[]={
@@ -58,7 +59,7 @@ void DivPlatformSTM32CRAPSYNTH::acquire(short** buf, size_t len) {
         int ch = w.addr >> 8;
         int type = w.addr & 0xff;
         crapsynth_write(crap_synth, ch, type, w.val);
-        regPool[w.addr&0x7f]=w.val;
+        regPool[ch * 8 + type]=w.val;
         writes.pop();
     }
 
@@ -77,9 +78,10 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     chan[i].std.next();
 
     if (chan[i].std.vol.had) {
-      if(i < 4)
+      if(i < 5)
       {
-        ad9833_write(i, 0, chan[i].std.vol.val);
+        chan[i].outVol=VOL_SCALE_LOG(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
+        ad9833_write(i, 0, chan[i].outVol);
       }
     }
     
@@ -106,6 +108,45 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       if(i < 4)
       {
         ad9833_write(i, 1, chan[i].std.wave.val);
+
+        if((chan[i].std.wave.val == 5 && chan[i].wave != 5) || (chan[i].std.wave.val != 5 && chan[i].wave == 5))
+        {
+            chan[i].freqChanged = true;
+        }
+
+        chan[i].wave = chan[i].std.wave.val;
+      }
+    }
+
+    if (chan[i].std.duty.had) {
+      if(i < 4)
+      {
+        chan[i].duty = chan[i].std.duty.val;
+        if(chan[i].wave == 5)
+        {
+            ad9833_write(i, 5, chan[i].std.duty.val);
+        }
+      }
+    }
+
+    if (chan[i].std.phaseReset.had) {
+      if(i < 5 && chan[i].std.phaseReset.val)
+      {
+        ad9833_write(i, 3, chan[i].lfsr); //LFSR value is ignored for all chans except noise
+      }
+    }
+
+    if (chan[i].std.ex1.had) { //zero cross detection
+      if(i < 5)
+      {
+        ad9833_write(i, 6, chan[i].std.ex1.val);
+      }
+    }
+
+    if (chan[i].std.ex2.had) { //LFSR bits
+      if(i == 4)
+      {
+        chan[i].lfsr = chan[i].std.ex2.val;
       }
     }
     
@@ -116,14 +157,42 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     }
     if (chan[i].freqChanged || chan[i].keyOn || chan[i].keyOff) {
       //DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_PCE);
-      if(i < 4)
+      if(chan[i].freqChanged && i < 4)
       {
         chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE);
-        
+        chan[i].timer_freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_TIMERS_FREQBASE);
 
         if(chan[i].freq > (1 << 28) - 1) chan[i].freq = (1 << 28) - 1;
+        if(chan[i].timer_freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
+        
+        if(chan[i].wave != 5)
+        {
+            ad9833_write(i, 2, chan[i].freq);
+        }
+        else
+        {
+            ad9833_write(i, 4, chan[i].timer_freq);
+        }
+      }
+      if(chan[i].freqChanged && i == 4)
+      {
+        chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_TIMERS_FREQBASE * 32);
+        chan[i].timer_freq=chan[i].freq;
 
-        ad9833_write(i, 2, chan[i].freq);
+        while((double)chan[i].freq > 333300.0 * (double)(1 << 29) / (double)chipClock) //333333.(3) Hz max MM5437 clock freq
+        {
+            chan[i].freq = 333300.0 * (double)(1 << 29) / (double)chipClock;
+            chan[i].timer_freq=chan[i].freq;
+        }
+
+        //if(chan[i].freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
+        //if(chan[i].timer_freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
+        
+        ad9833_write(i, 4, chan[i].timer_freq);
+      }
+      if(chan[i].keyOff && i < 5)
+      {
+        ad9833_write(i, 0, 0);
       }
 
       if (chan[i].keyOn) chan[i].keyOn=false;
@@ -158,7 +227,7 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
     }
     case DIV_CMD_NOTE_OFF:
       chan[c.chan].dacSample=-1;
-      if (dumpWrites) addWrite(0xffff0002+(c.chan<<8),0);
+      //if (dumpWrites) addWrite(0xffff0002+(c.chan<<8),0);
       chan[c.chan].pcm=false;
       chan[c.chan].active=false;
       chan[c.chan].keyOff=true;
@@ -179,6 +248,12 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
         chan[c.chan].vol=c.value;
         if (!chan[c.chan].std.vol.has) {
           chan[c.chan].outVol=c.value;
+          chan[c.chan].vol=chan[c.chan].outVol;
+        }
+
+        if(c.chan < 4)
+        {
+            ad9833_write(c.chan, 0, (VOL_SCALE_LOG(crap_synth->ad9833[c.chan].zero_cross ? crap_synth->ad9833[c.chan].pending_vol : crap_synth->volume[c.chan],chan[c.chan].outVol&255,255)));
         }
       }
       break;
@@ -240,7 +315,7 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
       chan[c.chan].inPorta=c.value;
       break;
     case DIV_CMD_GET_VOLMAX:
-      return 31;
+      return 255;
       break;
     case DIV_CMD_MACRO_OFF:
       chan[c.chan].std.mask(c.value,true);
@@ -325,7 +400,7 @@ unsigned char* DivPlatformSTM32CRAPSYNTH::getRegisterPool() {
 }
 
 int DivPlatformSTM32CRAPSYNTH::getRegisterPoolSize() {
-  return 128;
+  return 8*11;
 }
 
 int DivPlatformSTM32CRAPSYNTH::getRegisterPoolDepth()
@@ -335,12 +410,15 @@ int DivPlatformSTM32CRAPSYNTH::getRegisterPoolDepth()
 
 void DivPlatformSTM32CRAPSYNTH::reset() {
   writes.clear();
-  memset(regPool,0,128*sizeof(unsigned int));
+  memset(regPool,0,8*11*sizeof(unsigned int));
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
     chan[i]=DivPlatformSTM32CRAPSYNTH::Channel();
     chan[i].std.setEngine(parent);
     chan[i].ws.setEngine(parent);
     chan[i].ws.init(NULL,256,256,false);
+
+    chan[i].duty = 0x7fff;
+    chan[i].wave = 0;
   }
   if (dumpWrites) 
   {

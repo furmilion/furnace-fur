@@ -256,6 +256,28 @@ void DivExportCrapSynth::run() {
   logAppend("finished!");
 
   running=false;*/
+
+  e->stop();
+  EXTERN_BUSY_BEGIN_SOFT;
+
+  // test.scs
+  logAppend("begin writing shit...");
+  SafeWriter* crapwriter=new SafeWriter;
+  crapwriter->init();
+  crapwriter->writeI(0xffeeddcc);
+  crapwriter->writeString("4twuiy",false);
+
+  logAppend("writing samples...");
+  logAppend("writing wavetables/synth info dump...");
+
+  EXTERN_BUSY_END;
+
+  // finish
+  output.push_back(DivROMExportOutput("playback.scs",crapwriter));
+
+  logAppend("finished!");
+
+  running=false;
 }
 
 bool DivExportCrapSynth::go(DivEngine* eng) {

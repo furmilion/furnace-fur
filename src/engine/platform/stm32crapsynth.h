@@ -31,13 +31,20 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
     bool pcm;
     int wavetable;
     int dacSample;
+    unsigned int timer_freq;
+    unsigned short duty;
+    unsigned int lfsr;
+
     DivWaveSynth ws;
     Channel():
       SharedChannel<signed short>(255),
       wave(-1),
       pcm(false),
       wavetable(-1),
-      dacSample(-1) {}
+      dacSample(-1),
+      timer_freq(0),
+      duty(0x7fff),
+      lfsr(1) {}
   };
   Channel chan[STM32CRAPSYNTH_NUM_CHANNELS];
   DivDispatchOscBuffer* oscBuf[STM32CRAPSYNTH_NUM_CHANNELS];
@@ -51,7 +58,7 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
   FixedQueue<QueuedWrite,16384> writes;
 
   STM32CrapSynth* crap_synth;
-  unsigned int regPool[128];
+  unsigned int regPool[8*11];
   unsigned int writeOscBuf;
   DivMemoryComposition sampleMemCompo;
   unsigned int sampleOff[256];

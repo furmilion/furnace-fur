@@ -344,7 +344,7 @@ const char* crapSynthAD9833Waves[8]={
   _N("Triangle"),
   _N("Square, full volume"),
   _N("Square, half volume"),
-  NULL,
+  _N("Pulse (PWM signal from MCU)"),
   NULL,
   NULL,
 };
@@ -846,7 +846,7 @@ String macroCrapSynth(int id, float val, void* u) {
   return fmt::sprintf(
     _("Channel 1-4: %s\n"
       "DAC1&2: %s"),
-      ((int)val>4 ? _("[doesn't exist]") : crapSynthAD9833Waves[(int)val]),
+      ((int)val>5 ? _("[doesn't exist]") : crapSynthAD9833Waves[(int)val]),
       ((int)val>7 ? _("[doesn't exist]") : crapSynthDACWaves[(int)val])
   );
 }
@@ -8602,12 +8602,15 @@ void FurnaceGUI::drawInsEdit() {
               macroList.push_back(FurnaceGUIMacroDesc(_("Volume"),&ins->std.volMacro,0,255,256,uiColors[GUI_COLOR_MACRO_VOLUME]));
               macroList.push_back(FurnaceGUIMacroDesc(_("Arpeggio"),&ins->std.arpMacro,-120,120,160,uiColors[GUI_COLOR_MACRO_PITCH],true,NULL,macroHoverNote,false,NULL,true,ins->std.arpMacro.val));
               macroList.push_back(FurnaceGUIMacroDesc(_("Pitch"),&ins->std.pitchMacro,-2048,2047,160,uiColors[GUI_COLOR_MACRO_PITCH],true,macroRelativeMode));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Duty"),&ins->std.dutyMacro,0,65535,160,uiColors[GUI_COLOR_MACRO_OTHER]));
               macroList.push_back(FurnaceGUIMacroDesc(_("Phase Reset"),&ins->std.phaseResetMacro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Zero Cross Volume Update"),&ins->std.ex1Macro,0,1,32,uiColors[GUI_COLOR_MACRO_VOLUME],false,NULL,NULL,true));
               if (!ins->amiga.useSample) {
                 macroList.push_back(FurnaceGUIMacroDesc(_("Waveform"),&ins->std.waveMacro,0,waveCount,160,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,NULL,false,NULL));
               } else {
                 macroList.push_back(FurnaceGUIMacroDesc(_("Waveform"),&ins->std.waveMacro,0,7,64,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,macroCrapSynth,false,NULL));
               }
+              macroList.push_back(FurnaceGUIMacroDesc(_("Noise LFSR bits"),&ins->std.ex2Macro,0,23,16 * 23,uiColors[GUI_COLOR_MACRO_NOISE],false,NULL,NULL,true));
               break;
             case DIV_INS_MAX:
             case DIV_INS_NULL:
