@@ -51,7 +51,7 @@ void DivPlatformSTM32CRAPSYNTH::acquire(short** buf, size_t len) {
     
     for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) 
     {
-        oscBuf[i]->data[oscBuf[i]->needle++]=CLAMP(crap_synth->chan_outputs[i],-32767,32768);
+        oscBuf[i]->data[oscBuf[i]->needle++]=CLAMP(crap_synth->chan_outputs[i],-32768,32767);
     }
 
     while (!writes.empty()) {
@@ -63,7 +63,7 @@ void DivPlatformSTM32CRAPSYNTH::acquire(short** buf, size_t len) {
         writes.pop();
     }
 
-    buf[0][h]=CLAMP(crap_synth->final_output,-32767,32768);
+    buf[0][h]=CLAMP(crap_synth->final_output,-32768,32767);
   }
 }
 
