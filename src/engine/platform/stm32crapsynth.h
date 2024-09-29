@@ -30,8 +30,6 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
     int wave;
     bool pcm;
     int wavetable;
-    long long dacPeriod, dacRate, dacOut;
-    unsigned long long dacPos;
     int dacSample;
     DivWaveSynth ws;
     Channel():
@@ -39,10 +37,6 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
       wave(-1),
       pcm(false),
       wavetable(-1),
-      dacPeriod(0),
-      dacRate(0),
-      dacOut(0),
-      dacPos(0),
       dacSample(-1) {}
   };
   Channel chan[STM32CRAPSYNTH_NUM_CHANNELS];
@@ -58,6 +52,7 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
 
   STM32CrapSynth* crap_synth;
   unsigned int regPool[128];
+  unsigned int writeOscBuf;
   void updateWave(int ch);
   friend void putDispatchChip(void*,int);
   friend void putDispatchChan(void*,int,int);
