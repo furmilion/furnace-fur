@@ -809,7 +809,7 @@ src/engine/export/abstract.cpp
 src/engine/export/amigaValidation.cpp
 src/engine/export/tiuna.cpp
 src/engine/export/zsm.cpp
-src/engine/export/crapsynth.cpp
+src/engine/export/crapSynth.cpp
 
 src/engine/effect/abstract.cpp
 src/engine/effect/dummy.cpp
