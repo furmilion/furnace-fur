@@ -43,25 +43,23 @@ const char** DivPlatformSTM32CRAPSYNTH::getRegisterSheet() {
 void DivPlatformSTM32CRAPSYNTH::acquire(short** buf, size_t len) {
   for (size_t h=0; h<len; h++) 
   {
-    crapsynth_clock(crap_synth);
-
-    if(++writeOscBuf == 100)
+    for(int i = 0; i < 100; i++)
     {
-        for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) 
-        {
-            oscBuf[i]->data[oscBuf[i]->needle++]=CLAMP(crap_synth->chan_outputs[i],-32767,32768);
-        }
+        crapsynth_clock(crap_synth);
+    }
+    
+    for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) 
+    {
+        oscBuf[i]->data[oscBuf[i]->needle++]=CLAMP(crap_synth->chan_outputs[i],-32767,32768);
+    }
 
-        while (!writes.empty()) {
-            QueuedWrite w=writes.front();
-            int ch = w.addr >> 8;
-            int type = w.addr & 0xff;
-            crapsynth_write(crap_synth, ch, type, w.val);
-            regPool[w.addr&0x7f]=w.val;
-            writes.pop();
-        }
-
-        writeOscBuf = 0;
+    while (!writes.empty()) {
+        QueuedWrite w=writes.front();
+        int ch = w.addr >> 8;
+        int type = w.addr & 0xff;
+        crapsynth_write(crap_synth, ch, type, w.val);
+        regPool[w.addr&0x7f]=w.val;
+        writes.pop();
     }
 
     buf[0][h]=CLAMP(crap_synth->final_output,-32767,32768);
@@ -437,9 +435,9 @@ void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
 void DivPlatformSTM32CRAPSYNTH::setFlags(const DivConfig& flags) {
   chipClock=25000000;
   CHECK_CUSTOM_CLOCK;
-  rate=chipClock; // 250 kHz
+  rate=chipClock/100; // 250 kHz
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
-    oscBuf[i]->rate=rate/100;
+    oscBuf[i]->rate=rate;
   }
 }
 
