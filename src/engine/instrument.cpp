@@ -1430,6 +1430,8 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
         break;
       case DIV_INS_UPD1771C:
         break;
+      case DIV_INS_STM32CRAPSYNTH:
+        break;
       case DIV_INS_MAX:
         break;
       case DIV_INS_NULL:
