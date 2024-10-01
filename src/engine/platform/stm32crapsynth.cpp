@@ -44,7 +44,7 @@ const char** DivPlatformSTM32CRAPSYNTH::getRegisterSheet() {
 void DivPlatformSTM32CRAPSYNTH::acquire(short** buf, size_t len) {
   for (size_t h=0; h<len; h++) 
   {
-    for(int i = 0; i < 100; i++)
+    for(int i = 0; i < 50; i++)
     {
         crapsynth_clock(crap_synth);
     }
@@ -59,7 +59,19 @@ void DivPlatformSTM32CRAPSYNTH::acquire(short** buf, size_t len) {
         int ch = w.addr >> 8;
         int type = w.addr & 0xff;
         crapsynth_write(crap_synth, ch, type, w.val);
-        regPool[ch * 8 + type]=w.val;
+        if(ch < 5)
+        {
+          regPool[ch * 8 + type]=w.val;
+        }
+        if(ch == 5 || ch == 6) //DAC
+        {
+          regPool[5 * 8 + (ch - 5) * 16 + type]=w.val;
+        }
+        if(ch > 6)
+        {
+          regPool[5 * 8 + 2 * 16 + (ch - 7) * 8 + type]=w.val;
+        }
+        
         writes.pop();
     }
 
@@ -78,7 +90,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     chan[i].std.next();
 
     if (chan[i].std.vol.had) {
-      if(i < 5)
+      if(i < 7)
       {
         chan[i].outVol=VOL_SCALE_LOG(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
         ad9833_write(i, 0, chan[i].outVol);
@@ -113,6 +125,14 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         {
             chan[i].freqChanged = true;
         }
+
+        chan[i].wave = chan[i].std.wave.val;
+      }
+      if(i == 5 || i == 6)
+      {
+        ad9833_write(i, 9, chan[i].std.wave.val);
+
+        chan[i].freqChanged = true;
 
         chan[i].wave = chan[i].std.wave.val;
       }
@@ -156,11 +176,11 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       }
     }
     if (chan[i].freqChanged || chan[i].keyOn || chan[i].keyOff) {
-      //DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_PCE);
+      //DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_STM32CRAPSYNTH);
       if(chan[i].freqChanged && i < 4)
       {
-        chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE);
-        chan[i].timer_freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_TIMERS_FREQBASE);
+        chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_FREQBASE);
+        chan[i].timer_freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_TIMERS_FREQBASE);
 
         if(chan[i].freq > (1 << 28) - 1) chan[i].freq = (1 << 28) - 1;
         if(chan[i].timer_freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
@@ -176,12 +196,12 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       }
       if(chan[i].freqChanged && i == 4)
       {
-        chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_TIMERS_FREQBASE * 32);
+        chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_TIMERS_FREQBASE * 32);
         chan[i].timer_freq=chan[i].freq;
 
-        while((double)chan[i].freq > 333300.0 * (double)(1 << 29) / (double)chipClock) //333333.(3) Hz max MM5437 clock freq
+        while((double)chan[i].freq > 333300.0 * (double)(1 << 29) / (double)(chipClock*2)) //333333.(3) Hz max MM5437 clock freq
         {
-            chan[i].freq = 333300.0 * (double)(1 << 29) / (double)chipClock;
+            chan[i].freq = 333300.0 * (double)(1 << 29) / (double)(chipClock*2);
             chan[i].timer_freq=chan[i].freq;
         }
 
@@ -190,9 +210,68 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         
         ad9833_write(i, 4, chan[i].timer_freq);
       }
-      if(chan[i].keyOff && i < 5)
+      if(chan[i].freqChanged && (i == 5 || i == 6))
+      {
+        chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_TIMERS_FREQBASE * 32);
+        chan[i].timer_freq=chan[i].freq;
+
+        switch(chan[i].wave)
+        {
+          case 1:
+          case 3:
+          case 5:
+          {
+            if(chan[i].pcm)
+            {
+              double off=1.0;
+              if (chan[i].dacSample>=0 && chan[i].dacSample<parent->song.sampleLen) {
+                DivSample* s=parent->getSample(chan[i].dacSample);
+                if (s->centerRate<1) {
+                  off=1.0;
+                } else {
+                  off=8363.0/(double)s->centerRate;
+                }
+              }
+              chan[i].timer_freq *= off;
+            }
+            else
+            {
+              chan[i].timer_freq *= 256; //wavetable
+            }
+            break;
+          }
+          case 2: //triangle
+          {
+            chan[i].timer_freq *= 1 << chan[i].noise_tri_amp;
+            break;
+          }
+          case 4: //noise
+          {
+            chan[i].timer_freq *= 16;
+            break;
+          }
+          case 6:
+          case 7:
+          {
+            chan[i].timer_freq *= 256; //wavetable
+            break;
+          }
+          default: break;
+        }
+
+        if(chan[i].freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
+        if(chan[i].timer_freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
+        
+        ad9833_write(i, 4, chan[i].timer_freq);
+      }
+      if(chan[i].keyOff && i < 7)
       {
         ad9833_write(i, 0, 0);
+
+        if(i > 4)
+        {
+          ad9833_write(i, 1, 0); //stop wave/sample playback
+        }
       }
 
       if (chan[i].keyOn) chan[i].keyOn=false;
@@ -223,6 +302,47 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
       }
       chan[c.chan].ws.init(ins,256,256,chan[c.chan].insChanged);
       chan[c.chan].insChanged=false;
+
+      if (ins->amiga.useSample && c.chan > 4 && c.chan < 7) {
+        chan[c.chan].pcm = true;
+        if (c.value!=DIV_NOTE_NULL) {
+          chan[c.chan].dacSample=ins->amiga.getSample(c.value);
+          chan[c.chan].sampleNote=c.value;
+          c.value=ins->amiga.getFreq(c.value);
+          chan[c.chan].sampleNoteDelta=c.value-chan[c.chan].sampleNote;
+        } else if (chan[c.chan].sampleNote!=DIV_NOTE_NULL) {
+          chan[c.chan].dacSample=ins->amiga.getSample(chan[c.chan].sampleNote);
+          c.value=ins->amiga.getFreq(chan[c.chan].sampleNote);
+        }
+        if (chan[c.chan].dacSample<0 || chan[c.chan].dacSample>=parent->song.sampleLen) {
+          chan[c.chan].dacSample=-1;
+          if (dumpWrites) addWrite(0xffff0002+(c.chan<<8),0);
+          break;
+        } else {
+          if (dumpWrites) {
+            addWrite(0xffff0000+(c.chan<<8),chan[c.chan].dacSample);
+          }
+          DivSample* s = parent->song.sample[chan[c.chan].dacSample];
+          ad9833_write(c.chan, 2, sampleOff[chan[c.chan].dacSample]);
+          if(s->loop)
+          {
+            ad9833_write(c.chan, 7, s->loopStart); // loop point
+          }
+          else
+          {
+            ad9833_write(c.chan, 7, sampleOff[chan[c.chan].dacSample]); // loop point = start
+          }
+          ad9833_write(c.chan, 8, s->length8);
+
+          ad9833_write(c.chan, 1, 1 | (s->loop ? 4 : 0)); //play sample
+        }
+        chan[c.chan].dacPos=0;
+        chan[c.chan].dacPeriod=0;
+      }
+      else
+      {
+        chan[c.chan].pcm = false;
+      }
       break;
     }
     case DIV_CMD_NOTE_OFF:
@@ -400,7 +520,7 @@ unsigned char* DivPlatformSTM32CRAPSYNTH::getRegisterPool() {
 }
 
 int DivPlatformSTM32CRAPSYNTH::getRegisterPoolSize() {
-  return 8*11;
+  return 8*11+8*2;
 }
 
 int DivPlatformSTM32CRAPSYNTH::getRegisterPoolDepth()
@@ -410,7 +530,7 @@ int DivPlatformSTM32CRAPSYNTH::getRegisterPoolDepth()
 
 void DivPlatformSTM32CRAPSYNTH::reset() {
   writes.clear();
-  memset(regPool,0,8*11*sizeof(unsigned int));
+  memset(regPool,0,(8*11 + 8 * 2)*sizeof(unsigned int));
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
     chan[i]=DivPlatformSTM32CRAPSYNTH::Channel();
     chan[i].std.setEngine(parent);
@@ -419,6 +539,7 @@ void DivPlatformSTM32CRAPSYNTH::reset() {
 
     chan[i].duty = 0x7fff;
     chan[i].wave = 0;
+    chan[i].noise_tri_amp = 11;
   }
   if (dumpWrites) 
   {
@@ -480,8 +601,7 @@ void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
   sampleMemCompo.entries.clear();
   sampleMemCompo.capacity=maxPos;
 
-  // dummy zero-length samples are at pos 0 as the engine still outputs them
-  size_t memPos=1;
+  size_t memPos=0;
   for (int i=0; i<parent->song.sampleLen; i++) 
   {
     DivSample* s=parent->song.sample[i];
@@ -495,7 +615,11 @@ void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
     if (actualLength>0) 
     {
       sampleOff[i]=memPos;
-      memcpy(&crap_synth->sample_mem[memPos],s->data8,actualLength);
+      //memcpy(&crap_synth->sample_mem[memPos],s->data8,actualLength);
+      for(int ssyka = 0; ssyka < actualLength; ssyka++)
+      {
+        crap_synth->sample_mem[memPos + ssyka] = (uint8_t)s->data8[ssyka] + 0x80;
+      }
       memPos+=actualLength;
       sampleMemCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"PCM",i,sampleOff[i],memPos));
     }
@@ -511,9 +635,9 @@ void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
 }
 
 void DivPlatformSTM32CRAPSYNTH::setFlags(const DivConfig& flags) {
-  chipClock=25000000;
+  chipClock=12500000;
   CHECK_CUSTOM_CLOCK;
-  rate=chipClock/100; // 250 kHz
+  rate=chipClock/50; // 250 kHz
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
     oscBuf[i]->rate=rate;
   }

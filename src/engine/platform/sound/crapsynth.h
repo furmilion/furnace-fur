@@ -34,7 +34,7 @@ typedef struct
     uint32_t lfsr;
     bool zero_cross;
     uint8_t pending_vol;
-    
+
     uint32_t timer_acc;
     uint32_t timer_freq; //approximation of STM32 timers...
     uint16_t output;
@@ -52,7 +52,19 @@ typedef struct
     uint32_t timer_acc;
     uint32_t timer_freq; //approximation of STM32 timers...
     bool zero_cross;
-    uint8_t output;
+    uint8_t pending_vol;
+    int output;
+
+    bool playing;
+    bool play_wavetable;
+
+    uint8_t wave_type;
+
+    uint16_t lfsr;
+    uint16_t triangle_counter;
+    uint8_t noise_tri_amp;
+
+    bool loop;
 } DACChan;
 
 typedef struct

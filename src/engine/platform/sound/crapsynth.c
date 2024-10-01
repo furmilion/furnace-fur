@@ -83,7 +83,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 2:
             {
-                crapsynth->ad9833[chan].freq = data;
+                crapsynth->ad9833[chan].freq = data / 2;
                 break;
             }
             case 3: //reset
@@ -93,7 +93,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 4: //PWM timer freq
             {
-                crapsynth->ad9833[chan].timer_freq = data;
+                crapsynth->ad9833[chan].timer_freq = data / 2;
                 break;
             }
             case 5: //PWM timer duty
@@ -121,8 +121,6 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
 
     if(channel == 4) //noise chan
     {
-        int chan = channel;
-
         switch(data_type)
         {
             case 0:
@@ -140,7 +138,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 4:
             {
-                crapsynth->noise.timer_freq = data;
+                crapsynth->noise.timer_freq = data / 2;
                 break;
             }
             case 3: //reset
@@ -152,6 +150,138 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             {
                 crapsynth->noise.zero_cross = data & 1;
                 break;
+            }
+            default: break;
+        }
+    }
+
+    if(channel > 4 && channel < 7) //DAC chans
+    {
+        int chan = channel - 5;
+
+        switch(data_type)
+        {
+            case 0:
+            {
+                if(crapsynth->dac[chan].zero_cross)
+                {
+                    crapsynth->dac[chan].pending_vol = data & 0xff;
+                }
+                else
+                {
+                    crapsynth->volume[channel] = data & 0xff;
+                }
+                
+                break;
+            }
+            case 1:
+            {
+                int prev = (crapsynth->dac[chan].playing ? 1 : 0) | (crapsynth->dac[chan].play_wavetable ? 2 : 0);
+                crapsynth->dac[chan].playing = data & 1;
+                crapsynth->dac[chan].play_wavetable = data & 2;
+                crapsynth->dac[chan].loop = data & 4;
+
+                if(!(prev & 2) && (data & 2))
+                {
+                    crapsynth->dac[chan].curr_pos = 0;
+                }
+                if(!(prev & 1) && (data & 1))
+                {
+                    if(crapsynth->dac[chan].play_wavetable)
+                    {
+                        crapsynth->dac[chan].curr_pos = 0;
+                    }
+                    else
+                    {
+                        crapsynth->dac[chan].curr_pos = crapsynth->dac[chan].start_addr;
+                    }
+                }
+                break;
+            }
+            case 2:
+            {
+                crapsynth->dac[chan].start_addr = data;
+                break;
+            }
+            case 3: //reset
+            {
+                crapsynth->dac[chan].curr_pos = 0;
+                crapsynth->dac[chan].timer_acc = 0;
+                break;
+            }
+            case 4:
+            {
+                crapsynth->dac[chan].timer_freq = data / 2;
+                break;
+            }
+            case 5: //PWM timer duty
+            {
+                crapsynth->ad9833[chan].pw = data & 0xffff;
+                break;
+            }
+            case 6: //zero cross
+            {
+                crapsynth->dac[chan].zero_cross = data & 1;
+
+                if(chan & 1) //1 zero cross setting for 2 channels
+                {
+                    crapsynth->dac[chan + 1].zero_cross = data & 1;
+                }
+                else
+                {
+                    crapsynth->dac[chan - 1].zero_cross = data & 1;
+                }
+                break;
+            }
+            case 7:
+            {
+                crapsynth->dac[chan].loop_point = data;
+                break;
+            }
+            case 8:
+            {
+                crapsynth->dac[chan].length = data;
+                break;
+            }
+            case 9:
+            {
+                crapsynth->dac[chan].wave_type = data & 7;
+
+                int pw = data >> 4;
+
+                if(data == 6) //pulse
+                {
+                    for(uint8_t i = 0; i < STM32CRAPSYNTH_WAVETABLE_SIZE; i++)
+                    {
+                        if(i < pw)
+                        {
+                            crapsynth->dac[chan].wavetable[i] = 255;
+                        }
+                        else
+                        {
+                            crapsynth->dac[chan].wavetable[i] = 0;
+                        }
+                    }
+                }
+                if(data == 7) //saw
+                {
+                    for(uint8_t i = 0; i < STM32CRAPSYNTH_WAVETABLE_SIZE; i++)
+                    {
+                        crapsynth->dac[chan].wavetable[i] = i;
+                    }
+                }
+                break;
+            }
+            case 10:
+            {
+                int address = data >> 8;
+                int wave_data = data & 0xff;
+
+                crapsynth->dac[chan].wavetable[address] = wave_data;
+            }
+            case 11:
+            {
+                crapsynth->dac[chan].noise_tri_amp = data % 12;
             }
             default: break;
         }
@@ -264,6 +394,70 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
     {
         crapsynth->chan_outputs[4] = (crapsynth->noise.output - (511)) * 8 * crapsynth->volume_table[crapsynth->volume[4]];
         crapsynth->final_output += crapsynth->noise.output * 4;
+    }
+
+    for(int i = 0; i < 2; i++)
+    {
+        DACChan* ch = &crapsynth->dac[i];
+
+        if(ch->timer_freq > 0)
+        {
+            ch->timer_acc += ch->timer_freq;
+
+            if((ch->timer_acc & (1 << (STM32CRAPSYNTH_ACC_BITS + 2))) && ch->playing) //overflow
+            {
+                switch(ch->wave_type)
+                {
+                    case 0:
+                    {
+                        break; //none
+                    }
+                    case 1:
+                    {
+                        if(ch->play_wavetable)
+                        {
+                            ch->curr_pos &= 0xff;
+                            ch->output = ch->wavetable[ch->curr_pos];
+                        }
+                        else
+                        {
+                            if(ch->curr_pos >= ch->length + ch->start_addr && ch->loop)
+                            {
+                                ch->curr_pos = ch->start_addr + ch->loop_point;
+                            }
+
+                            if(ch->curr_pos >= ch->length + ch->start_addr && !ch->loop)
+                            {
+                                ch->curr_pos = 0;
+                                ch->timer_acc = 0;
+                                ch->timer_freq = 0;
+                                //ch->output = crapsynth->sample_mem[ch->length + ch->start_addr - 1] << 4;
+                                break;
+                            }
+
+                            ch->output = ((uint16_t)crapsynth->sample_mem[ch->curr_pos] << 4); 
+                        }
+                        break;
+                    }
+                    default: break;
+                }
+
+                ch->curr_pos++;
+
+                if(ch->zero_cross && ch->output < 10) //approx of zero cross
+                {
+                    crapsynth->volume[i + 5] = ch->pending_vol;
+                }
+            }
+
+            ch->timer_acc &= (1 << (STM32CRAPSYNTH_ACC_BITS + 2)) - 1;
+        }
+
+        if(!crapsynth->muted[i + 5])
+        {
+            crapsynth->chan_outputs[i + 5] = (crapsynth->dac[i].output - (2047)) * 2 * crapsynth->volume_table[crapsynth->volume[i + 5]];
+            crapsynth->final_output += crapsynth->dac[i].output * crapsynth->volume_table[crapsynth->volume[i + 5]];
+        }
     }
 }
 
