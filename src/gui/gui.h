@@ -66,7 +66,7 @@
     logI("beep!"); \
   }
 
-#define BIND_FOR(x) getKeyName(actionKeys[x],true).c_str()
+#define BIND_FOR(x) getMultiKeysName(actionKeys[x].data(),actionKeys[x].size(),true).c_str()
 
 #define FM_PREVIEW_SIZE 512
 
@@ -2373,7 +2373,7 @@ class FurnaceGUI {
   // bit 28: meta (win)
   // bit 27: alt
   // bit 24-26: reserved
-  int actionKeys[GUI_ACTION_MAX];
+  std::vector<int> actionKeys[GUI_ACTION_MAX];
 
   std::map<int,int> actionMapGlobal;
   std::map<int,int> actionMapPat;
@@ -2493,7 +2493,7 @@ class FurnaceGUI {
   int waveDragMin, waveDragMax;
   bool waveDragActive;
 
-  int bindSetTarget, bindSetPrevValue;
+  int bindSetTarget, bindSetTargetIdx, bindSetPrevValue;
   bool bindSetActive, bindSetPending;
 
   float nextScroll, nextAddScroll, orderScroll, orderScrollSlideOrigin;
@@ -2833,6 +2833,8 @@ class FurnaceGUI {
   void actualWaveList();
   void actualSampleList();
 
+  // HACK: template. any way to remove it?
+  template<typename func_waveItemData> void waveListHorizontalGroup(float* wavePreview, int dir, int count, const func_waveItemData& waveItemData);
   void insListItem(int index, int dir, int asset);
   void waveListItem(int index, float* wavePreview, int dir, int asset);
   void sampleListItem(int index, int dir, int asset);
@@ -2896,8 +2898,10 @@ class FurnaceGUI {
   void drawXYOsc();
   void drawUserPresets();
 
+  void assignActionMap(std::map<int,int>& actionMap, int first, int last);
+  void drawKeybindSettingsTableRow(FurnaceGUIActions actionIdx);
   void parseKeybinds();
-  void promptKey(int which);
+  void promptKey(int which, int bindIdx);
   void doAction(int what);
 
   bool importColors(String path);
