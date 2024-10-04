@@ -207,6 +207,10 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             {
                 crapsynth->dac[chan].curr_pos = 0;
                 crapsynth->dac[chan].timer_acc = 0;
+
+                crapsynth->dac[chan].triangle_counter = 0;
+                crapsynth->dac[chan].triangle_counter_dir = 0;
+                crapsynth->dac[chan].lfsr = 1;
                 break;
             }
             case 4:
@@ -245,13 +249,20 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 9:
             {
+                if(crapsynth->dac[chan].wave_type != 2 && crapsynth->dac[chan].wave_type != 3 && (data & 7) == 2 || (data & 7) == 3)
+                {
+                    crapsynth->dac[chan].triangle_counter = 0;
+                    crapsynth->dac[chan].triangle_counter_dir = 0;
+                }
                 crapsynth->dac[chan].wave_type = data & 7;
 
                 int pw = data >> 4;
 
-                if(data == 6) //pulse
+                if((data & 7) == 6) //pulse
                 {
-                    for(uint8_t i = 0; i < STM32CRAPSYNTH_WAVETABLE_SIZE; i++)
+                    if(!crapsynth->dac[chan].play_wavetable) crapsynth->dac[chan].curr_pos = 0;
+                    crapsynth->dac[chan].play_wavetable = true;
+                    for(int i = 0; i < STM32CRAPSYNTH_WAVETABLE_SIZE; i++)
                     {
                         if(i < pw)
                         {
@@ -263,9 +274,11 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
                         }
                     }
                 }
-                if(data == 7) //saw
+                if((data & 7) == 7) //saw
                 {
-                    for(uint8_t i = 0; i < STM32CRAPSYNTH_WAVETABLE_SIZE; i++)
+                    if(!crapsynth->dac[chan].play_wavetable) crapsynth->dac[chan].curr_pos = 0;
+                    crapsynth->dac[chan].play_wavetable = true;
+                    for(int i = 0; i < STM32CRAPSYNTH_WAVETABLE_SIZE; i++)
                     {
                         crapsynth->dac[chan].wavetable[i] = i;
                     }
@@ -278,10 +291,12 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
                 int wave_data = data & 0xff;
 
                 crapsynth->dac[chan].wavetable[address] = wave_data;
+                break;
             }
             case 11:
             {
                 crapsynth->dac[chan].noise_tri_amp = data % 12;
+                break;
             }
             default: break;
         }
@@ -335,6 +350,8 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
     {
         AD9833Chan* ch = &crapsynth->ad9833[i];
 
+        int prev_output = crapsynth->chan_outputs[i];
+
         if(ch->freq > 0 || ch->timer_freq > 0)
         {
             ch->acc += ch->freq;
@@ -348,7 +365,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
 
             int32_t wave = crapsynth_ad9833_get_wave(crapsynth, ch->wave_type == 5 ? ch->timer_acc : ch->acc, ch->pw, ch->wave_type);
 
-            if(ch->zero_cross && wave < 10) //approx of zero cross
+            if(ch->zero_cross && (prev_output & 0x80000000) != ((wave - 511) & 0x80000000)) //approx of zero cross
             {
                 crapsynth->volume[i] = ch->pending_vol;
             }
@@ -371,6 +388,8 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
     {
         crapsynth->noise.timer_acc += crapsynth->noise.timer_freq;
 
+        int prev_output = crapsynth->chan_outputs[4];
+
         if(crapsynth->noise.timer_acc & (1 << (STM32CRAPSYNTH_ACC_BITS + 2))) //overflow
         {
             //shift lfsr
@@ -381,7 +400,8 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
 
             crapsynth->noise.output = (crapsynth->noise.lfsr & 0x400000) ? 1023 : 0;
 
-            if(crapsynth->noise.zero_cross && crapsynth->noise.output == 0) //approx of zero cross
+            //if(crapsynth->noise.zero_cross && abs((int)crapsynth->noise.output - 511) < 10) //approx of zero cross
+            if(crapsynth->noise.zero_cross && (prev_output & 0x80000000) != (((int)crapsynth->noise.output - 511) & 0x80000000)) //approx of zero cross
             {
                 crapsynth->volume[4] = crapsynth->noise.pending_vol;
             }
@@ -406,6 +426,42 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
 
             if((ch->timer_acc & (1 << (STM32CRAPSYNTH_ACC_BITS + 2))) && ch->playing) //overflow
             {
+                int prev_output = crapsynth->chan_outputs[i + 5];
+
+                if(ch->wave_type == 2 || ch->wave_type == 3)
+                {
+                    if(ch->triangle_counter_dir == 0)
+                    {
+                        ch->triangle_counter++;
+
+                        if(ch->triangle_counter >= (1 << ch->noise_tri_amp))
+                        {
+                            ch->triangle_counter_dir = 1;
+                            goto next;
+                        }
+                    }
+                    if(ch->triangle_counter_dir == 1)
+                    {
+                        ch->triangle_counter--;
+
+                        if(ch->triangle_counter < 0)
+                        {
+                            ch->triangle_counter_dir = 0;
+                        }
+                    }
+                }
+
+                if(ch->wave_type == 4 || ch->wave_type == 5) // noise
+                {
+                    if(ch->lfsr == 0) ch->lfsr = 1;
+                    uint16_t bit = ((ch->lfsr >> 6) ^ (ch->lfsr >> 4) ^ (ch->lfsr >> 1) ^ (ch->lfsr >> 0)) & 1u;
+                    ch->lfsr = (ch->lfsr >> 1) | (bit << 11);
+                }
+
+                next:;
+
+                ch->output = 0;
+
                 switch(ch->wave_type)
                 {
                     case 0:
@@ -413,11 +469,13 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
                         break; //none
                     }
                     case 1:
+                    case 3:
+                    case 5:
                     {
                         if(ch->play_wavetable)
                         {
                             ch->curr_pos &= 0xff;
-                            ch->output = ch->wavetable[ch->curr_pos];
+                            ch->output = (uint16_t)ch->wavetable[ch->curr_pos] << 4;
                         }
                         else
                         {
@@ -435,16 +493,36 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
                                 break;
                             }
 
-                            ch->output = ((uint16_t)crapsynth->sample_mem[ch->curr_pos] << 4); 
+                            ch->output = ((uint16_t)crapsynth->sample_mem[ch->curr_pos] << 4);
                         }
+                        break;
+                    }
+                    case 6:
+                    case 7:
+                    {
+                        ch->curr_pos &= 0xff;
+                        ch->output = (uint16_t)ch->wavetable[ch->curr_pos] << 4;
                         break;
                     }
                     default: break;
                 }
 
+                if(ch->wave_type == 2 || ch->wave_type == 3)
+                {
+                    ch->output += ch->triangle_counter;
+                }
+                if(ch->wave_type == 4 || ch->wave_type == 5)
+                {
+                    ch->output += ch->lfsr & ((1 << (ch->noise_tri_amp + 1)) - 1);
+                }
+
+                if(ch->output < 0) ch->output = 0;
+                if(ch->output > 4095) ch->output = 4095;
+
                 ch->curr_pos++;
 
-                if(ch->zero_cross && ch->output < 10) //approx of zero cross
+                if(ch->zero_cross && (prev_output & 0x80000000) != (((int)ch->output - 2047) & 0x80000000)) //approx of zero cross
+                //if(ch->zero_cross && (prev_output & 0x80000000) != ((wave - 511) & 0x80000000)) //approx of zero cross
                 {
                     crapsynth->volume[i + 5] = ch->pending_vol;
                 }

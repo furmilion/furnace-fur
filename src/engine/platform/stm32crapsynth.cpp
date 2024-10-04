@@ -75,12 +75,33 @@ void DivPlatformSTM32CRAPSYNTH::acquire(short** buf, size_t len) {
         writes.pop();
     }
 
-    buf[0][h]=CLAMP(crap_synth->final_output,-32768,32767);
+    float dVbp = (w0_ceil_1 * Vhp);
+    float dVlp = (w0_ceil_1 * Vbp);
+    Vbp += dVbp;
+    Vlp += dVlp;
+    Vhp = (float)CLAMP(crap_synth->final_output,-32768,32767) - (Vbp * _1024_div_Q) - Vlp;
+
+    buf[0][h]=Vhp;
   }
 }
 
 void DivPlatformSTM32CRAPSYNTH::updateWave(int ch) {
-  
+  if(ch > 4 && ch < 7)
+  {
+    if(chan[ch].wave != 1 && chan[ch].wave != 3 && chan[ch].wave != 5) return;
+    bool need_update = false;
+    for (int i=0; i<STM32CRAPSYNTH_WAVETABLE_SIZE; i++) {
+      if(chan[ch].ws.output[i] != (int)crap_synth->dac[ch-5].wavetable[i])
+      {
+        need_update = true;
+        break;
+      }
+    }
+    if(!need_update) return;
+    for (int i=0; i<STM32CRAPSYNTH_WAVETABLE_SIZE; i++) {
+      ad9833_write(ch, 10, (chan[ch].ws.output[i]) | (i << 8));
+    }
+  }
 }
 
 void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick) 
@@ -139,12 +160,16 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     }
 
     if (chan[i].std.duty.had) {
-      if(i < 4)
+      if(i < 4 || i == 5 || i == 6)
       {
         chan[i].duty = chan[i].std.duty.val;
-        if(chan[i].wave == 5)
+        if(chan[i].wave == 5 && i < 4)
         {
-            ad9833_write(i, 5, chan[i].std.duty.val);
+          ad9833_write(i, 5, chan[i].std.duty.val);
+        }
+        if((i == 5 || i == 6) && chan[i].wave == 6)
+        {
+          ad9833_write(i, 9, ((uint32_t)chan[i].wave | (((uint32_t)chan[i].duty >> 8) << 4)));
         }
       }
     }
@@ -169,12 +194,38 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         chan[i].lfsr = chan[i].std.ex2.val;
       }
     }
-    
-    if (chan[i].active) {
-      if (chan[i].ws.tick()) {
-        updateWave(i);
+
+    if (chan[i].std.ex3.had) { //wavetable index
+      if(i > 4 && i < 7 && chan[i].do_wavetable && chan[i].wave == 1)
+      {
+        chan[i].wavetable = chan[i].std.ex3.val;
+        chan[i].ws.changeWave1(chan[i].wavetable);
+        chan[i].updateWave = true;
       }
     }
+
+    if (chan[i].std.ex4.had) { //noise/triangle amplitude
+      if(i > 4 && i < 7 && (chan[i].wave > 1 && chan[i].wave < 6))
+      {
+        chan[i].noise_tri_amp = chan[i].std.ex4.val;
+        ad9833_write(i, 11, chan[i].std.ex4.val);
+        chan[i].freqChanged = true;
+      }
+    }
+    
+    if (chan[i].active && i > 4 && i < 7 && chan[i].do_wavetable && chan[i].wave == 1) {
+      if (chan[i].ws.tick()) {
+        //updateWave(i);
+        chan[i].updateWave = true;
+      }
+    }
+
+    if(chan[i].updateWave)
+    {
+      updateWave(i);
+      chan[i].updateWave = false;
+    }
+
     if (chan[i].freqChanged || chan[i].keyOn || chan[i].keyOff) {
       //DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_STM32CRAPSYNTH);
       if(chan[i].freqChanged && i < 4)
@@ -236,24 +287,25 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
             }
             else
             {
-              chan[i].timer_freq *= 256; //wavetable
+              chan[i].timer_freq *= 8; //wavetable
             }
             break;
           }
           case 2: //triangle
           {
-            chan[i].timer_freq *= 1 << chan[i].noise_tri_amp;
+            chan[i].timer_freq *= (1 << chan[i].noise_tri_amp);
+            chan[i].timer_freq /= 16;
             break;
           }
           case 4: //noise
           {
-            chan[i].timer_freq *= 16;
+            chan[i].timer_freq *= 2;
             break;
           }
           case 6:
           case 7:
           {
-            chan[i].timer_freq *= 256; //wavetable
+            chan[i].timer_freq *= 8; //wavetable
             break;
           }
           default: break;
@@ -296,15 +348,23 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
       if (!parent->song.brokenOutVol && !chan[c.chan].std.vol.will) {
         chan[c.chan].outVol=chan[c.chan].vol;
       }
-      if (chan[c.chan].wave<0) {
-        chan[c.chan].wave=0;
-        chan[c.chan].ws.changeWave1(chan[c.chan].wave);
+      if (chan[c.chan].wavetable<0) {
+        chan[c.chan].wavetable=0;
+        chan[c.chan].ws.changeWave1(chan[c.chan].wavetable);
       }
-      chan[c.chan].ws.init(ins,256,256,chan[c.chan].insChanged);
+      
       chan[c.chan].insChanged=false;
 
+      if (!ins->amiga.useSample && c.chan > 4 && c.chan < 7) {
+        chan[c.chan].pcm = false;
+        chan[c.chan].do_wavetable = true;
+        chan[c.chan].ws.init(ins,256,256,chan[c.chan].insChanged);
+        chan[c.chan].updateWave = true;
+        ad9833_write(c.chan, 1, 1 | (chan[c.chan].do_wavetable ? 2 : 0)); //play wave
+      }
       if (ins->amiga.useSample && c.chan > 4 && c.chan < 7) {
         chan[c.chan].pcm = true;
+        chan[c.chan].do_wavetable = false;
         if (c.value!=DIV_NOTE_NULL) {
           chan[c.chan].dacSample=ins->amiga.getSample(c.value);
           chan[c.chan].sampleNote=c.value;
@@ -334,7 +394,7 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
           }
           ad9833_write(c.chan, 8, s->length8);
 
-          ad9833_write(c.chan, 1, 1 | (s->loop ? 4 : 0)); //play sample
+          ad9833_write(c.chan, 1, 1 | (chan[c.chan].do_wavetable ? 2 : 0) | (s->loop ? 4 : 0)); //play sample
         }
         chan[c.chan].dacPos=0;
         chan[c.chan].dacPeriod=0;
@@ -389,8 +449,12 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
       break;
     case DIV_CMD_WAVE:
       chan[c.chan].wave=c.value;
-      chan[c.chan].ws.changeWave1(chan[c.chan].wave);
-      if(c.chan < 4)
+      /*if(c.chan > 4 && c.chan < 7 && chan[c.chan].do_wavetable)
+      {
+        chan[c.chan].ws.changeWave1(chan[c.chan].wavetable);
+      }*/
+      
+      if(c.chan < 4 || (c.chan > 4 && c.chan < 7))
       {
         ad9833_write(c.chan, 1, c.value);
       }
@@ -461,7 +525,8 @@ void DivPlatformSTM32CRAPSYNTH::forceIns() {
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
     chan[i].insChanged=true;
     chan[i].freqChanged=true;
-    updateWave(i);
+    //updateWave(i);
+    if(chan[i].wave == 1) chan[i].updateWave = true;
     //chWrite(i,0x05,isMuted[i]?0:chan[i].pan);
   }
 }
@@ -540,6 +605,8 @@ void DivPlatformSTM32CRAPSYNTH::reset() {
     chan[i].duty = 0x7fff;
     chan[i].wave = 0;
     chan[i].noise_tri_amp = 11;
+    chan[i].do_wavetable = false;
+    chan[i].updateWave = false;
   }
   if (dumpWrites) 
   {
@@ -547,6 +614,13 @@ void DivPlatformSTM32CRAPSYNTH::reset() {
   }
   crapsynth_reset(crap_synth);
   writeOscBuf = 0;
+
+  Vhp = 0;
+  Vbp = 0;
+  Vlp = 0;
+
+  _1024_div_Q = (1.0/(0.707));
+  w0_ceil_1 = (2.0*3.1415*(float)5) / (float)rate;
 }
 
 int DivPlatformSTM32CRAPSYNTH::getOutputCount() {
@@ -559,9 +633,10 @@ bool DivPlatformSTM32CRAPSYNTH::keyOffAffectsArp(int ch) {
 
 void DivPlatformSTM32CRAPSYNTH::notifyWaveChange(int wave) {
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
-    if (chan[i].wave==wave) {
+    if (chan[i].wavetable==wave && i > 4 && i < 7 && chan[i].wave == 1) {
       chan[i].ws.changeWave1(wave);
-      updateWave(i);
+      //updateWave(i);
+      chan[i].updateWave = true;
     }
   }
 }

@@ -8630,12 +8630,12 @@ void FurnaceGUI::drawInsEdit() {
               macroList.push_back(FurnaceGUIMacroDesc(_("Duty"),&ins->std.dutyMacro,0,65535,160,uiColors[GUI_COLOR_MACRO_OTHER]));
               macroList.push_back(FurnaceGUIMacroDesc(_("Phase Reset"),&ins->std.phaseResetMacro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true));
               macroList.push_back(FurnaceGUIMacroDesc(_("Zero Cross Volume Update"),&ins->std.ex1Macro,0,1,32,uiColors[GUI_COLOR_MACRO_VOLUME],false,NULL,NULL,true));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Waveform"),&ins->std.waveMacro,0,7,64,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,macroCrapSynth,false,NULL));
               if (!ins->amiga.useSample) {
-                macroList.push_back(FurnaceGUIMacroDesc(_("Waveform"),&ins->std.waveMacro,0,waveCount,160,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,NULL,false,NULL));
-              } else {
-                macroList.push_back(FurnaceGUIMacroDesc(_("Waveform"),&ins->std.waveMacro,0,7,64,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,macroCrapSynth,false,NULL));
+                macroList.push_back(FurnaceGUIMacroDesc(_("Wavetable Index"),&ins->std.ex3Macro,0,waveCount,160,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,NULL,false,NULL));
               }
               macroList.push_back(FurnaceGUIMacroDesc(_("Noise LFSR bits"),&ins->std.ex2Macro,0,23,16 * 23,uiColors[GUI_COLOR_MACRO_NOISE],false,NULL,NULL,true));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Noise/Tri DAC Amplitude"),&ins->std.ex4Macro,0,11,64,uiColors[GUI_COLOR_MACRO_OTHER]));
               break;
             case DIV_INS_MAX:
             case DIV_INS_NULL:

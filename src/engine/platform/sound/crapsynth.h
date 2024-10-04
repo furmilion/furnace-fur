@@ -61,7 +61,8 @@ typedef struct
     uint8_t wave_type;
 
     uint16_t lfsr;
-    uint16_t triangle_counter;
+    int triangle_counter;
+    uint8_t triangle_counter_dir;
     uint8_t noise_tri_amp;
 
     bool loop;

@@ -39,6 +39,8 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
     int dacPeriod, dacRate, dacOut;
     unsigned int dacPos;
     int dacSample;
+    bool do_wavetable;
+    bool updateWave;
 
     DivWaveSynth ws;
     Channel():
@@ -54,11 +56,21 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
       dacRate(0),
       dacOut(0),
       dacPos(0),
-      dacSample(-1) {}
+      dacSample(-1),
+      do_wavetable(false),
+      updateWave(false) {}
   };
   Channel chan[STM32CRAPSYNTH_NUM_CHANNELS];
   DivDispatchOscBuffer* oscBuf[STM32CRAPSYNTH_NUM_CHANNELS];
   bool isMuted[STM32CRAPSYNTH_NUM_CHANNELS];
+
+  //filter
+  float w0_ceil_1;
+  float Vhp;
+  float Vbp;
+  float Vlp;
+  float _1024_div_Q;
+
   struct QueuedWrite {
     unsigned int addr;
     unsigned int val;
