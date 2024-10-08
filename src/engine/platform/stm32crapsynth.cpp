@@ -372,7 +372,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
           }*/
 
           //this is horrible but binary search didn't work...
-          
+
           for(int j = 0; j < (1 << 16) - 1; j++)
           {
             if(250000.0 / (double)j >= freq_in_hz && 250000.0 / (double)(j + 1) <= freq_in_hz)
@@ -393,7 +393,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
             chan[i].timer_freq = chan[i].freq;
           }
 
-          logW("%d", chan[i].freq);
+          //logW("%d", chan[i].freq);
         }
 
         if(chan[i].freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;

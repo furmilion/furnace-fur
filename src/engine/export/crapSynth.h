@@ -24,7 +24,8 @@
 class DivExportCrapSynth: public DivROMExport {
   DivEngine* e;
   std::thread* exportThread;
-  bool running;
+  DivROMExportProgress progress[2];
+  bool running, failed, mustAbort;
   void run();
   public:
     bool go(DivEngine* e);
@@ -32,5 +33,6 @@ class DivExportCrapSynth: public DivROMExport {
     bool hasFailed();
     void abort();
     void wait();
+    DivROMExportProgress getProgress(int index=0);
     ~DivExportCrapSynth() {}
 };
