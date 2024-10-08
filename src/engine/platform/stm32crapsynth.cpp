@@ -261,9 +261,9 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_TIMERS_FREQBASE * 32);
         chan[i].timer_freq=chan[i].freq;
 
-        while((double)chan[i].freq > 333300.0 * (double)(1 << 29) / (double)(chipClock*2)) //333333.(3) Hz max MM5437 clock freq
+        while((double)chan[i].freq > 333300.0 * (double)(1 << 29) / (double)(chipClock/2)) //333333.(3) Hz max MM5437 clock freq
         {
-            chan[i].freq = 333300.0 * (double)(1 << 29) / (double)(chipClock*2);
+            chan[i].freq = 333300.0 * (double)(1 << 29) / (double)(chipClock/2);
             chan[i].timer_freq=chan[i].freq;
         }
 
@@ -331,6 +331,70 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       {
         chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_FREQBASE*2);
         chan[i].timer_freq=chan[i].freq;
+
+        if(i == 7 + 2) //systick timer can't go below 4.29 Hz (72 MHz / 2^24)
+        {
+          if(chan[i].freq < (double)(1 << 29) * 4.29 / (double)(chipClock/2))
+          {
+            chan[i].freq = (double)(1 << 29) * 4.29 / (double)(chipClock/2);
+            chan[i].timer_freq = chan[i].freq;
+          }
+        }
+        if(i == 7 + 3) //RTC is 16-bit (but virtually 17-bit) counter clocked by 8 MHz / 32 = 250 kHz
+        {              //first we limit the lowest freq which is 250 kHz / 2^17 = 1.9 Hz
+          if(chan[i].freq < (double)(1 << 29) * 1.95 / (double)(chipClock/2))
+          {
+            chan[i].freq = (double)(1 << 29) * 1.95 / (double)(chipClock/2);
+            chan[i].timer_freq = chan[i].freq;
+          }
+
+          //now we limit the frequency resolution...
+          double freq_in_hz = (double)(chipClock / 2) * (double)chan[i].freq / (double)(1 << 29);
+
+          //binary search (sort of ig?)
+
+          //double div_point = 250000.0 / (double)(1 << 15); //center freq at 2^16 divider
+
+          unsigned int divider = 0;
+
+          /*for(int j = 0; j < 17; j++)
+          {
+            if(div_point > freq_in_hz)
+            {
+              div_point -= (250000.0 / 4.0) / (double)(1 << (16 - j));
+            }
+            else
+            {
+              divider |= 1;
+              div_point += (250000.0 / 4.0) / (double)(1 << (16 - j));
+            }
+            divider <<= 1;
+          }*/
+
+          //this is horrible but binary search didn't work...
+          
+          for(int j = 0; j < (1 << 16) - 1; j++)
+          {
+            if(250000.0 / (double)j >= freq_in_hz && 250000.0 / (double)(j + 1) <= freq_in_hz)
+            {
+              divider = j;
+              break;
+            }
+          }
+
+          double rounded_freq = 250000.0 / (double)(divider);
+
+          chan[i].freq = (double)(1 << 29) * rounded_freq / (double)(chipClock/2);
+          chan[i].timer_freq = chan[i].freq;
+
+          if(chan[i].freq < (double)(1 << 29) * 1.95 / (double)(chipClock/2))
+          {
+            chan[i].freq = (double)(1 << 29) * 1.95 / (double)(chipClock/2);
+            chan[i].timer_freq = chan[i].freq;
+          }
+
+          logW("%d", chan[i].freq);
+        }
 
         if(chan[i].freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
         if(chan[i].timer_freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;

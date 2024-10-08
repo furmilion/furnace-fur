@@ -40,6 +40,8 @@ STM32CrapSynth* crapsynth_create()
 
 void crapsynth_reset(STM32CrapSynth* crapsynth)
 {
+    bool muted[STM32CRAPSYNTH_NUM_CHANNELS];
+    memcpy(muted, crapsynth->muted, STM32CRAPSYNTH_NUM_CHANNELS * sizeof(bool));
     uint8_t* temp_memory = (uint8_t*)calloc(1, STM32CRAPSYNTH_SAMPLE_MEM_SIZE);
     memcpy(temp_memory, crapsynth->sample_mem, STM32CRAPSYNTH_SAMPLE_MEM_SIZE);
     memset(crapsynth, 0, sizeof(STM32CrapSynth));
@@ -50,6 +52,7 @@ void crapsynth_reset(STM32CrapSynth* crapsynth)
     free(temp_memory);
 
     crapsynth->noise.lfsr = rand();
+    memcpy(crapsynth->muted, muted, STM32CRAPSYNTH_NUM_CHANNELS * sizeof(bool));
 }
 
 void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_type, uint32_t data)
@@ -444,7 +447,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
     if(!crapsynth->muted[4])
     {
         crapsynth->chan_outputs[4] = (crapsynth->noise.output - (511)) * 8 * crapsynth->volume_table[crapsynth->volume[4]];
-        crapsynth->final_output += crapsynth->noise.output * 4;
+        crapsynth->final_output += crapsynth->noise.output * crapsynth->volume_table[crapsynth->volume[4]];
     }
 
     for(int i = 0; i < 2; i++)
@@ -579,32 +582,31 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
 
             if((ch->timer_acc & (1 << (STM32CRAPSYNTH_ACC_BITS + 2)))) //overflow
             {
-                for(int i = 0; i < 7; i++)
+                for(int j = 0; j < 7; j++)
                 {
-                    if(ch->chan_bitmask & (1 << i))
+                    if(ch->chan_bitmask & (1 << j))
                     {
-                        switch(i)
+                        switch(j)
                         {
                             case 0:
                             case 1:
                             case 2:
                             case 3: //AD9833
                             {
-                                AD9833Chan* ch = &crapsynth->ad9833[i];
+                                AD9833Chan* ch = &crapsynth->ad9833[j];
                                 ch->acc = 0;
                                 break;
                             }
                             case 4: //noise
                             {
                                 NoiseChan* ch = &crapsynth->noise;
-                                ch->timer_acc = 0;
                                 ch->lfsr = ch->lfsr_reload;
                                 break;
                             }
                             case 5:
                             case 6: //DACs
                             {
-                                DACChan* ch = &crapsynth->dac[i - 5];
+                                DACChan* ch = &crapsynth->dac[j - 5];
 
                                 ch->timer_acc = 0;
 
