@@ -32,6 +32,7 @@ typedef struct
 typedef struct
 {
     uint32_t lfsr;
+    uint32_t lfsr_reload;
     bool zero_cross;
     uint8_t pending_vol;
 
@@ -75,6 +76,7 @@ typedef struct
     //TODO: one of the timers is RTC, clocked at merely 250 kHz, so limit freq resolution somehow?
 
     uint8_t chan_bitmask; //on which channel(s) the timer does phase reset
+    bool enable;
 } PhaseResetTimer;
 
 typedef struct

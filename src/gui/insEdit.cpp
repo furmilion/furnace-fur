@@ -851,6 +851,19 @@ String macroCrapSynth(int id, float val, void* u) {
   );
 }
 
+String macroCrapSynthPhaseTimer(int id, float val, void* u) {
+  return fmt::sprintf(
+    "%d: %d (%X)%s%s%s%s%s%s%s",
+      (int)id, (int)val, (int)val, ((((int)val) & 1) ? _("\nChannel 1") : ""),
+        ((((int)val) & 2) ? _("\nChannel 2") : ""),
+        ((((int)val) & 4) ? _("\nChannel 3") : ""),
+        ((((int)val) & 8) ? _("\nChannel 4") : ""),
+        ((((int)val) & 16) ? _("\nNoise") : ""),
+        ((((int)val) & 32) ? _("\nDAC1") : ""),
+        ((((int)val) & 64) ? _("\nDAC2") : "")
+  );
+}
+
 void addAALine(ImDrawList* dl, const ImVec2& p1, const ImVec2& p2, const ImU32 color, float thickness=1.0f) {
   ImVec2 pt[2];
   pt[0]=p1;
@@ -8648,6 +8661,7 @@ void FurnaceGUI::drawInsEdit() {
               }
               macroList.push_back(FurnaceGUIMacroDesc(_("Noise LFSR bits"),&ins->std.ex2Macro,0,23,16 * 23,uiColors[GUI_COLOR_MACRO_NOISE],false,NULL,NULL,true));
               macroList.push_back(FurnaceGUIMacroDesc(_("Noise/Tri DAC Amplitude"),&ins->std.ex4Macro,0,11,64,uiColors[GUI_COLOR_MACRO_OTHER]));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Channel Reset Bitmask"),&ins->std.ex5Macro,0,7,16 * 7,uiColors[GUI_COLOR_MACRO_NOISE],false,NULL,macroCrapSynthPhaseTimer,true));
               break;
             case DIV_INS_MAX:
             case DIV_INS_NULL:

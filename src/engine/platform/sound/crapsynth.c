@@ -144,6 +144,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             case 3: //reset
             {
                 crapsynth->noise.lfsr = (data == 0 ? 1 : data);
+                crapsynth->noise.lfsr_reload = (data == 0 ? 1 : data);
                 break;
             }
             case 6: //zero cross
@@ -296,6 +297,36 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             case 11:
             {
                 crapsynth->dac[chan].noise_tri_amp = data % 12;
+                break;
+            }
+            default: break;
+        }
+    }
+
+    if(channel >= 7 && channel < STM32CRAPSYNTH_NUM_CHANNELS) //phase reset timer chans
+    {
+        int chan = channel - 7;
+
+        switch(data_type)
+        {
+            case 0:
+            {
+                crapsynth->timer[chan].chan_bitmask = data;
+                break;
+            }
+            case 1:
+            {
+                crapsynth->timer[chan].timer_freq = data;
+                break;
+            }
+            case 2: //reset
+            {
+                crapsynth->timer[chan].timer_acc = 0;
+                break;
+            }
+            case 3:
+            {
+                crapsynth->timer[chan].enable = data;
                 break;
             }
             default: break;
@@ -535,6 +566,66 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
         {
             crapsynth->chan_outputs[i + 5] = (crapsynth->dac[i].output - (2047)) * 2 * crapsynth->volume_table[crapsynth->volume[i + 5]];
             crapsynth->final_output += crapsynth->dac[i].output * crapsynth->volume_table[crapsynth->volume[i + 5]];
+        }
+    }
+
+    for(int i = 0; i < 4; i++)
+    {
+        PhaseResetTimer* ch = &crapsynth->timer[i];
+
+        if(ch->enable)
+        {
+            ch->timer_acc += ch->timer_freq;
+
+            if((ch->timer_acc & (1 << (STM32CRAPSYNTH_ACC_BITS + 2)))) //overflow
+            {
+                for(int i = 0; i < 7; i++)
+                {
+                    if(ch->chan_bitmask & (1 << i))
+                    {
+                        switch(i)
+                        {
+                            case 0:
+                            case 1:
+                            case 2:
+                            case 3: //AD9833
+                            {
+                                AD9833Chan* ch = &crapsynth->ad9833[i];
+                                ch->acc = 0;
+                                break;
+                            }
+                            case 4: //noise
+                            {
+                                NoiseChan* ch = &crapsynth->noise;
+                                ch->timer_acc = 0;
+                                ch->lfsr = ch->lfsr_reload;
+                                break;
+                            }
+                            case 5:
+                            case 6: //DACs
+                            {
+                                DACChan* ch = &crapsynth->dac[i - 5];
+
+                                ch->timer_acc = 0;
+
+                                if(ch->play_wavetable)
+                                {
+                                    ch->curr_pos = 0;
+                                }
+                                else
+                                {
+                                    ch->curr_pos = ch->start_addr;
+                                }
+
+                                break;
+                            }
+                            default: break;
+                        }
+                    }
+                }
+            }
+
+            ch->timer_acc &= (1 << (STM32CRAPSYNTH_ACC_BITS + 2)) - 1;
         }
     }
 }

@@ -179,6 +179,10 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       {
         ad9833_write(i, 3, chan[i].lfsr); //LFSR value is ignored for all chans except noise
       }
+      if(i > 7) //phase reset for phase reset timers lmao
+      {
+        ad9833_write(i, 2, 0);
+      }
     }
 
     if (chan[i].std.ex1.had) { //zero cross detection
@@ -210,6 +214,13 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         chan[i].noise_tri_amp = chan[i].std.ex4.val;
         ad9833_write(i, 11, chan[i].std.ex4.val);
         chan[i].freqChanged = true;
+      }
+    }
+
+    if (chan[i].std.ex5.had) { //phase reset timers channel bitmask
+      if(i >= 7)
+      {
+        ad9833_write(i, 0, chan[i].std.ex5.val);
       }
     }
     
@@ -316,6 +327,16 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         
         ad9833_write(i, 4, chan[i].timer_freq);
       }
+      if(chan[i].freqChanged && i >= 7) //phase reset timers
+      {
+        chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_FREQBASE*2);
+        chan[i].timer_freq=chan[i].freq;
+
+        if(chan[i].freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
+        if(chan[i].timer_freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
+
+        ad9833_write(i, 1, chan[i].timer_freq);
+      }
       if(chan[i].keyOff && i < 7)
       {
         ad9833_write(i, 0, 0);
@@ -324,6 +345,10 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         {
           ad9833_write(i, 1, 0); //stop wave/sample playback
         }
+      }
+      if(chan[i].keyOff && i >= 7)
+      {
+        ad9833_write(i, 3, 0);
       }
 
       if (chan[i].keyOn) chan[i].keyOn=false;
@@ -398,6 +423,11 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
         }
         chan[c.chan].dacPos=0;
         chan[c.chan].dacPeriod=0;
+      }
+
+      if(c.chan >= 7) //phase reset timers
+      {
+        ad9833_write(c.chan, 3, 1);
       }
       else
       {
