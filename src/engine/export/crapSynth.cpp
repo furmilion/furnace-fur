@@ -95,7 +95,7 @@ void DivExportCrapSynth::run() {
     DivSubSong* s = e->curSubSong;
     DivGroovePattern curSpeeds=s->speeds;
 
-    int groove_counter = 0;
+    //int groove_counter = 0;
 
     for(int o = 0; o < s->ordersLen; o++)
     {
@@ -109,7 +109,7 @@ void DivExportCrapSynth::run() {
 
           for(int eff = 0; eff < DIV_MAX_EFFECTS; eff++)
           {
-            short effectVal = p->data[r][5+(eff<<1)];
+            //short effectVal = p->data[r][5+(eff<<1)];
 
             if (p->data[r][4 + (eff << 1)] == 0xff)
             {
@@ -119,8 +119,8 @@ void DivExportCrapSynth::run() {
           }
         }
 
-        groove_counter++;
-        groove_counter %= curSpeeds.len;
+        //groove_counter++;
+        //groove_counter %= curSpeeds.len;
 
         //loop_point_addr += curSpeeds.val[groove_counter];
 
@@ -248,6 +248,7 @@ bool DivExportCrapSynth::go(DivEngine* eng) {
   progress[1].name="";
   e=eng;
   running=true;
+  failed=false;
   exportThread=new std::thread(&DivExportCrapSynth::run,this);
   return true;
 }
