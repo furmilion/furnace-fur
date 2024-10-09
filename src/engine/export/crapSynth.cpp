@@ -101,7 +101,7 @@ void DivExportCrapSynth::run() {
     {
       for(int r = 0; r < s->patLen; r++)
       {
-        begin:;
+        //begin:;
 
         for(int ch = 0; ch < e->chans; ch++)
         {
