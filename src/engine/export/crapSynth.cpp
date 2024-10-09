@@ -93,7 +93,7 @@ void DivExportCrapSynth::run() {
 
     //walk song to find how many frames it is to loop point
     DivSubSong* s = e->curSubSong;
-    DivGroovePattern curSpeeds=s->speeds;
+    //DivGroovePattern curSpeeds=s->speeds;
 
     //int groove_counter = 0;
 
