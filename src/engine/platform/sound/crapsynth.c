@@ -42,14 +42,18 @@ void crapsynth_reset(STM32CrapSynth* crapsynth)
 {
     bool muted[STM32CRAPSYNTH_NUM_CHANNELS];
     memcpy(muted, crapsynth->muted, STM32CRAPSYNTH_NUM_CHANNELS * sizeof(bool));
-    uint8_t* temp_memory = (uint8_t*)calloc(1, STM32CRAPSYNTH_SAMPLE_MEM_SIZE);
-    memcpy(temp_memory, crapsynth->sample_mem, STM32CRAPSYNTH_SAMPLE_MEM_SIZE);
+    uint8_t* temp_memory = (uint8_t*)calloc(1, STM32CRAPSYNTH_FLASH_SAMPLE_MEM_SIZE);
+    uint8_t* temp_memory_ram = (uint8_t*)calloc(1, STM32CRAPSYNTH_RAM_SAMPLE_MEM_SIZE);
+    memcpy(temp_memory, crapsynth->sample_mem_flash, STM32CRAPSYNTH_FLASH_SAMPLE_MEM_SIZE);
+    memcpy(temp_memory_ram, crapsynth->sample_mem_ram, STM32CRAPSYNTH_RAM_SAMPLE_MEM_SIZE);
     memset(crapsynth, 0, sizeof(STM32CrapSynth));
-    memcpy(crapsynth->sample_mem, temp_memory, STM32CRAPSYNTH_SAMPLE_MEM_SIZE);
+    memcpy(crapsynth->sample_mem_flash, temp_memory, STM32CRAPSYNTH_FLASH_SAMPLE_MEM_SIZE);
+    memcpy(crapsynth->sample_mem_ram, temp_memory_ram, STM32CRAPSYNTH_RAM_SAMPLE_MEM_SIZE);
 
     crapsynth_recalc_luts(crapsynth);
 
     free(temp_memory);
+    free(temp_memory_ram);
 
     crapsynth->noise.lfsr = rand();
     memcpy(crapsynth->muted, muted, STM32CRAPSYNTH_NUM_CHANNELS * sizeof(bool));
@@ -184,6 +188,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
                 crapsynth->dac[chan].playing = data & 1;
                 crapsynth->dac[chan].play_wavetable = data & 2;
                 crapsynth->dac[chan].loop = data & 4;
+                crapsynth->dac[chan].ram = data & 8;
 
                 if(!(prev & 2) && (data & 2))
                 {
@@ -493,8 +498,11 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
                 }
 
                 next:;
-
-                ch->output = 0;
+                
+                if(ch->wave_type >= 2 && ch->wave_type <= 5)
+                {
+                    ch->output = 0;
+                }
 
                 switch(ch->wave_type)
                 {
@@ -523,11 +531,12 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
                                 ch->curr_pos = 0;
                                 ch->timer_acc = 0;
                                 ch->timer_freq = 0;
-                                //ch->output = crapsynth->sample_mem[ch->length + ch->start_addr - 1] << 4;
+                                ch->playing = false;
+                                //ch->output = crapsynth->sample_mem_flash[ch->length + ch->start_addr - 1] << 4;
                                 break;
                             }
 
-                            ch->output = ((uint16_t)crapsynth->sample_mem[ch->curr_pos] << 4);
+                            ch->output = ch->ram ? ((uint16_t)crapsynth->sample_mem_ram[ch->curr_pos] << 4) : ((uint16_t)crapsynth->sample_mem_flash[ch->curr_pos] << 4);
                         }
                         break;
                     }

@@ -294,7 +294,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
                   off=8363.0/(double)s->centerRate;
                 }
               }
-              chan[i].timer_freq *= off;
+              chan[i].timer_freq *= off * 2.0;
             }
             else
             {
@@ -465,25 +465,46 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
         }
         if (chan[c.chan].dacSample<0 || chan[c.chan].dacSample>=parent->song.sampleLen) {
           chan[c.chan].dacSample=-1;
-          if (dumpWrites) addWrite(0xffff0002+(c.chan<<8),0);
+          //if (dumpWrites) addWrite(0xffff0002+(c.chan<<8),0);
           break;
         } else {
-          if (dumpWrites) {
-            addWrite(0xffff0000+(c.chan<<8),chan[c.chan].dacSample);
-          }
-          DivSample* s = parent->song.sample[chan[c.chan].dacSample];
-          ad9833_write(c.chan, 2, sampleOff[chan[c.chan].dacSample]);
-          if(s->loop)
-          {
-            ad9833_write(c.chan, 7, s->loopStart); // loop point
-          }
-          else
-          {
-            ad9833_write(c.chan, 7, sampleOff[chan[c.chan].dacSample]); // loop point = start
-          }
-          ad9833_write(c.chan, 8, s->length8);
+          //if (dumpWrites) {
+            //addWrite(0xffff0000+(c.chan<<8),chan[c.chan].dacSample);
+          //}
+          chan[c.chan].sampleInRam = false;
 
-          ad9833_write(c.chan, 1, 1 | (chan[c.chan].do_wavetable ? 2 : 0) | (s->loop ? 4 : 0)); //play sample
+          if(chan[c.chan].dacSample < parent->song.sampleLen && chan[c.chan].dacSample >= 0)
+          {
+            if(!sampleLoaded[0][chan[c.chan].dacSample] && !sampleLoaded[1][chan[c.chan].dacSample]) break;
+
+            if(sampleLoaded[0][chan[c.chan].dacSample])
+            {
+              chan[c.chan].sampleInRam = false;
+            }
+            if(sampleLoaded[1][chan[c.chan].dacSample])
+            {
+              chan[c.chan].sampleInRam = true;
+            }
+
+            DivSample* s = parent->song.sample[chan[c.chan].dacSample];
+            ad9833_write(c.chan, 2, sampleOff[chan[c.chan].dacSample]);
+            if(s->loop)
+            {
+              ad9833_write(c.chan, 7, s->loopStart); // loop point
+            }
+            else
+            {
+              ad9833_write(c.chan, 7, sampleOff[chan[c.chan].dacSample]); // loop point = start
+            }
+            ad9833_write(c.chan, 8, s->length8);
+
+            if(crap_synth->dac[c.chan - 5].playing)
+            {
+              ad9833_write(c.chan, 1, 0); //stop playing sample
+            }
+
+            ad9833_write(c.chan, 1, 1 | (chan[c.chan].do_wavetable ? 2 : 0) | (s->loop ? 4 : 0) | (chan[c.chan].sampleInRam ? 8 : 0)); //play sample
+          }
         }
         chan[c.chan].dacPos=0;
         chan[c.chan].dacPeriod=0;
@@ -493,10 +514,10 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
       {
         ad9833_write(c.chan, 3, 1);
       }
-      else
+      /*else
       {
         chan[c.chan].pcm = false;
-      }
+      }*/
       break;
     }
     case DIV_CMD_NOTE_OFF:
@@ -510,6 +531,10 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
     case DIV_CMD_NOTE_OFF_ENV:
     case DIV_CMD_ENV_RELEASE:
       chan[c.chan].std.release();
+      if(c.chan >= 7)
+      {
+        chan[c.chan].keyOff=true;
+      }
       break;
     case DIV_CMD_INSTRUMENT:
       if (chan[c.chan].ins!=c.value || c.value2==1) {
@@ -650,15 +675,18 @@ DivChannelModeHints DivPlatformSTM32CRAPSYNTH::getModeHints(int ch) {
 }
 
 DivSamplePos DivPlatformSTM32CRAPSYNTH::getSamplePos(int ch) {
-  if (ch>=6) return DivSamplePos();
+  if (ch < 5 || ch > 7) return DivSamplePos();
   if (!chan[ch].pcm) return DivSamplePos();
-  /*return DivSamplePos(
-    chan[ch].dacSample,
-    chan[ch].dacPos,
-    chan[ch].dacRate
-  );*/
 
-  return DivSamplePos();
+  int channel = ch - 5;
+
+  return DivSamplePos(
+    chan[ch].dacSample,
+    crap_synth->dac[channel].curr_pos - crap_synth->dac[channel].start_addr,
+    (int)(double)(chipClock / 2) * (double)crap_synth->dac[channel].timer_freq / (double)(1 << 29)
+  );
+
+  //return DivSamplePos();
 }
 
 DivDispatchOscBuffer* DivPlatformSTM32CRAPSYNTH::getOscBuffer(int ch) {
@@ -742,33 +770,43 @@ void DivPlatformSTM32CRAPSYNTH::notifyInsDeletion(void* ins) {
 }
 
 const void* DivPlatformSTM32CRAPSYNTH::getSampleMem(int index) {
-  return index == 0 ? (unsigned char*)crap_synth->sample_mem : NULL;
+  if(index > 1) return NULL;
+  return index == 0 ? (unsigned char*)crap_synth->sample_mem_flash : (unsigned char*)crap_synth->sample_mem_ram;
 }
 
 size_t DivPlatformSTM32CRAPSYNTH::getSampleMemCapacity(int index) {
-  return index == 0 ? STM32CRAPSYNTH_SAMPLE_MEM_SIZE : 0;
+  if(index > 1) return 0;
+  return index == 0 ? STM32CRAPSYNTH_FLASH_SAMPLE_MEM_SIZE : STM32CRAPSYNTH_RAM_SAMPLE_MEM_SIZE;
 }
 
 size_t DivPlatformSTM32CRAPSYNTH::getSampleMemUsage(int index) {
-  return index == 0 ? sampleMemLen : 0;
+  if(index > 1) return 0;
+  return index == 0 ? sampleMemLenFlash : sampleMemLenRam;
 }
 
 bool DivPlatformSTM32CRAPSYNTH::isSampleLoaded(int index, int sample) {
-  if (index!=0) return false;
+  if (index<0 || index>1) return false;
   if (sample<0 || sample>255) return false;
-  return sampleLoaded[sample];
+  return sampleLoaded[index][sample];
 }
 
 const DivMemoryComposition* DivPlatformSTM32CRAPSYNTH::getMemCompo(int index) {
-  if (index!=0) return NULL;
-  return &sampleMemCompo;
+  if (index>1) return NULL;
+  return index == 0 ? &sampleMemFlashCompo : &sampleMemRamCompo;
 }
 
 void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
-  size_t maxPos=getSampleMemCapacity();
-  memset(crap_synth->sample_mem,0,maxPos);
-  sampleMemCompo.entries.clear();
-  sampleMemCompo.capacity=maxPos;
+  size_t maxPos=getSampleMemCapacity(0);
+
+  memset(crap_synth->sample_mem_flash,0,maxPos);
+  memset(sampleOff,0,256*sizeof(unsigned int));
+  memset(sampleOffRam,0,256*sizeof(unsigned int));
+  memset(sampleLoaded,0,256*2*sizeof(bool));
+
+  //sample flash memory
+
+  sampleMemFlashCompo.entries.clear();
+  sampleMemFlashCompo.capacity=maxPos;
 
   size_t memPos=0;
   for (int i=0; i<parent->song.sampleLen; i++) 
@@ -784,23 +822,63 @@ void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
     if (actualLength>0) 
     {
       sampleOff[i]=memPos;
-      //memcpy(&crap_synth->sample_mem[memPos],s->data8,actualLength);
+      //memcpy(&crap_synth->sample_mem_flash[memPos],s->data8,actualLength);
       for(int ssyka = 0; ssyka < actualLength; ssyka++)
       {
-        crap_synth->sample_mem[memPos + ssyka] = (uint8_t)s->data8[ssyka] + 0x80;
+        crap_synth->sample_mem_flash[memPos + ssyka] = (uint8_t)s->data8[ssyka] + 0x80;
       }
       memPos+=actualLength;
-      sampleMemCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"PCM",i,sampleOff[i],memPos));
+      sampleMemFlashCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"PCM",i,sampleOff[i],memPos));
     }
     if (actualLength<length) 
     {
-      logW("out of STM32CrapSynth sample memory for sample %d!",i);
+      logW("out of STM32CrapSynth flash sample memory for sample %d!",i);
       break;
     }
-    sampleLoaded[i]=true;
+    sampleLoaded[0][i]=true;
   }
-  sampleMemLen=memPos;
-  sampleMemCompo.used=sampleMemLen;
+  sampleMemLenFlash=memPos;
+  sampleMemFlashCompo.used=sampleMemLenFlash;
+
+  //sample RAM
+
+  maxPos=getSampleMemCapacity(1);
+  memset(crap_synth->sample_mem_ram,0,maxPos);
+
+  sampleMemRamCompo.entries.clear();
+  sampleMemRamCompo.capacity=maxPos;
+
+  memPos=0;
+  for (int i=0; i<parent->song.sampleLen; i++) 
+  {
+    DivSample* s=parent->song.sample[i];
+    if (!s->renderOn[1][sysID]) 
+    {
+      sampleOffRam[i]=0;
+      continue;
+    }
+    int length=s->length8;
+    int actualLength=MIN((int)(maxPos-memPos),length);
+    if (actualLength>0) 
+    {
+      sampleOffRam[i]=memPos;
+      //memcpy(&crap_synth->sample_mem_flash[memPos],s->data8,actualLength);
+      for(int ssyka = 0; ssyka < actualLength; ssyka++)
+      {
+        crap_synth->sample_mem_ram[memPos + ssyka] = (uint8_t)s->data8[ssyka] + 0x80;
+      }
+      memPos+=actualLength;
+      sampleMemRamCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"PCM",i,sampleOffRam[i],memPos));
+    }
+    if (actualLength<length) 
+    {
+      logW("out of STM32CrapSynth RAM sample memory for sample %d!",i);
+      break;
+    }
+    sampleLoaded[1][i]=true;
+  }
+  sampleMemLenRam=memPos;
+  sampleMemRamCompo.used=sampleMemLenRam;
 }
 
 void DivPlatformSTM32CRAPSYNTH::setFlags(const DivConfig& flags) {
@@ -829,10 +907,17 @@ int DivPlatformSTM32CRAPSYNTH::init(DivEngine* p, int channels, int sugRate, con
     oscBuf[i]=new DivDispatchOscBuffer;
   }
   crap_synth = crapsynth_create();
-  sampleMemCompo=DivMemoryComposition();
-  sampleMemCompo.name=_("Sample memory");
-  sampleMemCompo.capacity=STM32CRAPSYNTH_SAMPLE_MEM_SIZE;
-  sampleMemCompo.memory=(unsigned char*)crap_synth->sample_mem;
+
+  sampleMemFlashCompo=DivMemoryComposition();
+  sampleMemFlashCompo.name=_("Sample memory (Flash)");
+  sampleMemFlashCompo.capacity=STM32CRAPSYNTH_FLASH_SAMPLE_MEM_SIZE;
+  sampleMemFlashCompo.memory=(unsigned char*)crap_synth->sample_mem_flash;
+
+  sampleMemRamCompo=DivMemoryComposition();
+  sampleMemRamCompo.name=_("Sample memory (RAM)");
+  sampleMemRamCompo.capacity=STM32CRAPSYNTH_RAM_SAMPLE_MEM_SIZE;
+  sampleMemRamCompo.memory=(unsigned char*)crap_synth->sample_mem_ram;
+
   setFlags(flags);
   reset();
   return STM32CRAPSYNTH_NUM_CHANNELS;
