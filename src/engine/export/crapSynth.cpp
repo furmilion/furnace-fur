@@ -63,14 +63,14 @@ void DivExportCrapSynth::run() {
     progress[0].amount = 0.2f * i / (float)crapsynth->getSampleMemUsage(0);
   }
 
-  /*crapwriter->writeText("RAM SAMPLES");
-  crapwriter->writeI((unsigned int)crapsynth->getSampleMemUsage(1));
+  crapwriter->writeText("RAM SAMPLES");
+  crapwriter->writeS((unsigned short)crapsynth->getSampleMemUsage(1));
 
   for(int i = 0; i < (int)crapsynth->getSampleMemUsage(1); i++)
   {
     crapwriter->writeC(((unsigned char*)crapsynth->getSampleMem(1))[i]);
     progress[0].amount = 0.2f + 0.05f * i / (float)crapsynth->getSampleMemUsage(1);
-  }*/
+  }
 
   logAppend("writing wavetables/synth info dump...");
 

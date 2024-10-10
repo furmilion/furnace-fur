@@ -459,6 +459,9 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
           chan[c.chan].sampleNote=c.value;
           c.value=ins->amiga.getFreq(c.value);
           chan[c.chan].sampleNoteDelta=c.value-chan[c.chan].sampleNote;
+          chan[c.chan].baseFreq = NOTE_FREQUENCY(c.value);
+          chan[c.chan].freqChanged = true;
+          chan[c.chan].note = c.value; //hack but works?
         } else if (chan[c.chan].sampleNote!=DIV_NOTE_NULL) {
           chan[c.chan].dacSample=ins->amiga.getSample(chan[c.chan].sampleNote);
           c.value=ins->amiga.getFreq(chan[c.chan].sampleNote);
@@ -487,7 +490,7 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
             }
 
             DivSample* s = parent->song.sample[chan[c.chan].dacSample];
-            ad9833_write(c.chan, 2, sampleOff[chan[c.chan].dacSample]);
+            ad9833_write(c.chan, 2, chan[c.chan].sampleInRam ? sampleOffRam[chan[c.chan].dacSample] : sampleOff[chan[c.chan].dacSample]);
             if(s->loop)
             {
               ad9833_write(c.chan, 7, s->loopStart); // loop point
