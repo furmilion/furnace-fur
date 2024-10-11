@@ -288,7 +288,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 2: //start addr
       {
-        w->writeC(chan_base_addr[channel] + ram ? CMD_DAC_START_ADDR_RAM : CMD_DAC_START_ADDR_FLASH);
+        w->writeC(chan_base_addr[channel] + (ram ? CMD_DAC_START_ADDR_RAM : CMD_DAC_START_ADDR_FLASH));
 
         if(ram) w->writeS(val & 0xffff);
         else w->writeI(val & 0xffffff);
@@ -309,12 +309,12 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 6: //zero cross vol upd
       {
-        w->writeC(chan_base_addr[channel] + val ? CMD_DAC_ZERO_CROSS_ENABLE : CMD_DAC_ZERO_CROSS_DISABLE);
+        w->writeC(chan_base_addr[channel] + (val ? CMD_DAC_ZERO_CROSS_ENABLE : CMD_DAC_ZERO_CROSS_DISABLE));
         break;
       }
       case 7: //loop point
       {
-        w->writeC(chan_base_addr[channel] + ram ? CMD_DAC_LOOP_POINT_RAM : CMD_DAC_LOOP_POINT_FLASH);
+        w->writeC(chan_base_addr[channel] + (ram ? CMD_DAC_LOOP_POINT_RAM : CMD_DAC_LOOP_POINT_FLASH));
 
         if(ram) w->writeS(val & 0xffff);
         else w->writeI(val & 0xffffff);
@@ -322,7 +322,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 8: //length
       {
-        w->writeC(chan_base_addr[channel] + ram ? CMD_DAC_LENGTH_RAM : CMD_DAC_LENGTH_FLASH);
+        w->writeC(chan_base_addr[channel] + (ram ? CMD_DAC_LENGTH_RAM : CMD_DAC_LENGTH_FLASH));
 
         if(ram) w->writeS(val & 0xffff);
         else w->writeI(val & 0xffffff);
