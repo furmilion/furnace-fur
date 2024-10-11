@@ -330,7 +330,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 9: //wave type & duty
       {
-        if(state.dac_wave_type[channel - 5] != (val & 7))
+        if((unsigned int)state.dac_wave_type[channel - 5] != (val & 7))
         {
           state.dac_wave_type[channel - 5] = val & 7;
           w->writeC(chan_base_addr[channel] + CMD_DAC_WAVE_TYPE);
@@ -338,7 +338,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
         }
         if(state.dac_wave_type[channel - 5] == 6) //pulse wave
         {
-          if(state.dac_duty[channel - 5] != val >> 8)
+          if((unsigned int)state.dac_duty[channel - 5] != val >> 8)
           {
             state.dac_duty[channel - 5] = val >> 8;
             w->writeC(chan_base_addr[channel] + CMD_DAC_DUTY);
