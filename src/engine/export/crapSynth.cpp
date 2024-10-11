@@ -354,7 +354,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
 
         if(distance_to_next_boundary < 256) //wavetable should lie in receive buffer as solid chunk, otherwise we can't transfer it with DMA
         {
-          for(int i = 0; i < distance_to_next_boundary; i++)
+          for(uint32_t i = 0; i < distance_to_next_boundary; i++)
           {
             w->writeC(CMD_NOP); //ugly but should work and save CPU work in general case
           }
