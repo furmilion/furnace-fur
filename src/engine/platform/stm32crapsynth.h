@@ -43,6 +43,7 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
     bool updateWave;
 
     bool sampleInRam;
+    bool extNoiseClk;
 
     DivWaveSynth ws;
     Channel():
@@ -61,7 +62,8 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
       dacSample(-1),
       do_wavetable(false),
       updateWave(false),
-      sampleInRam(false) {}
+      sampleInRam(false),
+      extNoiseClk(true) {}
   };
   Channel chan[STM32CRAPSYNTH_NUM_CHANNELS];
   DivDispatchOscBuffer* oscBuf[STM32CRAPSYNTH_NUM_CHANNELS];
@@ -83,7 +85,7 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
   FixedQueue<QueuedWrite,16384> writes;
 
   STM32CrapSynth* crap_synth;
-  unsigned int regPool[8*11+8*2];
+  unsigned int regPool[8*11+8*3];
   unsigned int writeOscBuf;
   DivMemoryComposition sampleMemFlashCompo;
   DivMemoryComposition sampleMemRamCompo;

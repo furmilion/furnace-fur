@@ -128,6 +128,8 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
 
     if(channel == 4) //noise chan
     {
+        if(crapsynth->noise.lfsr == 0) crapsynth->noise.lfsr = 1;
+
         switch(data_type)
         {
             case 0:
@@ -141,6 +143,24 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
                     crapsynth->volume[channel] = data & 0xff;
                 }
                 
+                break;
+            }
+            case 1:
+            {
+                crapsynth->noise.internal_clock = data & 1;
+                
+                if(data & 1)
+                {
+                    crapsynth->noise.timer_freq_memory = crapsynth->noise.timer_freq;
+                    crapsynth->noise.timer_freq = 12500000 / 4; // around 100 kHz with internal clock?
+
+                    crapsynth->timer[4].enable = true;
+                }
+                else
+                {
+                    crapsynth->noise.timer_freq = crapsynth->noise.timer_freq_memory;
+                    crapsynth->timer[4].enable = false;
+                }
                 break;
             }
             case 4:
@@ -314,6 +334,8 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
     if(channel >= 7 && channel < STM32CRAPSYNTH_NUM_CHANNELS) //phase reset timer chans
     {
         int chan = channel - 7;
+
+        if(channel == 11 && !crapsynth->noise.internal_clock) return;
 
         switch(data_type)
         {
@@ -581,7 +603,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
         }
     }
 
-    for(int i = 0; i < 4; i++)
+    for(int i = 0; i < 5; i++)
     {
         PhaseResetTimer* ch = &crapsynth->timer[i];
 

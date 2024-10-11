@@ -218,9 +218,17 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     }
 
     if (chan[i].std.ex5.had) { //phase reset timers channel bitmask
-      if(i >= 7)
+      if((i >= 7 && i < 11) || (i == 11 && !chan[4].extNoiseClk))
       {
         ad9833_write(i, 0, chan[i].std.ex5.val);
+      }
+    }
+
+    if (chan[i].std.ex6.had) { //noise clock internal/external
+      if(i == 4)
+      {
+        ad9833_write(i, 1, chan[i].std.ex6.val);
+        chan[i].extNoiseClk = !chan[i].std.ex6.val;
       }
     }
     
@@ -256,7 +264,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
             ad9833_write(i, 4, chan[i].timer_freq);
         }
       }
-      if(chan[i].freqChanged && i == 4)
+      if(chan[i].freqChanged && i == 4 && chan[4].extNoiseClk)
       {
         chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_TIMERS_FREQBASE * 32);
         chan[i].timer_freq=chan[i].freq;
@@ -710,7 +718,7 @@ unsigned char* DivPlatformSTM32CRAPSYNTH::getRegisterPool() {
 }
 
 int DivPlatformSTM32CRAPSYNTH::getRegisterPoolSize() {
-  return 8*11+8*2;
+  return 8*11+8*3;
 }
 
 int DivPlatformSTM32CRAPSYNTH::getRegisterPoolDepth()
@@ -720,7 +728,7 @@ int DivPlatformSTM32CRAPSYNTH::getRegisterPoolDepth()
 
 void DivPlatformSTM32CRAPSYNTH::reset() {
   writes.clear();
-  memset(regPool,0,(8*11 + 8 * 2)*sizeof(unsigned int));
+  memset(regPool,0,(8*11 + 8 * 3)*sizeof(unsigned int));
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
     chan[i]=DivPlatformSTM32CRAPSYNTH::Channel();
     chan[i].std.setEngine(parent);
@@ -732,6 +740,7 @@ void DivPlatformSTM32CRAPSYNTH::reset() {
     chan[i].noise_tri_amp = 11;
     chan[i].do_wavetable = false;
     chan[i].updateWave = false;
+    chan[i].extNoiseClk = true;
   }
   if (dumpWrites) 
   {
@@ -808,8 +817,9 @@ void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
 
   //sample flash memory
 
-  sampleMemFlashCompo.entries.clear();
-  sampleMemFlashCompo.capacity=maxPos;
+  sampleMemRamCompo=DivMemoryComposition();
+  sampleMemRamCompo.name=_("Sample memory (RAM)");
+  //sampleMemFlashCompo.memory = (unsigned char*)crap_synth->sample_mem_flash;
 
   size_t memPos=0;
   for (int i=0; i<parent->song.sampleLen; i++) 
@@ -842,14 +852,16 @@ void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
   }
   sampleMemLenFlash=memPos;
   sampleMemFlashCompo.used=sampleMemLenFlash;
+  sampleMemFlashCompo.capacity=maxPos;
 
   //sample RAM
 
   maxPos=getSampleMemCapacity(1);
   memset(crap_synth->sample_mem_ram,0,maxPos);
 
-  sampleMemRamCompo.entries.clear();
-  sampleMemRamCompo.capacity=maxPos;
+  sampleMemRamCompo=DivMemoryComposition();
+  sampleMemRamCompo.name=_("Sample memory (RAM)");
+  //sampleMemRamCompo.memory = (unsigned char*)crap_synth->sample_mem_ram;
 
   memPos=0;
   for (int i=0; i<parent->song.sampleLen; i++) 
@@ -882,6 +894,7 @@ void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
   }
   sampleMemLenRam=memPos;
   sampleMemRamCompo.used=sampleMemLenRam;
+  sampleMemRamCompo.capacity=maxPos;
 }
 
 void DivPlatformSTM32CRAPSYNTH::setFlags(const DivConfig& flags) {
@@ -914,12 +927,12 @@ int DivPlatformSTM32CRAPSYNTH::init(DivEngine* p, int channels, int sugRate, con
   sampleMemFlashCompo=DivMemoryComposition();
   sampleMemFlashCompo.name=_("Sample memory (Flash)");
   sampleMemFlashCompo.capacity=STM32CRAPSYNTH_FLASH_SAMPLE_MEM_SIZE;
-  sampleMemFlashCompo.memory=(unsigned char*)crap_synth->sample_mem_flash;
+  //sampleMemFlashCompo.memory=(unsigned char*)crap_synth->sample_mem_flash;
 
   sampleMemRamCompo=DivMemoryComposition();
   sampleMemRamCompo.name=_("Sample memory (RAM)");
   sampleMemRamCompo.capacity=STM32CRAPSYNTH_RAM_SAMPLE_MEM_SIZE;
-  sampleMemRamCompo.memory=(unsigned char*)crap_synth->sample_mem_ram;
+  //sampleMemRamCompo.memory=(unsigned char*)crap_synth->sample_mem_ram;
 
   setFlags(flags);
   reset();
@@ -930,6 +943,7 @@ void DivPlatformSTM32CRAPSYNTH::quit() {
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
     delete oscBuf[i];
   }
+
   if (crap_synth!=NULL) {
     crapsynth_free(crap_synth);
   }

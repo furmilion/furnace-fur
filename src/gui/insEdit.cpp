@@ -8662,6 +8662,7 @@ void FurnaceGUI::drawInsEdit() {
               macroList.push_back(FurnaceGUIMacroDesc(_("Noise LFSR bits"),&ins->std.ex2Macro,0,23,16 * 23,uiColors[GUI_COLOR_MACRO_NOISE],false,NULL,NULL,true));
               macroList.push_back(FurnaceGUIMacroDesc(_("Noise/Tri DAC Amplitude"),&ins->std.ex4Macro,0,11,64,uiColors[GUI_COLOR_MACRO_OTHER]));
               macroList.push_back(FurnaceGUIMacroDesc(_("Channel Reset Bitmask"),&ins->std.ex5Macro,0,7,16 * 7,uiColors[GUI_COLOR_MACRO_NOISE],false,NULL,macroCrapSynthPhaseTimer,true));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Internal Noise Clock"),&ins->std.ex6Macro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true));
               break;
             case DIV_INS_MAX:
             case DIV_INS_NULL:

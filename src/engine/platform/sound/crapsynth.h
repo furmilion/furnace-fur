@@ -12,7 +12,7 @@ extern "C" {
 
 #define STM32CRAPSYNTH_ACC_BITS 28
 
-#define STM32CRAPSYNTH_NUM_CHANNELS 11
+#define STM32CRAPSYNTH_NUM_CHANNELS 12
 #define STM32CRAPSYNTH_FLASH_SAMPLE_MEM_SIZE (2048 * 206) /* Each Flash page is 2 KiB; the size may be changed when I am sure what final firmware size is... */
 #define STM32CRAPSYNTH_RAM_SAMPLE_MEM_SIZE (1024 * 48) /* 48 KiB */
 #define STM32CRAPSYNTH_WAVETABLE_SIZE 256
@@ -40,6 +40,8 @@ typedef struct
     uint32_t timer_acc;
     uint32_t timer_freq; //approximation of STM32 timers...
     uint16_t output;
+    bool internal_clock;
+    uint32_t timer_freq_memory;
 } NoiseChan;
 
 typedef struct
@@ -86,7 +88,7 @@ typedef struct
     AD9833Chan ad9833[4];
     NoiseChan noise;
     DACChan dac[2];
-    PhaseResetTimer timer[4];
+    PhaseResetTimer timer[4+1]; //when noise has internal clock we can use its timer...
     uint8_t sample_mem_flash[STM32CRAPSYNTH_FLASH_SAMPLE_MEM_SIZE];
     uint8_t sample_mem_ram[STM32CRAPSYNTH_RAM_SAMPLE_MEM_SIZE];
     float volume_table[256];
