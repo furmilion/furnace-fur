@@ -229,7 +229,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 2:
             {
-                crapsynth->dac[chan].start_addr = data;
+                crapsynth->dac[chan].start_addr = data & 0xffffff;
                 break;
             }
             case 3: //reset
@@ -245,11 +245,6 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             case 4:
             {
                 crapsynth->dac[chan].timer_freq = data / 2;
-                break;
-            }
-            case 5: //PWM timer duty
-            {
-                crapsynth->ad9833[chan].pw = data & 0xffff;
                 break;
             }
             case 6: //zero cross
@@ -268,12 +263,12 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 7:
             {
-                crapsynth->dac[chan].loop_point = data;
+                crapsynth->dac[chan].loop_point = data & 0xffffff;
                 break;
             }
             case 8:
             {
-                crapsynth->dac[chan].length = data;
+                crapsynth->dac[chan].length = data & 0xffffff;
                 break;
             }
             case 9:

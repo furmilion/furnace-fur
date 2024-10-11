@@ -23,18 +23,416 @@
 
 unsigned char chan_base_addr[12];
 
+#define CMD_AD9833_VOL 0
+#define CMD_AD9833_WAVE_TYPE 1
+#define CMD_AD9833_FREQ 2 /*28 bits*/
+#define CMD_AD9833_PHASE_RESET 3
+#define CMD_AD9833_PWM_FREQ 4 /*8 bits prescaler and 16 bits autoreaload*/
+#define CMD_AD9833_PWM_DUTY 5
+#define CMD_AD9833_ZERO_CROSS_ENABLE 6
+#define CMD_AD9833_ZERO_CROSS_DISABLE 7
+
+#define CMD_NOISE_VOL 0
+#define CMD_NOISE_CLOCK_INTERNAL 1
+#define CMD_NOISE_CLOCK_EXTERNAL 2
+#define CMD_NOISE_ZERO_CROSS_ENABLE 3
+#define CMD_NOISE_ZERO_CROSS_DISABLE 4
+#define CMD_NOISE_FREQ 5
+#define CMD_NOISE_RESET 6
+
+#define CMD_DAC_VOLUME 0
+#define CMD_DAC_PLAY_SAMPLE 1
+#define CMD_DAC_PLAY_SAMPLE_LOOPED 2
+#define CMD_DAC_PLAY_WAVETABLE 3
+#define CMD_DAC_STOP 4
+#define CMD_DAC_START_ADDR_FLASH 5
+#define CMD_DAC_START_ADDR_RAM 6
+#define CMD_DAC_RESET 7
+#define CMD_DAC_TIMER_FREQ 8
+#define CMD_DAC_ZERO_CROSS_ENABLE 9
+#define CMD_DAC_ZERO_CROSS_DISABLE 10
+#define CMD_DAC_LOOP_POINT_FLASH 11
+#define CMD_DAC_LOOP_POINT_RAM 12
+#define CMD_DAC_LENGTH_FLASH 13
+#define CMD_DAC_LENGTH_RAM 14
+#define CMD_DAC_WAVE_TYPE 15
+#define CMD_DAC_DUTY 16
+#define CMD_DAC_WAVETABLE_DATA 17
+#define CMD_DAC_NOISE_TRI_AMP 18
+
+#define CMD_TIMER_CHANNEL_BITMASK 0
+#define CMD_TIMER_FREQ 1
+#define CMD_TIMER_RESET 2
+#define CMD_TIMER_ENABLE 3
+#define CMD_TIMER_DISABLE 4
+
 #define CMD_NEXT_FRAME 0xfb
 #define CMD_SET_RATE 0xfc
 #define CMD_LOOP_POINT 0xfd
 #define CMD_END 0xfe
 #define CMD_NOP 0xff
 
-#define EMUL_CLOCK 12500000
 #define STM32_CLOCK 72000000
+#define EMUL_CLOCK 12500000
+#define RTC_WAKEUP_CLOCK 250000
+
+#define BUFFER_LEN 8192 /*buffer is divided into two halves, and we need to check if we cross the boundary of 2nd and "next" 1st half (which wraps to the beginning of array in memory)*/
+
+typedef struct 
+{
+  uint32_t ad9833_freq[4];
+  uint16_t duty[4];
+  uint16_t pwm_autoreload[4];
+  uint8_t pwm_prescaler[4];
+  bool pwm[4];
+  int dac_wave_type[2];
+  int dac_duty[2];
+} CrapSynthState;
 
 uint32_t calc_autoreload_eng_tick(float hz)
 {
   return (uint32_t)((double)STM32_CLOCK / (double)hz);
+}
+
+uint32_t calc_prescaler_and_autoreload(uint32_t freq) //(prescaler << 16) | autoreload
+{
+  double freq_in_hz = (double)EMUL_CLOCK * (double)freq / double(1 << 29);
+
+  //find prescaler
+  int prescaler = 1;
+
+  while((double)STM32_CLOCK / (double)freq_in_hz / (double)prescaler > 65536.0)
+  {
+    prescaler++;
+  }
+
+  if(prescaler > 256) prescaler = 256;
+
+  //find autoreload
+  int autoreload = (int)((double)STM32_CLOCK / (double)freq_in_hz / (double)prescaler);
+
+  if(autoreload > 65536) prescaler = 65536;
+
+  return ((prescaler - 1) << 16) | (autoreload - 1);
+}
+
+uint32_t calc_systick_autoreload(uint32_t freq) //systick just has 24 bits counter without prescalers
+{
+  double freq_in_hz = (double)EMUL_CLOCK * (double)freq / double(1 << 29);
+
+  //find autoreload
+  int autoreload = (int)((double)STM32_CLOCK / (double)freq_in_hz);
+
+  if(autoreload > (1 << 23)) autoreload = (1 << 23);
+
+  return (autoreload - 1);
+}
+
+uint32_t calc_rtc_wakeup_autoreload(uint32_t freq) //wakeup timer has 16-bit counter with optional /2 freq divider (effective 17 bits)
+{
+  double freq_in_hz = (double)EMUL_CLOCK * (double)freq / double(1 << 29);
+
+  //find autoreload
+  int autoreload = (int)((double)RTC_WAKEUP_CLOCK / (double)freq_in_hz);
+
+  if(autoreload > (1 << 16)) autoreload = (1 << 16);
+
+  return (autoreload - 1);
+}
+
+uint32_t calc_next_buffer_boundary(SafeWriter* w, uint32_t regdump_offset)
+{
+  uint32_t pos = 0;
+
+  while(pos < (uint32_t)w->tell() - regdump_offset)
+  {
+    pos += BUFFER_LEN;
+  }
+
+  return pos;
+}
+
+void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t regdump_offset, CrapSynthState& state, int* curr_write, std::vector<DivRegWrite>& writes)
+{
+  int channel = addr >> 8;
+  int cmd_type = addr & 0xff;
+
+  if(channel < 4)
+  {
+    switch(cmd_type)
+    {
+      case 0: //volume
+      {
+        w->writeC(chan_base_addr[channel] + CMD_AD9833_VOL);
+        w->writeC(val & 0xff);
+        break;
+      }
+      case 1: //waveform
+      {
+        w->writeC(chan_base_addr[channel] + CMD_AD9833_WAVE_TYPE);
+        w->writeC(val & 0xff);
+        state.pwm[channel] = (val == 5);
+        break;
+      }
+      case 2: //AD9833 freq
+      {
+        w->writeC(chan_base_addr[channel] + CMD_AD9833_FREQ);
+        w->writeI(val);
+        state.ad9833_freq[channel] = val;
+        break;
+      }
+      case 3: //phase reset
+      {
+        w->writeC(chan_base_addr[channel] + CMD_AD9833_PHASE_RESET);
+        break;
+      }
+      case 4: //PWM freq
+      {
+        w->writeC(chan_base_addr[channel] + CMD_AD9833_PWM_FREQ);
+        uint32_t values = calc_prescaler_and_autoreload(val);
+        w->writeC(values >> 16);
+        w->writeS(values & 0xffff);
+        state.pwm_autoreload[channel] = values & 0xffff;
+        state.pwm_prescaler[channel] = values >> 16;
+        break;
+      }
+      case 5: //duty
+      {
+        w->writeC(chan_base_addr[channel] + CMD_AD9833_PWM_DUTY);
+        w->writeS((val & 0xffff) * state.pwm_autoreload[channel] / 0xffff);
+        break;
+      }
+      case 6: //zero cross
+      {
+        w->writeC(chan_base_addr[channel] + (val ? CMD_AD9833_ZERO_CROSS_ENABLE : CMD_AD9833_ZERO_CROSS_DISABLE));
+        break;
+      }
+      default: break;
+    }
+  }
+
+  if(channel == 4) //noise
+  {
+    switch(cmd_type)
+    {
+      case 0: //volume
+      {
+        w->writeC(chan_base_addr[channel] + CMD_NOISE_VOL);
+        w->writeC(val & 0xff);
+        break;
+      }
+      case 1: //clock source
+      {
+        w->writeC(chan_base_addr[channel] + (val ? CMD_NOISE_CLOCK_INTERNAL : CMD_NOISE_CLOCK_EXTERNAL));
+        break;
+      }
+      case 4: //timer freq
+      {
+        w->writeC(chan_base_addr[channel] + CMD_NOISE_FREQ);
+        uint32_t values = calc_prescaler_and_autoreload(val);
+        w->writeC(values >> 16);
+        w->writeS(values & 0xffff);
+        break;
+      }
+      case 3: //phase reset
+      {
+        w->writeC(chan_base_addr[channel] + CMD_NOISE_RESET);
+        break;
+      }
+      case 6: //zero cross
+      {
+        w->writeC(chan_base_addr[channel] + (val ? CMD_NOISE_ZERO_CROSS_ENABLE : CMD_NOISE_ZERO_CROSS_DISABLE));
+        break;
+      }
+      default: break;
+    }
+  }
+
+  if(channel == 5 || channel == 6) //DAC chans...
+  {
+    bool ram = val & 0x1000000;
+
+    switch(cmd_type)
+    {
+      case 0: //volume
+      {
+        w->writeC(chan_base_addr[channel] + CMD_DAC_VOLUME);
+        w->writeC(val & 0xff);
+        break;
+      }
+      case 1: //start/stop playback of wavetable/sample
+      {
+        if(val & 1) //playing
+        {
+          if(val & 2)
+          {
+            w->writeC(chan_base_addr[channel] + CMD_DAC_PLAY_WAVETABLE);
+          }
+          else
+          {
+            if(val & 4)
+            {
+              w->writeC(chan_base_addr[channel] + CMD_DAC_PLAY_SAMPLE_LOOPED);
+            }
+            else
+            {
+              w->writeC(chan_base_addr[channel] + CMD_DAC_PLAY_SAMPLE);
+            }
+          }
+        }
+        else //stop
+        {
+          w->writeC(chan_base_addr[channel] + CMD_DAC_STOP);
+        }
+        break;
+      }
+      case 2: //start addr
+      {
+        w->writeC(chan_base_addr[channel] + ram ? CMD_DAC_START_ADDR_RAM : CMD_DAC_START_ADDR_FLASH);
+
+        if(ram) w->writeS(val & 0xffff);
+        else w->writeI(val & 0xffffff);
+        break;
+      }
+      case 3: //reset
+      {
+        w->writeC(chan_base_addr[channel] + CMD_DAC_RESET);
+        break;
+      }
+      case 4: //DAC timer freq
+      {
+        w->writeC(chan_base_addr[channel] + CMD_DAC_TIMER_FREQ);
+        uint32_t values = calc_prescaler_and_autoreload(val);
+        w->writeC(values >> 16);
+        w->writeS(values & 0xffff);
+        break;
+      }
+      case 6: //zero cross vol upd
+      {
+        w->writeC(chan_base_addr[channel] + val ? CMD_DAC_ZERO_CROSS_ENABLE : CMD_DAC_ZERO_CROSS_DISABLE);
+        break;
+      }
+      case 7: //loop point
+      {
+        w->writeC(chan_base_addr[channel] + ram ? CMD_DAC_LOOP_POINT_RAM : CMD_DAC_LOOP_POINT_FLASH);
+
+        if(ram) w->writeS(val & 0xffff);
+        else w->writeI(val & 0xffffff);
+        break;
+      }
+      case 8: //length
+      {
+        w->writeC(chan_base_addr[channel] + ram ? CMD_DAC_LENGTH_RAM : CMD_DAC_LENGTH_FLASH);
+
+        if(ram) w->writeS(val & 0xffff);
+        else w->writeI(val & 0xffffff);
+        break;
+      }
+      case 9: //wave type & duty
+      {
+        if(state.dac_wave_type[channel - 5] != (val & 7))
+        {
+          state.dac_wave_type[channel - 5] = val & 7;
+          w->writeC(chan_base_addr[channel] + CMD_DAC_WAVE_TYPE);
+          w->writeC(val & 7);
+        }
+        if(state.dac_wave_type[channel - 5] == 6) //pulse wave
+        {
+          if(state.dac_duty[channel - 5] != val >> 8)
+          {
+            state.dac_duty[channel - 5] = val >> 8;
+            w->writeC(chan_base_addr[channel] + CMD_DAC_DUTY);
+            w->writeC((val >> 8) & 0xff);
+          }
+        }
+        break;
+      }
+      case 10: /* sigh... wavetable madness */
+      {
+        uint32_t buffer_boundary = calc_next_buffer_boundary(w, regdump_offset);
+        uint32_t distance_to_next_boundary = buffer_boundary - ((uint32_t)w->tell() - regdump_offset);
+
+        if(distance_to_next_boundary < 256) //wavetable should lie in receive buffer as solid chunk, otherwise we can't transfer it with DMA
+        {
+          for(int i = 0; i < distance_to_next_boundary; i++)
+          {
+            w->writeC(CMD_NOP); //ugly but should work and save CPU work in general case
+          }
+        }
+
+        //w->writeText("WAVETABLE"); //todo: remove
+
+        w->writeC(chan_base_addr[channel] + CMD_DAC_WAVETABLE_DATA);
+
+        for(int i = 0; i < 256; i++)
+        {
+          DivRegWrite write = writes[*curr_write];
+          w->writeC(write.val & 0xff); //ignore address
+          (*curr_write)++;
+        }
+        break;
+      }
+      case 11:
+      {
+        w->writeC(CMD_DAC_NOISE_TRI_AMP);
+        w->writeC(val % 12);
+        break;
+      }
+      default: break;
+    }
+  }
+
+  if(channel > 6) //phase reset timers
+  {
+    switch(cmd_type)
+    {
+      case 0: //bitmask
+      {
+        w->writeC(chan_base_addr[channel] + CMD_TIMER_CHANNEL_BITMASK);
+        w->writeC(val & 0x7f);
+        break;
+      }
+      case 1: //timer freq
+      {
+        if(channel == 7 || channel == 8 || channel == 11) //usual timers
+        {
+          w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ);
+          uint32_t values = calc_prescaler_and_autoreload(val);
+          w->writeC(values >> 16);
+          w->writeS(values & 0xffff);
+        }
+
+        if(channel == 9) //systick
+        {
+          w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ);
+          uint32_t value = calc_systick_autoreload(val);
+          w->writeC(value >> 16);
+          w->writeS(value & 0xffff);
+        }
+
+        if(channel == 10) //RTC wakeup timer, clock is 8000000 / 32 = 250000 Hz
+        {
+          w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ);
+          uint32_t value = calc_rtc_wakeup_autoreload(val);
+          w->writeC(value >> 16);
+          w->writeS(value & 0xffff);
+        }
+
+        break;
+      }
+      case 2: //phase reset
+      {
+        w->writeC(chan_base_addr[channel] + CMD_TIMER_RESET);
+        break;
+      }
+      case 3: //enable
+      {
+        w->writeC(chan_base_addr[channel] + (val ? CMD_TIMER_ENABLE : CMD_TIMER_DISABLE));
+        break;
+      }
+      default: break;
+    }
+  }
 }
 
 void DivExportCrapSynth::run() {
@@ -43,6 +441,13 @@ void DivExportCrapSynth::run() {
   DivPlatformSTM32CRAPSYNTH* crapsynth=(DivPlatformSTM32CRAPSYNTH*)e->getDispatch(0);
 
   running=false;
+
+  CrapSynthState state;
+
+  memset((void*)&state, 0, sizeof(CrapSynthState));
+
+  state.dac_duty[0] = state.dac_duty[1] = -1;
+  state.dac_wave_type[0] = state.dac_wave_type[1] = -1;
 
   double origRate = e->got.rate;
   e->stop();
@@ -216,10 +621,12 @@ void DivExportCrapSynth::run() {
       std::vector<DivRegWrite>& writes=e->disCont[0].dispatch->getRegisterWrites();
       if (writes.size() > 0) 
       {
-        for (DivRegWrite& write: writes)
+        for (int curr_write = 0; curr_write < (int)writes.size(); curr_write++)
         {
-            crapwriter->writeI(write.addr); //TODO replace with actual commands
-            crapwriter->writeI(write.val);
+          DivRegWrite write = writes[curr_write];
+          //crapwriter->writeI(write.addr); //TODO replace with actual commands
+          //crapwriter->writeI(write.val);
+          write_command(crapwriter, write.addr, write.val, regdump_offset, state, &curr_write, writes);
         }
 
         writes.clear();
@@ -234,7 +641,7 @@ void DivExportCrapSynth::run() {
     }
     else
     {
-      crapwriter->writeI(CMD_LOOP_POINT);
+      crapwriter->writeC(CMD_LOOP_POINT);
       crapwriter->writeI(loop_point_addr);
     }
 

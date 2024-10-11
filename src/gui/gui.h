@@ -51,6 +51,12 @@
   for (DivInstrument* _wi: e->song.ins) { \
     _wi->std.waveMacro.vZoom=-1; \
     _wi->std.waveMacro.vScroll=-1; \
+      \
+    if(_wi->type == DIV_INS_STM32CRAPSYNTH) \
+    {\
+      _wi->std.ex3Macro.vZoom=-1; \
+      _wi->std.ex3Macro.vScroll=-1; \
+    }\
   }
 
 #define CHECK_LONG_HOLD (mobileUI && ImGui::GetIO().MouseDown[ImGuiMouseButton_Left] && ImGui::GetIO().MouseDownDuration[ImGuiMouseButton_Left]>=longThreshold && ImGui::GetIO().MouseDownDurationPrev[ImGuiMouseButton_Left]<longThreshold && ImGui::GetIO().MouseDragMaxDistanceSqr[ImGuiMouseButton_Left]<=ImGui::GetIO().ConfigInertialScrollToleranceSqr)

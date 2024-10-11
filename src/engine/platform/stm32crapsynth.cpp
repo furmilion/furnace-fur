@@ -498,16 +498,16 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
             }
 
             DivSample* s = parent->song.sample[chan[c.chan].dacSample];
-            ad9833_write(c.chan, 2, chan[c.chan].sampleInRam ? sampleOffRam[chan[c.chan].dacSample] : sampleOff[chan[c.chan].dacSample]);
+            ad9833_write(c.chan, 2, chan[c.chan].sampleInRam ? (sampleOffRam[chan[c.chan].dacSample] | 0x1000000) : sampleOff[chan[c.chan].dacSample]);
             if(s->loop)
             {
-              ad9833_write(c.chan, 7, s->loopStart); // loop point
+              ad9833_write(c.chan, 7, s->loopStart | (chan[c.chan].sampleInRam ? 0x1000000 : 0)); // loop point
             }
             else
             {
-              ad9833_write(c.chan, 7, sampleOff[chan[c.chan].dacSample]); // loop point = start
+              //ad9833_write(c.chan, 7, sampleOff[chan[c.chan].dacSample] | (chan[c.chan].sampleInRam ? 0x1000000 : 0)); // loop point = start
             }
-            ad9833_write(c.chan, 8, s->length8);
+            ad9833_write(c.chan, 8, s->length8 | (chan[c.chan].sampleInRam ? 0x1000000 : 0));
 
             if(crap_synth->dac[c.chan - 5].playing)
             {
@@ -817,8 +817,8 @@ void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
 
   //sample flash memory
 
-  sampleMemRamCompo=DivMemoryComposition();
-  sampleMemRamCompo.name=_("Sample memory (RAM)");
+  sampleMemFlashCompo=DivMemoryComposition();
+  sampleMemFlashCompo.name=_("Sample memory (Flash)");
   //sampleMemFlashCompo.memory = (unsigned char*)crap_synth->sample_mem_flash;
 
   size_t memPos=0;
@@ -843,7 +843,7 @@ void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
       memPos+=actualLength;
       sampleMemFlashCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"PCM",i,sampleOff[i],memPos));
     }
-    if (actualLength<length) 
+    if (actualLength<length)
     {
       logW("out of STM32CrapSynth flash sample memory for sample %d!",i);
       break;
