@@ -21,6 +21,22 @@
 #include "../engine.h"
 #include "../platform/stm32crapsynth.h"
 
+unsigned char chan_base_addr[12];
+
+#define CMD_NEXT_FRAME 0xfb
+#define CMD_SET_RATE 0xfc
+#define CMD_LOOP_POINT 0xfd
+#define CMD_END 0xfe
+#define CMD_NOP 0xff
+
+#define EMUL_CLOCK 12500000
+#define STM32_CLOCK 72000000
+
+uint32_t calc_autoreload_eng_tick(float hz)
+{
+  return (uint32_t)((double)STM32_CLOCK / (double)hz);
+}
+
 void DivExportCrapSynth::run() {
   SafeWriter* crapwriter=new SafeWriter;
 
@@ -41,6 +57,13 @@ void DivExportCrapSynth::run() {
 
   uint32_t regdump_offset = 0;
   uint32_t size_offset = 0;
+
+  float hz = e->getCurHz();
+
+  for(int i = 0; i < 12; i++)
+  {
+    chan_base_addr[i] = 32 * i;
+  }
 
   //file header
 
@@ -79,7 +102,7 @@ void DivExportCrapSynth::run() {
   regdump_offset = crapwriter->tell();
   crapwriter->writeI(0); //size, will return here later
   
-  crapwriter->writeF(e->getCurHz()); //todo: replace with actual autoreload val calc
+  crapwriter->writeI(calc_autoreload_eng_tick(hz));
 
   e->synchronizedSoft([&]() {
 
@@ -156,6 +179,10 @@ void DivExportCrapSynth::run() {
         break;
       }
 
+      // write wait
+      last_frame_addr = (uint32_t)crapwriter->tell() - regdump_offset;
+      crapwriter->writeC(CMD_NEXT_FRAME); // next frame
+
       int row = 0;
       int order = 0;
       e->getCurSongPos(row, order);
@@ -178,12 +205,12 @@ void DivExportCrapSynth::run() {
 
         got_loop_point = true;
       }
-
-      // write wait
-      for(int i = 0; i < e->song.systemLen; i++)
+      // check if engine rate changed
+      if(hz != e->getCurHz())
       {
-        last_frame_addr = (uint32_t)crapwriter->tell() - regdump_offset;
-        crapwriter->writeC(0xff); // next frame
+        crapwriter->writeC(CMD_SET_RATE);
+        hz = e->getCurHz();
+        crapwriter->writeI(calc_autoreload_eng_tick(hz));
       }
       // get register dumps
       std::vector<DivRegWrite>& writes=e->disCont[0].dispatch->getRegisterWrites();
@@ -200,14 +227,14 @@ void DivExportCrapSynth::run() {
     }
     // end of song
 
-    crapwriter->writeC(0xfe);
-
     if(!loop) //after end mark store loop point
     {
-      crapwriter->writeI(last_frame_addr);
+      crapwriter->writeC(CMD_END);
+      //crapwriter->writeI(last_frame_addr);
     }
     else
     {
+      crapwriter->writeI(CMD_LOOP_POINT);
       crapwriter->writeI(loop_point_addr);
     }
 
