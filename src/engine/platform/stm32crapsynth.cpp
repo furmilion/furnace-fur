@@ -726,7 +726,7 @@ DivSamplePos DivPlatformSTM32CRAPSYNTH::getSamplePos(int ch) {
 
   if(chan[ch].dacSample < 0 || chan[ch].dacSample > parent->song.sampleLen) return DivSamplePos();
 
-  DivSample* s = parent->getSample(chan[ch].dacSample);
+  //DivSample* s = parent->getSample(chan[ch].dacSample);
 
   uint32_t start_addr = (chan[ch].sampleInRam ? (sampleOffRam[chan[ch].dacSample]) : sampleOff[chan[ch].dacSample]);
 
