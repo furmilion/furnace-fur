@@ -421,7 +421,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
 
             int32_t wave = crapsynth_ad9833_get_wave(crapsynth, ch->wave_type == 5 ? ch->timer_acc : ch->acc, ch->pw, ch->wave_type);
 
-            if(ch->zero_cross && (prev_output & 0x80000000) != ((wave - 511) & 0x80000000)) //approx of zero cross
+            if(ch->zero_cross && wave < 10) //approx of zero cross
             {
                 crapsynth->volume[i] = ch->pending_vol;
             }
@@ -457,7 +457,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
             crapsynth->noise.output = (crapsynth->noise.lfsr & 0x400000) ? 1023 : 0;
 
             //if(crapsynth->noise.zero_cross && abs((int)crapsynth->noise.output - 511) < 10) //approx of zero cross
-            if(crapsynth->noise.zero_cross && (prev_output & 0x80000000) != (((int)crapsynth->noise.output - 511) & 0x80000000)) //approx of zero cross
+            if(crapsynth->noise.zero_cross && crapsynth->noise.output == 0) //approx of zero cross
             {
                 crapsynth->volume[4] = crapsynth->noise.pending_vol;
             }
@@ -538,14 +538,14 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
                         }
                         else
                         {
-                            if(ch->curr_pos >= ch->length + ch->start_addr && ch->loop)
+                            if(ch->curr_pos >= ch->length && ch->loop)
                             {
-                                ch->curr_pos = ch->start_addr + ch->loop_point;
+                                ch->curr_pos = ch->loop_point;
                             }
 
-                            if(ch->curr_pos >= ch->length + ch->start_addr && !ch->loop)
+                            if(ch->curr_pos >= ch->length && !ch->loop)
                             {
-                                ch->curr_pos = 0;
+                                ch->curr_pos = ch->start_addr;
                                 ch->timer_acc = 0;
                                 ch->timer_freq = 0;
                                 ch->playing = false;

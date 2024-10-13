@@ -245,6 +245,53 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       chan[i].updateWave = false;
     }
 
+    if(chan[i].apply_sample)
+    {
+      DivSample* s = parent->song.sample[chan[i].dacSample];
+
+      unsigned int sample_offset = chan[i].sampleInRam ? (sampleOffRam[chan[i].dacSample]) : sampleOff[chan[i].dacSample];
+
+      if(chan[i].set_sample_pos)
+      {
+        sample_offset += chan[i].sample_offset;
+      }
+      else
+      {
+        chan[i].sample_offset = 0;
+      }
+
+      if(sample_offset >= (chan[i].sampleInRam ? (sampleOffRam[chan[i].dacSample]) : sampleOff[chan[i].dacSample]) + s->length8)
+      {
+        sample_offset = (chan[i].sampleInRam ? (sampleOffRam[chan[i].dacSample]) : sampleOff[chan[i].dacSample]) + s->length8 - 1;
+      }
+
+      if(chan[i].sampleInRam)
+      {
+        sample_offset |= 0x1000000;
+      }
+
+      ad9833_write(i, 2, sample_offset);
+      if(s->loop)
+      {
+        ad9833_write(i, 7, ((chan[i].sampleInRam ? (sampleOffRam[chan[i].dacSample]) : sampleOff[chan[i].dacSample]) + s->loopStart) | (chan[i].sampleInRam ? 0x1000000 : 0)); // loop point
+      }
+      else
+      {
+        //ad9833_write(i, 7, sampleOff[chan[i].dacSample] | (chan[i].sampleInRam ? 0x1000000 : 0)); // loop point = start
+      }
+      ad9833_write(i, 8, ((chan[i].sampleInRam ? (sampleOffRam[chan[i].dacSample]) : sampleOff[chan[i].dacSample]) + s->length8) | (chan[i].sampleInRam ? 0x1000000 : 0));
+
+      if(crap_synth->dac[i - 5].playing)
+      {
+        ad9833_write(i, 1, 0); //stop playing sample
+      }
+
+      ad9833_write(i, 1, 1 | (chan[i].do_wavetable ? 2 : 0) | (s->loop ? 4 : 0) | (chan[i].sampleInRam ? 8 : 0)); //play sample
+
+      chan[i].apply_sample = false;
+      chan[i].set_sample_pos = false;
+    }
+
     if (chan[i].freqChanged || chan[i].keyOn || chan[i].keyOff) {
       //DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_STM32CRAPSYNTH);
       if(chan[i].freqChanged && i < 4)
@@ -496,25 +543,8 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
             {
               chan[c.chan].sampleInRam = true;
             }
-
-            DivSample* s = parent->song.sample[chan[c.chan].dacSample];
-            ad9833_write(c.chan, 2, chan[c.chan].sampleInRam ? (sampleOffRam[chan[c.chan].dacSample] | 0x1000000) : sampleOff[chan[c.chan].dacSample]);
-            if(s->loop)
-            {
-              ad9833_write(c.chan, 7, s->loopStart | (chan[c.chan].sampleInRam ? 0x1000000 : 0)); // loop point
-            }
-            else
-            {
-              //ad9833_write(c.chan, 7, sampleOff[chan[c.chan].dacSample] | (chan[c.chan].sampleInRam ? 0x1000000 : 0)); // loop point = start
-            }
-            ad9833_write(c.chan, 8, s->length8 | (chan[c.chan].sampleInRam ? 0x1000000 : 0));
-
-            if(crap_synth->dac[c.chan - 5].playing)
-            {
-              ad9833_write(c.chan, 1, 0); //stop playing sample
-            }
-
-            ad9833_write(c.chan, 1, 1 | (chan[c.chan].do_wavetable ? 2 : 0) | (s->loop ? 4 : 0) | (chan[c.chan].sampleInRam ? 8 : 0)); //play sample
+            
+            chan[c.chan].apply_sample = true;
           }
         }
         chan[c.chan].dacPos=0;
@@ -613,9 +643,6 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
       }
       break;
     }
-    case DIV_CMD_SAMPLE_POS:
-      //chan[c.chan].dacPos=c.value;
-      break;
     case DIV_CMD_LEGATO:
       chan[c.chan].baseFreq=NOTE_PERIODIC(c.value+chan[c.chan].sampleNoteDelta+((HACKY_LEGATO_MESS)?(chan[c.chan].std.arp.val):(0)));
       chan[c.chan].freqChanged=true;
@@ -627,6 +654,12 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
       }
       if (!chan[c.chan].inPorta && c.value && !parent->song.brokenPortaArp && chan[c.chan].std.arp.will && !NEW_ARP_STRAT) chan[c.chan].baseFreq=NOTE_PERIODIC(chan[c.chan].note);
       chan[c.chan].inPorta=c.value;
+      break;
+    case DIV_CMD_SAMPLE_POS:
+      if (chan[c.chan].do_wavetable) break;
+      if(c.chan > 6 || c.chan < 4) break;
+      chan[c.chan].sample_offset=c.value;
+      chan[c.chan].set_sample_pos = true;
       break;
     case DIV_CMD_GET_VOLMAX:
       return 255;
@@ -691,9 +724,15 @@ DivSamplePos DivPlatformSTM32CRAPSYNTH::getSamplePos(int ch) {
 
   int channel = ch - 5;
 
+  if(chan[ch].dacSample < 0 || chan[ch].dacSample > parent->song.sampleLen) return DivSamplePos();
+
+  DivSample* s = parent->getSample(chan[ch].dacSample);
+
+  uint32_t start_addr = (chan[ch].sampleInRam ? (sampleOffRam[chan[ch].dacSample]) : sampleOff[chan[ch].dacSample]);
+
   return DivSamplePos(
     chan[ch].dacSample,
-    crap_synth->dac[channel].curr_pos - crap_synth->dac[channel].start_addr,
+    crap_synth->dac[channel].curr_pos - start_addr,
     (int)(double)(chipClock / 2) * (double)crap_synth->dac[channel].timer_freq / (double)(1 << 29)
   );
 
@@ -741,6 +780,10 @@ void DivPlatformSTM32CRAPSYNTH::reset() {
     chan[i].do_wavetable = false;
     chan[i].updateWave = false;
     chan[i].extNoiseClk = true;
+
+    chan[i].apply_sample = false;
+    chan[i].set_sample_pos = false;
+    chan[i].sample_offset = 0;
   }
   if (dumpWrites) 
   {

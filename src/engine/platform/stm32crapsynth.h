@@ -45,6 +45,11 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
     bool sampleInRam;
     bool extNoiseClk;
 
+    bool apply_sample;
+    bool set_sample_pos;
+
+    int sample_offset;
+
     DivWaveSynth ws;
     Channel():
       SharedChannel<signed short>(255),
@@ -63,7 +68,10 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
       do_wavetable(false),
       updateWave(false),
       sampleInRam(false),
-      extNoiseClk(true) {}
+      extNoiseClk(true),
+      apply_sample(false),
+      set_sample_pos(false),
+      sample_offset(0) {}
   };
   Channel chan[STM32CRAPSYNTH_NUM_CHANNELS];
   DivDispatchOscBuffer* oscBuf[STM32CRAPSYNTH_NUM_CHANNELS];
