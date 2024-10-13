@@ -291,7 +291,12 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
         w->writeC(chan_base_addr[channel] + (ram ? CMD_DAC_START_ADDR_RAM : CMD_DAC_START_ADDR_FLASH));
 
         if(ram) w->writeS(val & 0xffff);
-        else w->writeI(val & 0xffffff);
+        else 
+        {
+          w->writeC(val & 0xff);
+          w->writeC((val >> 8) & 0xff);
+          w->writeC((val >> 16) & 0xff);
+        }
         break;
       }
       case 3: //reset
@@ -317,7 +322,12 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
         w->writeC(chan_base_addr[channel] + (ram ? CMD_DAC_LOOP_POINT_RAM : CMD_DAC_LOOP_POINT_FLASH));
 
         if(ram) w->writeS(val & 0xffff);
-        else w->writeI(val & 0xffffff);
+        else 
+        {
+          w->writeC(val & 0xff);
+          w->writeC((val >> 8) & 0xff);
+          w->writeC((val >> 16) & 0xff);
+        }
         break;
       }
       case 8: //length
@@ -325,7 +335,12 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
         w->writeC(chan_base_addr[channel] + (ram ? CMD_DAC_LENGTH_RAM : CMD_DAC_LENGTH_FLASH));
 
         if(ram) w->writeS(val & 0xffff);
-        else w->writeI(val & 0xffffff);
+        else 
+        {
+          w->writeC(val & 0xff);
+          w->writeC((val >> 8) & 0xff);
+          w->writeC((val >> 16) & 0xff);
+        }
         break;
       }
       case 9: //wave type & duty
