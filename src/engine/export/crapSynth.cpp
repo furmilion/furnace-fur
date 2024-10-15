@@ -21,13 +21,13 @@
 #include "../engine.h"
 #include "../platform/stm32crapsynth.h"
 
-unsigned char chan_base_addr[12];
+unsigned char chan_base_addr[20];
 
 #define CMD_AD9833_VOL 0
 #define CMD_AD9833_WAVE_TYPE 1
 #define CMD_AD9833_FREQ 2 /*28 bits*/
 #define CMD_AD9833_PHASE_RESET 3
-#define CMD_AD9833_PWM_FREQ 4 /*8 bits prescaler and 16 bits autoreaload*/
+#define CMD_AD9833_PWM_FREQ 4 /*8 bits prescaler and 16 bits autoreload*/
 #define CMD_AD9833_PWM_DUTY 5
 #define CMD_AD9833_ZERO_CROSS_ENABLE 6
 #define CMD_AD9833_ZERO_CROSS_DISABLE 7
@@ -480,9 +480,17 @@ void DivExportCrapSynth::run() {
 
   float hz = e->getCurHz();
 
-  for(int i = 0; i < 12; i++)
+  for(int i = 0; i < 5; i++) //AD9833 chans & noise chan
   {
-    chan_base_addr[i] = 32 * i;
+    chan_base_addr[i] = 8 * i;
+  }
+  for(int i = 5; i < 7; i++) //DAC chans
+  {
+    chan_base_addr[i] = 8 * 5 + 32 * (i - 5);
+  }
+  for(int i = 7; i < 12; i++) //phase reset timer chans
+  {
+    chan_base_addr[i] = 8 * 5 + 32 * 2 + 8 * (i - 7);
   }
 
   //file header
