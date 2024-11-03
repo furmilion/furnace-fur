@@ -355,7 +355,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
         {
           if((unsigned int)state.dac_duty[channel - 5] != val >> 8)
           {
-            state.dac_duty[channel - 5] = val >> 8;
+            state.dac_duty[channel - 5] = val >> 4;
             w->writeC(chan_base_addr[channel] + CMD_DAC_DUTY);
             w->writeC((val >> 4) & 0xff);
           }
