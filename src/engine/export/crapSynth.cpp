@@ -96,12 +96,12 @@ uint32_t calc_autoreload_eng_tick(float hz)
 
 uint32_t calc_prescaler_and_autoreload(uint32_t freq) //(prescaler << 16) | autoreload
 {
-  double freq_in_hz = (double)EMUL_CLOCK * (double)freq / double(1 << 29);
+  double freq_in_hz = (double)(EMUL_CLOCK / 4) * (double)freq / double(1 << 29);
 
   //find prescaler
   int prescaler = 1;
 
-  while((double)STM32_CLOCK / (double)freq_in_hz / (double)prescaler > 65536.0)
+  while((double)(STM32_CLOCK) / (double)freq_in_hz / (double)prescaler > 65536.0)
   {
     prescaler++;
   }
@@ -109,19 +109,19 @@ uint32_t calc_prescaler_and_autoreload(uint32_t freq) //(prescaler << 16) | auto
   if(prescaler > 256) prescaler = 256;
 
   //find autoreload
-  int autoreload = (int)((double)STM32_CLOCK / (double)freq_in_hz / (double)prescaler);
+  int autoreload = (int)((double)(STM32_CLOCK) / (double)freq_in_hz / (double)prescaler);
 
-  if(autoreload > 65536) prescaler = 65536;
+  if(autoreload > 65536) autoreload = 65536;
 
   return ((prescaler - 1) << 16) | (autoreload - 1);
 }
 
 uint32_t calc_systick_autoreload(uint32_t freq) //systick just has 24 bits counter without prescalers
 {
-  double freq_in_hz = (double)EMUL_CLOCK * (double)freq / double(1 << 29);
+  double freq_in_hz = (double)(EMUL_CLOCK / 4) * (double)freq / double(1 << 29);
 
   //find autoreload
-  int autoreload = (int)((double)STM32_CLOCK / (double)freq_in_hz);
+  int autoreload = (int)((double)(STM32_CLOCK) / (double)freq_in_hz);
 
   if(autoreload > (1 << 23)) autoreload = (1 << 23);
 
@@ -130,7 +130,7 @@ uint32_t calc_systick_autoreload(uint32_t freq) //systick just has 24 bits count
 
 uint32_t calc_rtc_wakeup_autoreload(uint32_t freq) //wakeup timer has 16-bit counter with optional /2 freq divider (effective 17 bits)
 {
-  double freq_in_hz = (double)EMUL_CLOCK * (double)freq / double(1 << 29);
+  double freq_in_hz = (double)(EMUL_CLOCK / 4) * (double)freq / double(1 << 29);
 
   //find autoreload
   int autoreload = (int)((double)RTC_WAKEUP_CLOCK / (double)freq_in_hz);
@@ -357,7 +357,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
           {
             state.dac_duty[channel - 5] = val >> 8;
             w->writeC(chan_base_addr[channel] + CMD_DAC_DUTY);
-            w->writeC((val >> 8) & 0xff);
+            w->writeC((val >> 4) & 0xff);
           }
         }
         break;
