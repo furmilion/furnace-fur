@@ -378,7 +378,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         }
 
         if(chan[i].freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
-        if(chan[i].timer_freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
+        if(chan[i].timer_freq > (1 << 30) - 1) chan[i].timer_freq = (1 << 30) - 1;
         
         ad9833_write(i, 4, chan[i].timer_freq);
       }
@@ -504,6 +504,7 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
         chan[c.chan].do_wavetable = true;
         chan[c.chan].ws.init(ins,256,256,chan[c.chan].insChanged);
         chan[c.chan].updateWave = true;
+        chan[c.chan].freqChanged = true;
         ad9833_write(c.chan, 1, 1 | (chan[c.chan].do_wavetable ? 2 : 0)); //play wave
       }
       if (ins->amiga.useSample && c.chan > 4 && c.chan < 7) {
@@ -941,9 +942,9 @@ void DivPlatformSTM32CRAPSYNTH::renderSamples(int sysID) {
 }
 
 void DivPlatformSTM32CRAPSYNTH::setFlags(const DivConfig& flags) {
-  chipClock=12500000;
+  chipClock=2500000;
   CHECK_CUSTOM_CLOCK;
-  rate=chipClock/50; // 250 kHz
+  rate=chipClock/10; // 250 kHz
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
     oscBuf[i]->rate=rate;
   }

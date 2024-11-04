@@ -73,7 +73,7 @@ unsigned char chan_base_addr[20];
 #define CMD_NOP 0xff
 
 #define STM32_CLOCK 72000000
-#define EMUL_CLOCK 12500000
+#define EMUL_CLOCK 2500000
 #define RTC_WAKEUP_CLOCK 250000
 
 #define BUFFER_LEN 8192 /*buffer is divided into two halves, and we need to check if we cross the boundary of 2nd and "next" 1st half (which wraps to the beginning of array in memory)*/
@@ -353,7 +353,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
         }
         if(state.dac_wave_type[channel - 5] == 6) //pulse wave
         {
-          if((unsigned int)state.dac_duty[channel - 5] != val >> 8)
+          if((unsigned int)state.dac_duty[channel - 5] != val >> 4)
           {
             state.dac_duty[channel - 5] = val >> 4;
             w->writeC(chan_base_addr[channel] + CMD_DAC_DUTY);
@@ -381,10 +381,11 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
 
         for(int i = 0; i < 256; i++)
         {
-          DivRegWrite write = writes[*curr_write];
+          DivRegWrite write = writes[(*curr_write)];
           w->writeC(write.val & 0xff); //ignore address
           (*curr_write)++;
         }
+        (*curr_write)--;
         break;
       }
       case 11:

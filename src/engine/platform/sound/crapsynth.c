@@ -90,7 +90,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 2:
             {
-                crapsynth->ad9833[chan].freq = data / 2;
+                crapsynth->ad9833[chan].freq = data / 10;
                 break;
             }
             case 3: //reset
@@ -100,7 +100,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 4: //PWM timer freq
             {
-                crapsynth->ad9833[chan].timer_freq = data / 2;
+                crapsynth->ad9833[chan].timer_freq = data / 10;
                 break;
             }
             case 5: //PWM timer duty
@@ -152,7 +152,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
                 if(data & 1)
                 {
                     crapsynth->noise.timer_freq_memory = crapsynth->noise.timer_freq;
-                    crapsynth->noise.timer_freq = 12500000 / 4; // around 100 kHz with internal clock?
+                    crapsynth->noise.timer_freq = 2500000 / 4; // around 100 kHz with internal clock?
 
                     crapsynth->timer[4].enable = true;
                 }
@@ -165,7 +165,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 4:
             {
-                crapsynth->noise.timer_freq = data / 2;
+                crapsynth->noise.timer_freq = data / 10;
                 break;
             }
             case 3: //reset
@@ -244,7 +244,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 4:
             {
-                crapsynth->dac[chan].timer_freq = data / 2;
+                crapsynth->dac[chan].timer_freq = data / 10;
                 break;
             }
             case 6: //zero cross
