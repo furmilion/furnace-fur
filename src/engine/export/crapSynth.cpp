@@ -146,7 +146,7 @@ uint32_t calc_next_buffer_boundary(SafeWriter* w, uint32_t regdump_offset)
 
   while(pos < (uint32_t)w->tell() - regdump_offset)
   {
-    pos += BUFFER_LEN;
+    pos += BUFFER_LEN / 2;
   }
 
   return pos;
@@ -650,7 +650,7 @@ void DivExportCrapSynth::run() {
           DivRegWrite write = writes[curr_write];
           //crapwriter->writeI(write.addr); //TODO replace with actual commands
           //crapwriter->writeI(write.val);
-          write_command(crapwriter, write.addr, write.val, regdump_offset, state, &curr_write, writes);
+          write_command(crapwriter, write.addr, write.val, regdump_offset + 4, state, &curr_write, writes);
         }
 
         writes.clear();

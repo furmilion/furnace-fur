@@ -255,10 +255,6 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       {
         sample_offset += chan[i].sample_offset;
       }
-      else
-      {
-        chan[i].sample_offset = 0;
-      }
 
       if(sample_offset >= (chan[i].sampleInRam ? (sampleOffRam[chan[i].dacSample]) : sampleOff[chan[i].dacSample]) + s->length8)
       {
