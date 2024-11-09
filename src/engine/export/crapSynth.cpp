@@ -146,7 +146,7 @@ uint32_t calc_next_buffer_boundary(SafeWriter* w, uint32_t regdump_offset)
 
   while(pos < (uint32_t)w->tell() - regdump_offset)
   {
-    pos += BUFFER_LEN / 2;
+    pos += BUFFER_LEN;
   }
 
   return pos;
