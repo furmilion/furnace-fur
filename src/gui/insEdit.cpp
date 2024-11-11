@@ -4501,8 +4501,15 @@ void FurnaceGUI::insTabFM(DivInstrument* ins) {
           }
 
           ImGui::TableNextColumn();
+          pushWarningColor(ins->type==DIV_INS_OPL_DRUMS && i==0);
           CENTER_VSLIDER;
           P(CWVSliderScalar("##MULT",ImVec2(20.0f*dpiScale,sliderHeight),ImGuiDataType_U8,&op.mult,&_ZERO,&_FIFTEEN)); rightClickable
+          if (ins->type==DIV_INS_OPL_DRUMS && i==0) {
+            if (ImGui::IsItemHovered()) {
+              ImGui::SetTooltip("%s",_("Snare's multiplier is determined by HiHat's."));
+            }
+          }
+          popWarningColor();
 
           if (ins->type==DIV_INS_OPZ) {
             ImGui::TableNextColumn();
@@ -5147,9 +5154,16 @@ void FurnaceGUI::insTabFM(DivInstrument* ins) {
                   ImGui::EndTable();
                 }
 
+                pushWarningColor(ins->type==DIV_INS_OPL_DRUMS && i==0);          
                 ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
                 snprintf(tempID,1024,"%s: %%d",FM_NAME(FM_MULT));
                 P(CWSliderScalar("##MULT",ImGuiDataType_U8,&op.mult,&_ZERO,&_FIFTEEN,tempID)); rightClickable
+                if (ins->type==DIV_INS_OPL_DRUMS && i==0) {
+                  if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("%s",_("Snare's multiplier is determined by HiHat's."));
+                  }
+                }
+                popWarningColor();
 
                 ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
                 snprintf(tempID,1024,"%s: %%d",FM_NAME(FM_KSL));
@@ -5824,8 +5838,15 @@ void FurnaceGUI::insTabFM(DivInstrument* ins) {
             } else {
               ImGui::TableNextRow();
               ImGui::TableNextColumn();
+              pushWarningColor(ins->type==DIV_INS_OPL_DRUMS && i==0);          
               ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
               P(CWSliderScalar(FM_NAME(FM_MULT),ImGuiDataType_U8,&op.mult,&_ZERO,&_FIFTEEN)); rightClickable
+              if (ins->type==DIV_INS_OPL_DRUMS && i==0) {
+                if (ImGui::IsItemHovered()) {
+                  ImGui::SetTooltip("%s",_("Snare's multiplier is determined by HiHat's."));
+                }
+              }
+              popWarningColor();
               ImGui::TableNextColumn();
               ImGui::Text("%s",FM_NAME(FM_MULT));
             }
