@@ -91,8 +91,7 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
     QueuedWrite(unsigned int a, unsigned int v): addr(a), val(v) {}
   };
   FixedQueue<QueuedWrite,16384> writes;
-
-  STM32CrapSynth* crap_synth;
+  
   unsigned int regPool[8*11+8*3];
   unsigned int writeOscBuf;
   DivMemoryComposition sampleMemFlashCompo;
@@ -106,6 +105,7 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
   friend void putDispatchChip(void*,int);
   friend void putDispatchChan(void*,int,int);
   public:
+    STM32CrapSynth* crap_synth;
     void acquire(short** buf, size_t len);
     int dispatch(DivCommand c);
     void* getChanState(int chan);

@@ -152,7 +152,7 @@ uint32_t calc_next_buffer_boundary(SafeWriter* w, uint32_t regdump_offset)
   return pos;
 }
 
-void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t regdump_offset, CrapSynthState& state, int* curr_write, std::vector<DivRegWrite>& writes)
+void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t regdump_offset, CrapSynthState& state, int* curr_write, std::vector<DivRegWrite>& writes, DivPlatformSTM32CRAPSYNTH* crapsynth)
 {
   int channel = addr >> 8;
   int cmd_type = addr & 0xff;
@@ -164,7 +164,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       case 0: //volume
       {
         w->writeC(chan_base_addr[channel] + CMD_AD9833_VOL);
-        w->writeC(val & 0xff);
+        w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
         break;
       }
       case 1: //waveform
@@ -218,7 +218,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       case 0: //volume
       {
         w->writeC(chan_base_addr[channel] + CMD_NOISE_VOL);
-        w->writeC(val & 0xff);
+        w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
         break;
       }
       case 1: //clock source
@@ -257,7 +257,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       case 0: //volume
       {
         w->writeC(chan_base_addr[channel] + CMD_DAC_VOLUME);
-        w->writeC(val & 0xff);
+        w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
         break;
       }
       case 1: //start/stop playback of wavetable/sample
@@ -650,7 +650,7 @@ void DivExportCrapSynth::run() {
           DivRegWrite write = writes[curr_write];
           //crapwriter->writeI(write.addr); //TODO replace with actual commands
           //crapwriter->writeI(write.val);
-          write_command(crapwriter, write.addr, write.val, regdump_offset + 4, state, &curr_write, writes);
+          write_command(crapwriter, write.addr, write.val, regdump_offset + 4, state, &curr_write, writes, crapsynth);
         }
 
         writes.clear();
