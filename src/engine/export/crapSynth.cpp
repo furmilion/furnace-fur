@@ -39,6 +39,7 @@ unsigned char chan_base_addr[20];
 #define CMD_NOISE_ZERO_CROSS_DISABLE 4
 #define CMD_NOISE_FREQ 5
 #define CMD_NOISE_RESET 6
+#define CMD_NOISE_LOAD_LFSR 7
 
 #define CMD_DAC_VOLUME 0
 #define CMD_DAC_PLAY_SAMPLE 1
@@ -236,7 +237,13 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 3: //phase reset
       {
-        w->writeC(chan_base_addr[channel] + CMD_NOISE_RESET);
+        w->writeC(chan_base_addr[channel] + (val == 0 ? CMD_NOISE_RESET : CMD_NOISE_LOAD_LFSR));
+
+        if(val != 0)
+        {
+          w->writeC(val >> 16);
+          w->writeS(val & 0xffff);
+        }
         break;
       }
       case 6: //zero cross
