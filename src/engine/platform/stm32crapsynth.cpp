@@ -374,7 +374,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       }
       if(chan[i].freqChanged && i >= 8) //phase reset timers
       {
-        chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_FREQBASE*2);
+        chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_FREQBASE*4);
         chan[i].timer_freq=chan[i].freq;
 
         if(i == 8 + 1) //systick timer can't go below 4.29 Hz (72 MHz / 2^24)

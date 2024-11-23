@@ -350,7 +350,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 1:
             {
-                crapsynth->timer[chan].timer_freq = data;
+                crapsynth->timer[chan].timer_freq = data / 10;
                 break;
             }
             case 2: //reset
