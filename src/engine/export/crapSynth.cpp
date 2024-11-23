@@ -168,7 +168,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
         //w->writeC(chan_base_addr[channel] + CMD_AD9833_VOL);
         //w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
 
-        if(state.volume[channel] != (val & 0xff))
+        if(state.volume[channel] != (int)(val & 0xff))
         {
           w->writeC(chan_base_addr[channel] + CMD_AD9833_VOL);
           w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
@@ -211,7 +211,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
         //w->writeC(chan_base_addr[channel] + CMD_AD9833_PWM_DUTY);
         //w->writeS((val & 0xffff) * state.pwm_autoreload[channel] / 0xffff);
 
-        if(state.duty[channel] != (val & 0xffff))
+        if(state.duty[channel] != (int)(val & 0xffff))
         {
           state.duty[channel] = (val & 0xffff);
           w->writeC(chan_base_addr[channel] + CMD_AD9833_PWM_DUTY);
@@ -234,7 +234,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
     {
       case 0: //volume
       {
-        if(state.volume[4] != (val & 0xff))
+        if(state.volume[4] != (int)(val & 0xff))
         {
           w->writeC(chan_base_addr[channel] + CMD_NOISE_VOL);
           w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
