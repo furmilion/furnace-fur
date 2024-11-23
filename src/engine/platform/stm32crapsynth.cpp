@@ -159,21 +159,6 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       }
     }
 
-    if (chan[i].std.duty.had) {
-      if(i < 4 || i == 5 || i == 6)
-      {
-        chan[i].duty = chan[i].std.duty.val;
-        if(chan[i].wave == 5 && i < 4)
-        {
-          ad9833_write(i, 5, chan[i].std.duty.val);
-        }
-        if((i == 5 || i == 6) && chan[i].wave == 6)
-        {
-          ad9833_write(i, 9, ((uint32_t)chan[i].wave | (((uint32_t)chan[i].duty >> 8) << 4)));
-        }
-      }
-    }
-
     if (chan[i].std.phaseReset.had) {
       if(i < 5 && chan[i].std.phaseReset.val)
       {
@@ -307,7 +292,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
             ad9833_write(i, 4, chan[i].timer_freq);
         }
       }
-      if(chan[i].freqChanged && i == 4 && chan[4].extNoiseClk)
+      if(chan[i].freqChanged && i == 4) //&& chan[4].extNoiseClk)
       {
         chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_TIMERS_FREQBASE * 32);
         chan[i].timer_freq=chan[i].freq;
@@ -469,6 +454,21 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       if (chan[i].keyOn) chan[i].keyOn=false;
       if (chan[i].keyOff) chan[i].keyOff=false;
       chan[i].freqChanged=false;
+    }
+
+    if (chan[i].std.duty.had) { //duty after freq for export proper duty to compare count register conversion
+      if(i < 4 || i == 5 || i == 6)
+      {
+        chan[i].duty = chan[i].std.duty.val;
+        if(chan[i].wave == 5 && i < 4)
+        {
+          ad9833_write(i, 5, chan[i].std.duty.val);
+        }
+        if((i == 5 || i == 6) && chan[i].wave == 6)
+        {
+          ad9833_write(i, 9, ((uint32_t)chan[i].wave | (((uint32_t)chan[i].duty >> 8) << 4)));
+        }
+      }
     }
   }
 }

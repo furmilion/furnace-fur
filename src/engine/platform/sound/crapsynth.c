@@ -22,7 +22,7 @@ void crapsynth_recalc_luts(STM32CrapSynth* crapsynth)
         else
         {
             float gain_dB = 31.5 - (0.5 * (255.0 - (float)i));
-            crapsynth->volume_table[i] = pow(10.0, gain_dB / 10.0);
+            crapsynth->volume_table[i] = pow(10.0, gain_dB / 20.0);
         }
     }
 }
@@ -96,6 +96,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             case 3: //reset
             {
                 crapsynth->ad9833[chan].acc = 0;
+                crapsynth->ad9833[chan].timer_acc = 0;
                 break;
             }
             case 4: //PWM timer freq
@@ -165,7 +166,15 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 4:
             {
-                crapsynth->noise.timer_freq = data / 10;
+                if(!crapsynth->noise.internal_clock)
+                {
+                    crapsynth->noise.timer_freq = data / 10;
+                }
+                if(crapsynth->noise.internal_clock)
+                {
+                    crapsynth->noise.timer_freq_memory = data / 10;
+                }
+                
                 break;
             }
             case 3: //reset

@@ -81,13 +81,14 @@ unsigned char chan_base_addr[20];
 
 typedef struct 
 {
-  uint32_t ad9833_freq[4];
-  uint16_t duty[4];
-  uint16_t pwm_autoreload[4];
-  uint8_t pwm_prescaler[4];
+  int ad9833_freq[4];
+  int duty[4];
+  int pwm_autoreload[4];
+  int pwm_prescaler[4];
   bool pwm[4];
-  int dac_wave_type[2];
-  int dac_duty[2];
+  int volume[5];
+  int dac_wave_type[3];
+  int dac_duty[3];
 } CrapSynthState;
 
 uint32_t calc_autoreload_eng_tick(float hz)
@@ -164,8 +165,16 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
     {
       case 0: //volume
       {
-        w->writeC(chan_base_addr[channel] + CMD_AD9833_VOL);
-        w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
+        //w->writeC(chan_base_addr[channel] + CMD_AD9833_VOL);
+        //w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
+
+        if(state.volume[channel] != (val & 0xff))
+        {
+          w->writeC(chan_base_addr[channel] + CMD_AD9833_VOL);
+          w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
+
+          state.volume[channel] = (val & 0xff);
+        }
         break;
       }
       case 1: //waveform
@@ -178,8 +187,8 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       case 2: //AD9833 freq
       {
         w->writeC(chan_base_addr[channel] + CMD_AD9833_FREQ);
-        w->writeI(val);
-        state.ad9833_freq[channel] = val;
+        w->writeI(val / 20);
+        state.ad9833_freq[channel] = val / 20;
         break;
       }
       case 3: //phase reset
@@ -199,8 +208,15 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 5: //duty
       {
-        w->writeC(chan_base_addr[channel] + CMD_AD9833_PWM_DUTY);
-        w->writeS((val & 0xffff) * state.pwm_autoreload[channel] / 0xffff);
+        //w->writeC(chan_base_addr[channel] + CMD_AD9833_PWM_DUTY);
+        //w->writeS((val & 0xffff) * state.pwm_autoreload[channel] / 0xffff);
+
+        if(state.duty[channel] != (val & 0xffff))
+        {
+          state.duty[channel] = (val & 0xffff);
+          w->writeC(chan_base_addr[channel] + CMD_AD9833_PWM_DUTY);
+          w->writeS(val & 0xffff);
+        }
         break;
       }
       case 6: //zero cross
@@ -218,8 +234,13 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
     {
       case 0: //volume
       {
-        w->writeC(chan_base_addr[channel] + CMD_NOISE_VOL);
-        w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
+        if(state.volume[4] != (val & 0xff))
+        {
+          w->writeC(chan_base_addr[channel] + CMD_NOISE_VOL);
+          w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
+
+          state.volume[4] = (val & 0xff);
+        }
         break;
       }
       case 1: //clock source
@@ -471,6 +492,14 @@ void DivExportCrapSynth::run() {
 
   state.dac_duty[0] = state.dac_duty[1] = -1;
   state.dac_wave_type[0] = state.dac_wave_type[1] = -1;
+
+  for(int i = 0; i < 4; i++)
+  {
+    state.duty[i] = -1;
+    state.volume[i] = -1;
+  }
+
+  state.volume[4] = -1;
 
   double origRate = e->got.rate;
   e->stop();
