@@ -192,7 +192,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
         }
     }
 
-    if(channel > 4 && channel < 7) //DAC chans
+    if(channel > 4 && channel < 8) //DAC chans
     {
         int chan = channel - 5;
 
@@ -335,11 +335,11 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
         }
     }
 
-    if(channel >= 7 && channel < STM32CRAPSYNTH_NUM_CHANNELS) //phase reset timer chans
+    if(channel >= 8 && channel < STM32CRAPSYNTH_NUM_CHANNELS) //phase reset timer chans
     {
-        int chan = channel - 7;
+        int chan = channel - 8;
 
-        if(channel == 11 && !crapsynth->noise.internal_clock) return;
+        //if(channel == 11 && !crapsynth->noise.internal_clock) return;
 
         switch(data_type)
         {
@@ -607,6 +607,78 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
         }
     }
 
+    DACChan* ch = &crapsynth->dac[2]; //3rd chan, PWM DAC, vol control via ARR reg change
+
+    if(ch->timer_freq > 0)
+    {
+        ch->timer_acc += ch->timer_freq;
+
+        if((ch->timer_acc & (1 << (STM32CRAPSYNTH_ACC_BITS + 2))) && ch->playing) //overflow
+        {
+            if(ch->wave_type == 0)
+            {
+                ch->output = 0;
+            }
+
+            switch(ch->wave_type)
+            {
+                case 0:
+                {
+                    break; //none
+                }
+                case 1:
+                {
+                    if(ch->play_wavetable)
+                    {
+                        ch->curr_pos &= 0xff;
+                        ch->output = (uint16_t)ch->wavetable[ch->curr_pos] << 4;
+                    }
+                    else
+                    {
+                        if(ch->curr_pos >= ch->length && ch->loop)
+                        {
+                            ch->curr_pos = ch->loop_point;
+                        }
+
+                        if(ch->curr_pos >= ch->length && !ch->loop)
+                        {
+                            ch->curr_pos = ch->start_addr;
+                            ch->timer_acc = 0;
+                            ch->timer_freq = 0;
+                            ch->playing = false;
+                            //ch->output = crapsynth->sample_mem_flash[ch->length + ch->start_addr - 1] << 4;
+                            break;
+                        }
+
+                        ch->output = ch->ram ? ((uint16_t)crapsynth->sample_mem_ram[ch->curr_pos] << 4) : ((uint16_t)crapsynth->sample_mem_flash[ch->curr_pos] << 4);
+                    }
+                    break;
+                }
+                case 6:
+                case 7:
+                {
+                    ch->curr_pos &= 0xff;
+                    ch->output = (uint16_t)ch->wavetable[ch->curr_pos] << 4;
+                    break;
+                }
+                default: break;
+            }
+
+            if(ch->output < 0) ch->output = 0;
+            if(ch->output > 4095) ch->output = 4095;
+
+            ch->curr_pos++;
+        }
+
+        ch->timer_acc &= (1 << (STM32CRAPSYNTH_ACC_BITS + 2)) - 1;
+    }
+
+    if(!crapsynth->muted[7])
+    {
+        crapsynth->chan_outputs[7] = (crapsynth->dac[2].output - (2047)) * 2 * ((int)crapsynth->volume[7] * 3 + 256) / 1024;
+        crapsynth->final_output += crapsynth->dac[2].output * ((int)crapsynth->volume[7] * 3 + 256) / 1024;
+    }
+
     for(int i = 0; i < 5; i++)
     {
         PhaseResetTimer* ch = &crapsynth->timer[i];
@@ -617,7 +689,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
 
             if((ch->timer_acc & (1 << (STM32CRAPSYNTH_ACC_BITS + 2)))) //overflow
             {
-                for(int j = 0; j < 7; j++)
+                for(int j = 0; j < 8; j++)
                 {
                     if(ch->chan_bitmask & (1 << j))
                     {
@@ -639,7 +711,8 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
                                 break;
                             }
                             case 5:
-                            case 6: //DACs
+                            case 6:
+                            case 7: //DACs
                             {
                                 DACChan* ch = &crapsynth->dac[j - 5];
 

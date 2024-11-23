@@ -92,7 +92,7 @@ class DivPlatformSTM32CRAPSYNTH: public DivDispatch {
   };
   FixedQueue<QueuedWrite,16384> writes;
   
-  unsigned int regPool[8*11+8*3];
+  unsigned int regPool[8*11+8*5];
   unsigned int writeOscBuf;
   DivMemoryComposition sampleMemFlashCompo;
   DivMemoryComposition sampleMemRamCompo;

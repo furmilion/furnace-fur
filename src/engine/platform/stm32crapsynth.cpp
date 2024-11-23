@@ -46,33 +46,34 @@ void DivPlatformSTM32CRAPSYNTH::acquire(short** buf, size_t len) {
   {
     for(int i = 0; i < 50; i++)
     {
-        crapsynth_clock(crap_synth);
+      crapsynth_clock(crap_synth);
     }
     
     for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) 
     {
-        oscBuf[i]->data[oscBuf[i]->needle++]=CLAMP(crap_synth->chan_outputs[i],-32768,32767);
+      oscBuf[i]->data[oscBuf[i]->needle++]=CLAMP(crap_synth->chan_outputs[i],-32768,32767);
     }
 
-    while (!writes.empty()) {
-        QueuedWrite w=writes.front();
-        int ch = w.addr >> 8;
-        int type = w.addr & 0xff;
-        crapsynth_write(crap_synth, ch, type, w.val);
-        if(ch < 5)
-        {
-          regPool[ch * 8 + type]=w.val;
-        }
-        if(ch == 5 || ch == 6) //DAC
-        {
-          regPool[5 * 8 + (ch - 5) * 16 + type]=w.val;
-        }
-        if(ch > 6)
-        {
-          regPool[5 * 8 + 2 * 16 + (ch - 7) * 8 + type]=w.val;
-        }
-        
-        writes.pop();
+    while (!writes.empty()) 
+    {
+      QueuedWrite w=writes.front();
+      int ch = w.addr >> 8;
+      int type = w.addr & 0xff;
+      crapsynth_write(crap_synth, ch, type, w.val);
+      if(ch < 5)
+      {
+        regPool[ch * 8 + type]=w.val;
+      }
+      if(ch == 5 || ch == 6 || ch == 7) //DAC
+      {
+        regPool[5 * 8 + (ch - 5) * 16 + type]=w.val;
+      }
+      if(ch > 7)
+      {
+        regPool[5 * 8 + 3 * 16 + (ch - 8) * 8 + type]=w.val;
+      }
+      
+      writes.pop();
     }
 
     float dVbp = (w0_ceil_1 * Vhp);
@@ -86,7 +87,7 @@ void DivPlatformSTM32CRAPSYNTH::acquire(short** buf, size_t len) {
 }
 
 void DivPlatformSTM32CRAPSYNTH::updateWave(int ch) {
-  if(ch > 4 && ch < 7)
+  if(ch > 4 && ch < 8)
   {
     if(chan[ch].wave != 1 && chan[ch].wave != 3 && chan[ch].wave != 5) return;
     bool need_update = false;
@@ -111,9 +112,17 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     chan[i].std.next();
 
     if (chan[i].std.vol.had) {
-      if(i < 7)
+      if(i < 8)
       {
-        chan[i].outVol=VOL_SCALE_LOG(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
+        if(i != 7)
+        {
+          chan[i].outVol=VOL_SCALE_LOG(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
+        }
+        else
+        {
+          chan[i].outVol=VOL_SCALE_LINEAR(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
+        }
+        
         ad9833_write(i, 0, chan[i].outVol);
       }
     }
@@ -149,7 +158,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
 
         chan[i].wave = chan[i].std.wave.val;
       }
-      if(i == 5 || i == 6)
+      if(i == 5 || i == 6 || i == 7)
       {
         ad9833_write(i, 9, chan[i].std.wave.val);
 
@@ -164,14 +173,14 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       {
         ad9833_write(i, 3, chan[i].lfsr); //LFSR value is ignored for all chans except noise
       }
-      if(i > 7) //phase reset for phase reset timers lmao
+      if(i > 8) //phase reset for phase reset timers lmao
       {
         ad9833_write(i, 2, 0);
       }
     }
 
     if (chan[i].std.ex1.had) { //zero cross detection
-      if(i < 5)
+      if(i < 7)
       {
         ad9833_write(i, 6, chan[i].std.ex1.val);
       }
@@ -185,7 +194,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     }
 
     if (chan[i].std.ex3.had) { //wavetable index
-      if(i > 4 && i < 7 && chan[i].do_wavetable && chan[i].wave == 1)
+      if(i > 4 && i < 8 && chan[i].do_wavetable && chan[i].wave == 1)
       {
         chan[i].wavetable = chan[i].std.ex3.val;
         chan[i].ws.changeWave1(chan[i].wavetable);
@@ -194,7 +203,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     }
 
     if (chan[i].std.ex4.had) { //noise/triangle amplitude
-      if(i > 4 && i < 7 && (chan[i].wave > 1 && chan[i].wave < 6))
+      if(i > 4 && i < 7 && (chan[i].wave > 1 && chan[i].wave < 6)) //PWM DAC doesn't have noise/tri gen
       {
         chan[i].noise_tri_amp = chan[i].std.ex4.val;
         ad9833_write(i, 11, chan[i].std.ex4.val);
@@ -203,7 +212,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     }
 
     if (chan[i].std.ex5.had) { //phase reset timers channel bitmask
-      if((i >= 7 && i < 11) || (i == 11 && !chan[4].extNoiseClk))
+      if((i >= 8 && i < 12))
       {
         ad9833_write(i, 0, chan[i].std.ex5.val);
       }
@@ -217,7 +226,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       }
     }
     
-    if (chan[i].active && i > 4 && i < 7 && chan[i].do_wavetable && chan[i].wave == 1) {
+    if (chan[i].active && i > 4 && i < 8 && chan[i].do_wavetable && chan[i].wave == 1) {
       if (chan[i].ws.tick()) {
         //updateWave(i);
         chan[i].updateWave = true;
@@ -308,7 +317,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         
         ad9833_write(i, 4, chan[i].timer_freq);
       }
-      if(chan[i].freqChanged && (i == 5 || i == 6))
+      if(chan[i].freqChanged && (i == 5 || i == 6 || i == 7))
       {
         chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_TIMERS_FREQBASE * 32);
         chan[i].timer_freq=chan[i].freq;
@@ -363,12 +372,12 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         
         ad9833_write(i, 4, chan[i].timer_freq);
       }
-      if(chan[i].freqChanged && i >= 7) //phase reset timers
+      if(chan[i].freqChanged && i >= 8) //phase reset timers
       {
         chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock/2,CHIP_FREQBASE*2);
         chan[i].timer_freq=chan[i].freq;
 
-        if(i == 7 + 2) //systick timer can't go below 4.29 Hz (72 MHz / 2^24)
+        if(i == 8 + 1) //systick timer can't go below 4.29 Hz (72 MHz / 2^24)
         {
           if(chan[i].freq < (double)(1 << 29) * 4.29 / (double)(chipClock/2))
           {
@@ -376,68 +385,13 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
             chan[i].timer_freq = chan[i].freq;
           }
         }
-        if(i == 7 + 3) //RTC is 16-bit (but virtually 17-bit) counter clocked by 8 MHz / 32 = 250 kHz
-        {              //first we limit the lowest freq which is 250 kHz / 2^17 = 1.9 Hz
-          if(chan[i].freq < (double)(1 << 29) * 1.95 / (double)(chipClock/2))
-          {
-            chan[i].freq = (double)(1 << 29) * 1.95 / (double)(chipClock/2);
-            chan[i].timer_freq = chan[i].freq;
-          }
-
-          //now we limit the frequency resolution...
-          double freq_in_hz = (double)(chipClock / 2) * (double)chan[i].freq / (double)(1 << 29);
-
-          //binary search (sort of ig?)
-
-          //double div_point = 250000.0 / (double)(1 << 15); //center freq at 2^16 divider
-
-          unsigned int divider = 0;
-
-          /*for(int j = 0; j < 17; j++)
-          {
-            if(div_point > freq_in_hz)
-            {
-              div_point -= (250000.0 / 4.0) / (double)(1 << (16 - j));
-            }
-            else
-            {
-              divider |= 1;
-              div_point += (250000.0 / 4.0) / (double)(1 << (16 - j));
-            }
-            divider <<= 1;
-          }*/
-
-          //this is horrible but binary search didn't work...
-
-          for(int j = 0; j < (1 << 16) - 1; j++)
-          {
-            if(250000.0 / (double)j >= freq_in_hz && 250000.0 / (double)(j + 1) <= freq_in_hz)
-            {
-              divider = j;
-              break;
-            }
-          }
-
-          double rounded_freq = 250000.0 / (double)(divider);
-
-          chan[i].freq = (double)(1 << 29) * rounded_freq / (double)(chipClock/2);
-          chan[i].timer_freq = chan[i].freq;
-
-          if(chan[i].freq < (double)(1 << 29) * 1.95 / (double)(chipClock/2))
-          {
-            chan[i].freq = (double)(1 << 29) * 1.95 / (double)(chipClock/2);
-            chan[i].timer_freq = chan[i].freq;
-          }
-
-          //logW("%d", chan[i].freq);
-        }
 
         if(chan[i].freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
         if(chan[i].timer_freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
 
         ad9833_write(i, 1, chan[i].timer_freq);
       }
-      if(chan[i].keyOff && i < 7)
+      if(chan[i].keyOff && i < 8)
       {
         ad9833_write(i, 0, 0);
 
@@ -446,7 +400,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
           ad9833_write(i, 1, 0); //stop wave/sample playback
         }
       }
-      if(chan[i].keyOff && i >= 7)
+      if(chan[i].keyOff && i >= 8)
       {
         ad9833_write(i, 3, 0);
       }
@@ -457,14 +411,14 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     }
 
     if (chan[i].std.duty.had) { //duty after freq for export proper duty to compare count register conversion
-      if(i < 4 || i == 5 || i == 6)
+      if(i < 4 || i == 5 || i == 6 || i == 7)
       {
         chan[i].duty = chan[i].std.duty.val;
         if(chan[i].wave == 5 && i < 4)
         {
           ad9833_write(i, 5, chan[i].std.duty.val);
         }
-        if((i == 5 || i == 6) && chan[i].wave == 6)
+        if((i == 5 || i == 6 || i == 7) && chan[i].wave == 6)
         {
           ad9833_write(i, 9, ((uint32_t)chan[i].wave | (((uint32_t)chan[i].duty >> 8) << 4)));
         }
@@ -495,7 +449,7 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
       
       chan[c.chan].insChanged=false;
 
-      if (!ins->amiga.useSample && c.chan > 4 && c.chan < 7) {
+      if (!ins->amiga.useSample && c.chan > 4 && c.chan < 8) {
         chan[c.chan].pcm = false;
         chan[c.chan].do_wavetable = true;
         chan[c.chan].ws.init(ins,256,256,chan[c.chan].insChanged);
@@ -503,7 +457,7 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
         chan[c.chan].freqChanged = true;
         ad9833_write(c.chan, 1, 1 | (chan[c.chan].do_wavetable ? 2 : 0)); //play wave
       }
-      if (ins->amiga.useSample && c.chan > 4 && c.chan < 7) {
+      if (ins->amiga.useSample && c.chan > 4 && c.chan < 8) {
         chan[c.chan].pcm = true;
         chan[c.chan].do_wavetable = false;
         if (c.value!=DIV_NOTE_NULL) {
@@ -548,7 +502,7 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
         chan[c.chan].dacPeriod=0;
       }
 
-      if(c.chan >= 7) //phase reset timers
+      if(c.chan >= 8) //phase reset timers
       {
         ad9833_write(c.chan, 3, 1);
       }
@@ -569,7 +523,7 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
     case DIV_CMD_NOTE_OFF_ENV:
     case DIV_CMD_ENV_RELEASE:
       chan[c.chan].std.release();
-      if(c.chan >= 7)
+      if(c.chan >= 8)
       {
         chan[c.chan].keyOff=true;
       }
@@ -611,7 +565,7 @@ int DivPlatformSTM32CRAPSYNTH::dispatch(DivCommand c) {
         chan[c.chan].ws.changeWave1(chan[c.chan].wavetable);
       }*/
       
-      if(c.chan < 4 || (c.chan > 4 && c.chan < 7))
+      if(c.chan < 4 || (c.chan > 4 && c.chan < 8))
       {
         ad9833_write(c.chan, 1, c.value);
       }
@@ -716,7 +670,7 @@ DivChannelModeHints DivPlatformSTM32CRAPSYNTH::getModeHints(int ch) {
 }
 
 DivSamplePos DivPlatformSTM32CRAPSYNTH::getSamplePos(int ch) {
-  if (ch < 5 || ch > 7) return DivSamplePos();
+  if (ch < 5 || ch > 8) return DivSamplePos();
   if (!chan[ch].pcm) return DivSamplePos();
 
   int channel = ch - 5;
@@ -754,7 +708,7 @@ unsigned char* DivPlatformSTM32CRAPSYNTH::getRegisterPool() {
 }
 
 int DivPlatformSTM32CRAPSYNTH::getRegisterPoolSize() {
-  return 8*11+8*3;
+  return 8*11+8*5;
 }
 
 int DivPlatformSTM32CRAPSYNTH::getRegisterPoolDepth()
@@ -764,7 +718,7 @@ int DivPlatformSTM32CRAPSYNTH::getRegisterPoolDepth()
 
 void DivPlatformSTM32CRAPSYNTH::reset() {
   writes.clear();
-  memset(regPool,0,(8*11 + 8 * 3)*sizeof(unsigned int));
+  memset(regPool,0,(8*11 + 8 * 5)*sizeof(unsigned int));
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
     chan[i]=DivPlatformSTM32CRAPSYNTH::Channel();
     chan[i].std.setEngine(parent);
@@ -807,7 +761,7 @@ bool DivPlatformSTM32CRAPSYNTH::keyOffAffectsArp(int ch) {
 
 void DivPlatformSTM32CRAPSYNTH::notifyWaveChange(int wave) {
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
-    if (chan[i].wavetable==wave && i > 4 && i < 7 && chan[i].wave == 1) {
+    if (chan[i].wavetable==wave && i > 4 && i < 8 && chan[i].wave == 1) {
       chan[i].ws.changeWave1(wave);
       //updateWave(i);
       chan[i].updateWave = true;
@@ -816,7 +770,7 @@ void DivPlatformSTM32CRAPSYNTH::notifyWaveChange(int wave) {
 }
 
 void DivPlatformSTM32CRAPSYNTH::notifyInsDeletion(void* ins) {
-  for (int i=0; i<6; i++) {
+  for (int i=0; i<8; i++) {
     chan[i].std.notifyInsDeletion((DivInstrument*)ins);
   }
 }

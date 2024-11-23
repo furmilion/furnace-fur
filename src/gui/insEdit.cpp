@@ -845,22 +845,25 @@ String macroSID3WaveMixMode(int id, float val, void* u) {
 String macroCrapSynth(int id, float val, void* u) {
   return fmt::sprintf(
     _("Channel 1-4: %s\n"
-      "DAC1&2: %s"),
+      "DAC1&2: %s\n"
+      "PWM DAC: %s"),
       ((int)val>5 ? _("[doesn't exist]") : crapSynthAD9833Waves[(int)val]),
-      ((int)val>7 ? _("[doesn't exist]") : crapSynthDACWaves[(int)val])
+      ((int)val>7 ? _("[doesn't exist]") : crapSynthDACWaves[(int)val]),
+      (((int)val>1 && (int)val<6) ? _("[doesn't exist]") : crapSynthDACWaves[(int)val])
   );
 }
 
 String macroCrapSynthPhaseTimer(int id, float val, void* u) {
   return fmt::sprintf(
-    "%d: %d (%X)%s%s%s%s%s%s%s",
+    "%d: %d (%X)%s%s%s%s%s%s%s%s",
       (int)id, (int)val, (int)val, ((((int)val) & 1) ? _("\nChannel 1") : ""),
         ((((int)val) & 2) ? _("\nChannel 2") : ""),
         ((((int)val) & 4) ? _("\nChannel 3") : ""),
         ((((int)val) & 8) ? _("\nChannel 4") : ""),
         ((((int)val) & 16) ? _("\nNoise") : ""),
         ((((int)val) & 32) ? _("\nDAC1") : ""),
-        ((((int)val) & 64) ? _("\nDAC2") : "")
+        ((((int)val) & 64) ? _("\nDAC2") : ""),
+        ((((int)val) & 128) ? _("\nPWM DAC") : "")
   );
 }
 
@@ -8682,7 +8685,7 @@ void FurnaceGUI::drawInsEdit() {
               }
               macroList.push_back(FurnaceGUIMacroDesc(_("Noise LFSR bits"),&ins->std.ex2Macro,0,23,16 * 23,uiColors[GUI_COLOR_MACRO_NOISE],false,NULL,NULL,true));
               macroList.push_back(FurnaceGUIMacroDesc(_("Noise/Tri DAC Amplitude"),&ins->std.ex4Macro,0,11,64,uiColors[GUI_COLOR_MACRO_OTHER]));
-              macroList.push_back(FurnaceGUIMacroDesc(_("Channel Reset Bitmask"),&ins->std.ex5Macro,0,7,16 * 7,uiColors[GUI_COLOR_MACRO_NOISE],false,NULL,macroCrapSynthPhaseTimer,true));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Channel Reset Bitmask"),&ins->std.ex5Macro,0,8,16 * 8,uiColors[GUI_COLOR_MACRO_NOISE],false,NULL,macroCrapSynthPhaseTimer,true));
               macroList.push_back(FurnaceGUIMacroDesc(_("Internal Noise Clock"),&ins->std.ex6Macro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true));
               break;
             case DIV_INS_MAX:

@@ -130,18 +130,6 @@ uint32_t calc_systick_autoreload(uint32_t freq) //systick just has 24 bits count
   return (autoreload - 1);
 }
 
-uint32_t calc_rtc_wakeup_autoreload(uint32_t freq) //wakeup timer has 16-bit counter with optional /2 freq divider (effective 17 bits)
-{
-  double freq_in_hz = (double)(EMUL_CLOCK / 4) * (double)freq / double(1 << 29);
-
-  //find autoreload
-  int autoreload = (int)((double)RTC_WAKEUP_CLOCK / (double)freq_in_hz);
-
-  if(autoreload > (1 << 16)) autoreload = (1 << 16);
-
-  return (autoreload - 1);
-}
-
 uint32_t calc_next_buffer_boundary(SafeWriter* w, uint32_t regdump_offset)
 {
   uint32_t pos = 0;
@@ -276,7 +264,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
     }
   }
 
-  if(channel == 5 || channel == 6) //DAC chans...
+  if(channel == 5 || channel == 6 || channel == 7) //DAC chans...
   {
     bool ram = val & 0x1000000;
 
@@ -426,19 +414,19 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
     }
   }
 
-  if(channel > 6) //phase reset timers
+  if(channel > 7) //phase reset timers
   {
     switch(cmd_type)
     {
       case 0: //bitmask
       {
         w->writeC(chan_base_addr[channel] + CMD_TIMER_CHANNEL_BITMASK);
-        w->writeC(val & 0x7f);
+        w->writeC(val);
         break;
       }
       case 1: //timer freq
       {
-        if(channel == 7 || channel == 8 || channel == 11) //usual timers
+        if(channel == 8 || channel == 10 || channel == 11 || channel == 12) //usual timers
         {
           w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ);
           uint32_t values = calc_prescaler_and_autoreload(val);
@@ -450,14 +438,6 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
         {
           w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ);
           uint32_t value = calc_systick_autoreload(val);
-          w->writeC(value >> 16);
-          w->writeS(value & 0xffff);
-        }
-
-        if(channel == 10) //RTC wakeup timer, clock is 8000000 / 32 = 250000 Hz
-        {
-          w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ);
-          uint32_t value = calc_rtc_wakeup_autoreload(val);
           w->writeC(value >> 16);
           w->writeS(value & 0xffff);
         }
@@ -490,8 +470,8 @@ void DivExportCrapSynth::run() {
 
   memset((void*)&state, 0, sizeof(CrapSynthState));
 
-  state.dac_duty[0] = state.dac_duty[1] = -1;
-  state.dac_wave_type[0] = state.dac_wave_type[1] = -1;
+  state.dac_duty[0] = state.dac_duty[1] = state.dac_duty[2] = -1;
+  state.dac_wave_type[0] = state.dac_wave_type[1] = state.dac_wave_type[2] = -1;
 
   for(int i = 0; i < 4; i++)
   {
@@ -521,13 +501,13 @@ void DivExportCrapSynth::run() {
   {
     chan_base_addr[i] = 8 * i;
   }
-  for(int i = 5; i < 7; i++) //DAC chans
+  for(int i = 5; i < 8; i++) //DAC chans
   {
     chan_base_addr[i] = 8 * 5 + 32 * (i - 5);
   }
-  for(int i = 7; i < 12; i++) //phase reset timer chans
+  for(int i = 8; i < 13; i++) //phase reset timer chans
   {
-    chan_base_addr[i] = 8 * 5 + 32 * 2 + 8 * (i - 7);
+    chan_base_addr[i] = 8 * 5 + 32 * 3 + 8 * (i - 8);
   }
 
   //file header
