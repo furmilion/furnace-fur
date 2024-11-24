@@ -110,22 +110,6 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) 
   {
     chan[i].std.next();
-
-    if (chan[i].std.vol.had) {
-      if(i < 8)
-      {
-        if(i != 7)
-        {
-          chan[i].outVol=VOL_SCALE_LOG(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
-        }
-        else
-        {
-          chan[i].outVol=VOL_SCALE_LINEAR(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
-        }
-        
-        ad9833_write(i, 0, chan[i].outVol);
-      }
-    }
     
     if (NEW_ARP_STRAT) {
       chan[i].handleArp();
@@ -408,6 +392,22 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       if (chan[i].keyOn) chan[i].keyOn=false;
       if (chan[i].keyOff) chan[i].keyOff=false;
       chan[i].freqChanged=false;
+    }
+
+    if (chan[i].std.vol.had) { //for ch3 PWM vol correction.... (faulty mux out line?)
+      if(i < 8)
+      {
+        if(i != 7)
+        {
+          chan[i].outVol=VOL_SCALE_LOG(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
+        }
+        else
+        {
+          chan[i].outVol=VOL_SCALE_LINEAR(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
+        }
+        
+        ad9833_write(i, 0, chan[i].outVol);
+      }
     }
 
     if (chan[i].std.duty.had) { //duty after freq for export proper duty to compare count register conversion
