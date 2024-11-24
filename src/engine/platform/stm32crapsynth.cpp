@@ -196,7 +196,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     }
 
     if (chan[i].std.ex5.had) { //phase reset timers channel bitmask
-      if((i >= 8 && i < 12))
+      if((i >= 8 && i < 14))
       {
         ad9833_write(i, 0, chan[i].std.ex5.val);
       }
@@ -708,7 +708,7 @@ unsigned char* DivPlatformSTM32CRAPSYNTH::getRegisterPool() {
 }
 
 int DivPlatformSTM32CRAPSYNTH::getRegisterPoolSize() {
-  return 8*11+8*5;
+  return 8*11+8*6;
 }
 
 int DivPlatformSTM32CRAPSYNTH::getRegisterPoolDepth()
@@ -718,7 +718,7 @@ int DivPlatformSTM32CRAPSYNTH::getRegisterPoolDepth()
 
 void DivPlatformSTM32CRAPSYNTH::reset() {
   writes.clear();
-  memset(regPool,0,(8*11 + 8 * 5)*sizeof(unsigned int));
+  memset(regPool,0,(8*11 + 8 * 6)*sizeof(unsigned int));
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
     chan[i]=DivPlatformSTM32CRAPSYNTH::Channel();
     chan[i].std.setEngine(parent);
@@ -770,7 +770,7 @@ void DivPlatformSTM32CRAPSYNTH::notifyWaveChange(int wave) {
 }
 
 void DivPlatformSTM32CRAPSYNTH::notifyInsDeletion(void* ins) {
-  for (int i=0; i<8; i++) {
+  for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
     chan[i].std.notifyInsDeletion((DivInstrument*)ins);
   }
 }

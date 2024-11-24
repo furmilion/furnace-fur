@@ -390,17 +390,17 @@ int32_t crapsynth_ad9833_get_wave(STM32CrapSynth* crapsynth, uint32_t acc, uint1
         }
         case 3: //square, full volume
         {
-            return ((acc > (1 << (STM32CRAPSYNTH_ACC_BITS - 1))) ? 1023 : 0);
+            return ((acc > (1 << (STM32CRAPSYNTH_ACC_BITS - 1))) ? 1023 * 6 : 0);
             break;
         }
-        case 4: //square, half volume
+        case 4: //square, double freq
         {
-            return ((acc > (1 << (STM32CRAPSYNTH_ACC_BITS - 1))) ? 511 : 0);
+            return (((acc << 1) > (1 << (STM32CRAPSYNTH_ACC_BITS - 1))) ? 1023 * 6 : 0);
             break;
         }
         case 5: //pulse wave from MCU
         {
-            return (((acc >> (((STM32CRAPSYNTH_ACC_BITS + 2) - 16))) >= ((pw == 0xffff ? pw + 1 : pw)) ? (1023) : 0));
+            return (((acc >> (((STM32CRAPSYNTH_ACC_BITS + 2) - 16))) >= ((pw == 0xffff ? pw + 1 : pw)) ? (1023 * 6) : 0));
             break;
         }
         default: return 0; break;
@@ -679,7 +679,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
         crapsynth->final_output += crapsynth->dac[2].output * ((int)crapsynth->volume[7] * 3 + 256) / 1024;
     }
 
-    for(int i = 0; i < 5; i++)
+    for(int i = 0; i < 6; i++)
     {
         PhaseResetTimer* ch = &crapsynth->timer[i];
 
@@ -691,7 +691,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
             {
                 for(int j = 0; j < 8; j++)
                 {
-                    if(ch->chan_bitmask & (1 << j))
+                    if(ch->chan_bitmask & (1 << j) && !crapsynth->muted[8 + i])
                     {
                         switch(j)
                         {

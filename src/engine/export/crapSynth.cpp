@@ -66,6 +66,8 @@ unsigned char chan_base_addr[20];
 #define CMD_TIMER_RESET 2
 #define CMD_TIMER_ENABLE 3
 #define CMD_TIMER_DISABLE 4
+#define CMD_TIMER_FREQ_SYSTICK 5
+#define CMD_TIMER_FREQ_UART 6
 
 #define CMD_NEXT_FRAME 0xfb
 #define CMD_SET_RATE 0xfc
@@ -128,6 +130,21 @@ uint32_t calc_systick_autoreload(uint32_t freq) //systick just has 24 bits count
   if(autoreload > (1 << 23)) autoreload = (1 << 23);
 
   return (autoreload - 1);
+}
+
+uint16_t calc_uart_freq(uint8_t channel, uint32_t freq)
+{
+  double uart_clock = (double)(STM32_CLOCK);
+
+  if(channel > 0) uart_clock /= 2.0;
+
+  double freq_in_hz = (double)(EMUL_CLOCK / 4) * (double)freq / double(1 << 29);
+
+  int uart_freq = uart_clock / 10.0 / freq_in_hz;
+
+  if(uart_freq > 65535) uart_freq = 65535;
+
+  return uart_freq;
 }
 
 uint32_t calc_next_buffer_boundary(SafeWriter* w, uint32_t regdump_offset)
@@ -426,7 +443,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 1: //timer freq
       {
-        if(channel == 8 || channel == 10 || channel == 11 || channel == 12) //usual timers
+        if(channel == 8) //usual timer
         {
           w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ);
           uint32_t values = calc_prescaler_and_autoreload(val);
@@ -436,10 +453,18 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
 
         if(channel == 9) //systick
         {
-          w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ);
+          w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ_SYSTICK);
           uint32_t value = calc_systick_autoreload(val);
-          w->writeC(value >> 16);
-          w->writeS(value & 0xffff);
+          w->writeC((value >> 16) & 0xff);
+          w->writeC((value >> 8) & 0xff);
+          w->writeC(value & 0xff);
+        }
+
+        if(channel == 10 || channel == 11 || channel == 12 || channel == 13) //UARTs
+        {
+          w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ_UART);
+          uint32_t values = calc_uart_freq(channel - 10, val);
+          w->writeS(values & 0xffff);
         }
 
         break;
@@ -505,7 +530,7 @@ void DivExportCrapSynth::run() {
   {
     chan_base_addr[i] = 8 * 5 + 32 * (i - 5);
   }
-  for(int i = 8; i < 13; i++) //phase reset timer chans
+  for(int i = 8; i < 14; i++) //phase reset timer chans
   {
     chan_base_addr[i] = 8 * 5 + 32 * 3 + 8 * (i - 8);
   }
