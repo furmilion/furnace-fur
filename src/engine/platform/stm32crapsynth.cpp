@@ -44,7 +44,7 @@ const char** DivPlatformSTM32CRAPSYNTH::getRegisterSheet() {
 void DivPlatformSTM32CRAPSYNTH::acquire(short** buf, size_t len) {
   for (size_t h=0; h<len; h++) 
   {
-    for(int i = 0; i < 50; i++)
+    for(int i = 0; i < 4; i++)
     {
       crapsynth_clock(crap_synth);
     }
@@ -54,7 +54,7 @@ void DivPlatformSTM32CRAPSYNTH::acquire(short** buf, size_t len) {
       oscBuf[i]->data[oscBuf[i]->needle++]=CLAMP(crap_synth->chan_outputs[i],-32768,32767);
     }
 
-    while (!writes.empty()) 
+    if (!writes.empty()) 
     {
       QueuedWrite w=writes.front();
       int ch = w.addr >> 8;
