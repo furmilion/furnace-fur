@@ -423,7 +423,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 11:
       {
-        w->writeC(CMD_DAC_NOISE_TRI_AMP);
+        w->writeC(chan_base_addr[channel] + CMD_DAC_NOISE_TRI_AMP);
         w->writeC(val % 12);
         break;
       }

@@ -13,8 +13,8 @@ extern "C" {
 #define STM32CRAPSYNTH_ACC_BITS 28
 
 #define STM32CRAPSYNTH_NUM_CHANNELS 14
-#define STM32CRAPSYNTH_FLASH_SAMPLE_MEM_SIZE (2048 * 206) /* Each Flash page is 2 KiB; the size may be changed when I am sure what final firmware size is... */
-#define STM32CRAPSYNTH_RAM_SAMPLE_MEM_SIZE (1024 * 50) /* 50 KiB */
+#define STM32CRAPSYNTH_FLASH_SAMPLE_MEM_SIZE (512 * 1024 - 16 * 1024) /*512 KiB in total with 16 KiB for firmware*/
+#define STM32CRAPSYNTH_RAM_SAMPLE_MEM_SIZE (1024 * 52) /* 52 KiB */
 #define STM32CRAPSYNTH_WAVETABLE_SIZE 256
 
 typedef struct
