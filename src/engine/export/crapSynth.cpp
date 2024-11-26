@@ -140,9 +140,9 @@ uint16_t calc_uart_freq(uint8_t channel, uint32_t freq)
 
   double freq_in_hz = (double)(EMUL_CLOCK / 4) * (double)freq / double(1 << 29);
 
-  int uart_freq = uart_clock / 10.0 / freq_in_hz;
+  int uart_freq = uart_clock / 12.0 / freq_in_hz;
 
-  if(uart_freq > 65535) uart_freq = 65535;
+  if(uart_freq > 0xfff7) uart_freq = 0xfff7;
 
   return uart_freq;
 }
