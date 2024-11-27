@@ -89,7 +89,7 @@ void DivPlatformSTM32CRAPSYNTH::acquire(short** buf, size_t len) {
 void DivPlatformSTM32CRAPSYNTH::updateWave(int ch) {
   if(ch > 4 && ch < 8)
   {
-    if(chan[ch].wave != 1 && chan[ch].wave != 3 && chan[ch].wave != 5) return;
+    if(chan[ch].wave == 6 || chan[ch].wave == 7) return;
     bool need_update = false;
     for (int i=0; i<STM32CRAPSYNTH_WAVETABLE_SIZE; i++) {
       if(chan[ch].ws.output[i] != (int)crap_synth->dac[ch-5].wavetable[i])
@@ -110,6 +110,22 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) 
   {
     chan[i].std.next();
+
+    if (chan[i].std.vol.had) { //for ch3 PWM vol correction.... (faulty mux out line?)
+      if(i < 8)
+      {
+        if(i != 7)
+        {
+          chan[i].outVol=VOL_SCALE_LOG(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
+        }
+        else
+        {
+          chan[i].outVol=VOL_SCALE_LINEAR(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
+        }
+        
+        ad9833_write(i, 0, chan[i].outVol);
+      }
+    }
     
     if (NEW_ARP_STRAT) {
       chan[i].handleArp();
@@ -137,7 +153,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
 
         if((chan[i].std.wave.val == 5 && chan[i].wave != 5) || (chan[i].std.wave.val != 5 && chan[i].wave == 5))
         {
-            chan[i].freqChanged = true;
+          chan[i].freqChanged = true;
         }
 
         chan[i].wave = chan[i].std.wave.val;
@@ -178,7 +194,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     }
 
     if (chan[i].std.ex3.had) { //wavetable index
-      if(i > 4 && i < 8 && chan[i].do_wavetable && chan[i].wave == 1)
+      if(i > 4 && i < 8 && chan[i].do_wavetable)
       {
         chan[i].wavetable = chan[i].std.ex3.val;
         chan[i].ws.changeWave1(chan[i].wavetable);
@@ -266,6 +282,8 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       chan[i].set_sample_pos = false;
     }
 
+    bool write_pwm_freq = false;
+
     if (chan[i].freqChanged || chan[i].keyOn || chan[i].keyOff) {
       //DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_STM32CRAPSYNTH);
       if(chan[i].freqChanged && i < 4)
@@ -282,7 +300,8 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         }
         else
         {
-            ad9833_write(i, 4, chan[i].timer_freq);
+            //ad9833_write(i, 4, chan[i].timer_freq);
+            write_pwm_freq = true;
         }
       }
       if(chan[i].freqChanged && i == 4) //&& chan[4].extNoiseClk)
@@ -394,27 +413,11 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       chan[i].freqChanged=false;
     }
 
-    if (chan[i].std.vol.had) { //for ch3 PWM vol correction.... (faulty mux out line?)
-      if(i < 8)
-      {
-        if(i != 7)
-        {
-          chan[i].outVol=VOL_SCALE_LOG(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
-        }
-        else
-        {
-          chan[i].outVol=VOL_SCALE_LINEAR(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
-        }
-        
-        ad9833_write(i, 0, chan[i].outVol);
-      }
-    }
-
     if (chan[i].std.duty.had) { //duty after freq for export proper duty to compare count register conversion
       if(i < 4 || i == 5 || i == 6 || i == 7)
       {
         chan[i].duty = chan[i].std.duty.val;
-        if(chan[i].wave == 5 && i < 4)
+        if(i < 4)
         {
           ad9833_write(i, 5, chan[i].std.duty.val);
         }
@@ -423,6 +426,12 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
           ad9833_write(i, 9, ((uint32_t)chan[i].wave | (((uint32_t)chan[i].duty >> 8) << 4)));
         }
       }
+    }
+
+    if(write_pwm_freq)
+    {
+      ad9833_write(i, 4, chan[i].timer_freq);
+      write_pwm_freq = false;
     }
   }
 }
@@ -761,7 +770,7 @@ bool DivPlatformSTM32CRAPSYNTH::keyOffAffectsArp(int ch) {
 
 void DivPlatformSTM32CRAPSYNTH::notifyWaveChange(int wave) {
   for (int i=0; i<STM32CRAPSYNTH_NUM_CHANNELS; i++) {
-    if (chan[i].wavetable==wave && i > 4 && i < 8 && chan[i].wave == 1) {
+    if (chan[i].wavetable==wave && i > 4 && i < 8) {
       chan[i].ws.changeWave1(wave);
       //updateWave(i);
       chan[i].updateWave = true;

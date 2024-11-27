@@ -192,8 +192,8 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       case 2: //AD9833 freq
       {
         w->writeC(chan_base_addr[channel] + CMD_AD9833_FREQ);
-        w->writeI(val / 20);
-        state.ad9833_freq[channel] = val / 20;
+        w->writeI(val / 10);
+        state.ad9833_freq[channel] = val / 10;
         break;
       }
       case 3: //phase reset

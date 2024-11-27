@@ -84,8 +84,8 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             {
                 crapsynth->ad9833[chan].wave_type = data % 6;
 
-                if(crapsynth->ad9833[chan].wave_type == 5) crapsynth->ad9833[chan].freq = 0;
-                else crapsynth->ad9833[chan].timer_freq = 0;
+                //if(crapsynth->ad9833[chan].wave_type == 5) crapsynth->ad9833[chan].freq = 0;
+                //else crapsynth->ad9833[chan].timer_freq = 0;
                 break;
             }
             case 2:
@@ -388,19 +388,19 @@ int32_t crapsynth_ad9833_get_wave(STM32CrapSynth* crapsynth, uint32_t acc, uint1
             return (((acc > (1 << (STM32CRAPSYNTH_ACC_BITS - 1))) ? ~acc : acc) >> (STM32CRAPSYNTH_ACC_BITS - 11)) & 1023;
             break;
         }
-        case 3: //square, full volume
+        case 3: //square
         {
-            return ((acc > (1 << (STM32CRAPSYNTH_ACC_BITS - 1))) ? 1023 * 6 : 0);
+            return ((acc > (1 << (STM32CRAPSYNTH_ACC_BITS - 1))) ? (1023 * 7) : 0);
             break;
         }
         case 4: //square, double freq
         {
-            return (((acc << 1) > (1 << (STM32CRAPSYNTH_ACC_BITS - 1))) ? 1023 * 6 : 0);
+            return (((acc & ((1 << (STM32CRAPSYNTH_ACC_BITS - 1)) - 1)) > (1 << (STM32CRAPSYNTH_ACC_BITS - 2))) ? (1023 * 7) : 0);
             break;
         }
         case 5: //pulse wave from MCU
         {
-            return (((acc >> (((STM32CRAPSYNTH_ACC_BITS + 2) - 16))) >= ((pw == 0xffff ? pw + 1 : pw)) ? (1023 * 6) : 0));
+            return (((acc >> (((STM32CRAPSYNTH_ACC_BITS + 2) - 16))) >= ((pw == 0xffff ? pw + 1 : pw)) ? (1023 * 7) : 0));
             break;
         }
         default: return 0; break;
@@ -430,14 +430,14 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
 
             int32_t wave = crapsynth_ad9833_get_wave(crapsynth, ch->wave_type == 5 ? ch->timer_acc : ch->acc, ch->pw, ch->wave_type);
 
-            if(ch->zero_cross && wave < 10) //approx of zero cross
+            if(ch->zero_cross && wave < 1023) //approx of zero cross
             {
                 crapsynth->volume[i] = ch->pending_vol;
             }
             
             if(!crapsynth->muted[i])
             {
-                crapsynth->chan_outputs[i] = (wave - (511)) * 8 * crapsynth->volume_table[crapsynth->volume[i]];
+                crapsynth->chan_outputs[i] = (wave - ((ch->wave_type > 1) ? (511 * 7) : (511))) * 8 * crapsynth->volume_table[crapsynth->volume[i]];
             }
 
             wave = (int32_t)((float)wave * crapsynth->volume_table[crapsynth->volume[i]]);
@@ -463,7 +463,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
             crapsynth->noise.lfsr &= 0x7fffff;
             crapsynth->noise.lfsr |= bit0;
 
-            crapsynth->noise.output = (crapsynth->noise.lfsr & 0x400000) ? 1023 : 0;
+            crapsynth->noise.output = (crapsynth->noise.lfsr & 0x400000) ? 1023 * 7 * (5 / 3.5) : 0;
 
             //if(crapsynth->noise.zero_cross && abs((int)crapsynth->noise.output - 511) < 10) //approx of zero cross
             if(crapsynth->noise.zero_cross && crapsynth->noise.output == 0) //approx of zero cross
@@ -477,7 +477,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
 
     if(!crapsynth->muted[4])
     {
-        crapsynth->chan_outputs[4] = (crapsynth->noise.output - (511)) * 8 * crapsynth->volume_table[crapsynth->volume[4]];
+        crapsynth->chan_outputs[4] = (crapsynth->noise.output - (511 * 7 * (5 / 3.5))) * 8 * crapsynth->volume_table[crapsynth->volume[4]];
         crapsynth->final_output += crapsynth->noise.output * crapsynth->volume_table[crapsynth->volume[4]];
     }
 
@@ -588,9 +588,14 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
                 if(ch->output < 0) ch->output = 0;
                 if(ch->output > 4095) ch->output = 4095;
 
-                ch->curr_pos++;
+                ch->output *= 6;
+                
+                if(ch->wave_type != 0 && ch->wave_type != 2 && ch->wave_type != 4)
+                {
+                    ch->curr_pos++;
+                }                
 
-                if(ch->zero_cross && (prev_output & 0x80000000) != (((int)ch->output - 2047) & 0x80000000)) //approx of zero cross
+                if(ch->zero_cross && (prev_output & 0x80000000) != (((int)ch->output - (2047)) & 0x80000000)) //approx of zero cross
                 //if(ch->zero_cross && (prev_output & 0x80000000) != ((wave - 511) & 0x80000000)) //approx of zero cross
                 {
                     crapsynth->volume[i + 5] = ch->pending_vol;
@@ -602,7 +607,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
 
         if(!crapsynth->muted[i + 5])
         {
-            crapsynth->chan_outputs[i + 5] = (crapsynth->dac[i].output - (2047)) * 2 * crapsynth->volume_table[crapsynth->volume[i + 5]];
+            crapsynth->chan_outputs[i + 5] = (crapsynth->dac[i].output - (2047 * 7)) * 2 * crapsynth->volume_table[crapsynth->volume[i + 5]];
             crapsynth->final_output += crapsynth->dac[i].output * crapsynth->volume_table[crapsynth->volume[i + 5]];
         }
     }
@@ -667,7 +672,12 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
             if(ch->output < 0) ch->output = 0;
             if(ch->output > 4095) ch->output = 4095;
 
-            ch->curr_pos++;
+            ch->output *= 6;
+
+            if(ch->wave_type != 0 && ch->wave_type != 2 && ch->wave_type != 4)
+            {
+                ch->curr_pos++;
+            }
         }
 
         ch->timer_acc &= (1 << (STM32CRAPSYNTH_ACC_BITS + 2)) - 1;
@@ -675,7 +685,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
 
     if(!crapsynth->muted[7])
     {
-        crapsynth->chan_outputs[7] = (crapsynth->dac[2].output - (2047)) * 2 * ((int)crapsynth->volume[7] * 3 + 256) / 1024;
+        crapsynth->chan_outputs[7] = (crapsynth->dac[2].output - (2047 * 7)) * 2 * ((int)crapsynth->volume[7] * 3 + 256) / 1024;
         crapsynth->final_output += crapsynth->dac[2].output * ((int)crapsynth->volume[7] * 3 + 256) / 1024;
     }
 
