@@ -437,7 +437,7 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
             
             if(!crapsynth->muted[i])
             {
-                crapsynth->chan_outputs[i] = (wave - ((ch->wave_type > 1) ? (511 * 7) : (511))) * 8 * crapsynth->volume_table[crapsynth->volume[i]];
+                crapsynth->chan_outputs[i] = (wave - ((ch->wave_type > 2) ? (511 * 7) : (511))) * 4 * crapsynth->volume_table[crapsynth->volume[i]];
             }
 
             wave = (int32_t)((float)wave * crapsynth->volume_table[crapsynth->volume[i]]);
@@ -748,6 +748,8 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
             ch->timer_acc &= (1 << (STM32CRAPSYNTH_ACC_BITS + 2)) - 1;
         }
     }
+
+    crapsynth->final_output /= 2;
 }
 
 void crapsynth_set_is_muted(STM32CrapSynth* crapsynth, uint8_t ch, bool mute)
