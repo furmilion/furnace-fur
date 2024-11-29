@@ -389,6 +389,24 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
           }
         }
 
+        if(i == 8 + 2) //USART1 can't go below 72 MHz / 12 / 0xfff7 = 91.565 Hz
+        {
+          if(chan[i].freq < (double)(1 << 29) * 91.565 / (double)(chipClock/2))
+          {
+            chan[i].freq = (double)(1 << 29) * 91.565 / (double)(chipClock/2);
+            chan[i].timer_freq = chan[i].freq;
+          }
+        }
+
+        if(i >= 8 + 2) //USART2, USART3, UART5 can't go below 36 MHz / 12 / 0xfff7 = 45.783 Hz
+        {
+          if(chan[i].freq < (double)(1 << 29) * 45.783 / (double)(chipClock/2))
+          {
+            chan[i].freq = (double)(1 << 29) * 45.783 / (double)(chipClock/2);
+            chan[i].timer_freq = chan[i].freq;
+          }
+        }
+
         if(chan[i].freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
         if(chan[i].timer_freq > (1 << 30) - 1) chan[i].freq = (1 << 30) - 1;
 
