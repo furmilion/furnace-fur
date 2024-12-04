@@ -111,6 +111,8 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
   {
     chan[i].std.next();
 
+    bool update_duty = false;
+
     if (chan[i].std.vol.had) { //for ch3 PWM vol correction.... (faulty mux out line?)
       if(i < 8)
       {
@@ -302,6 +304,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         {
             //ad9833_write(i, 4, chan[i].timer_freq);
             write_pwm_freq = true;
+            update_duty = true;
         }
       }
       if(chan[i].freqChanged && i == 4) //&& chan[4].extNoiseClk)
@@ -431,6 +434,12 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       chan[i].freqChanged=false;
     }
 
+    if(write_pwm_freq)
+    {
+      ad9833_write(i, 4, chan[i].timer_freq);
+      write_pwm_freq = false;
+    }
+
     if (chan[i].std.duty.had) { //duty after freq for export proper duty to compare count register conversion
       if(i < 4 || i == 5 || i == 6 || i == 7)
       {
@@ -438,6 +447,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         if(i < 4)
         {
           ad9833_write(i, 5, chan[i].std.duty.val);
+          update_duty = false;
         }
         if((i == 5 || i == 6 || i == 7) && chan[i].wave == 6)
         {
@@ -446,10 +456,10 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       }
     }
 
-    if(write_pwm_freq)
+    if(update_duty && i < 4)
     {
-      ad9833_write(i, 4, chan[i].timer_freq);
-      write_pwm_freq = false;
+      ad9833_write(i, 5, chan[i].std.duty.val);
+      update_duty = false;
     }
   }
 }

@@ -213,15 +213,15 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 5: //duty
       {
-        //w->writeC(chan_base_addr[channel] + CMD_AD9833_PWM_DUTY);
-        //w->writeS((val & 0xffff) * state.pwm_autoreload[channel] / 0xffff);
+        w->writeC(chan_base_addr[channel] + CMD_AD9833_PWM_DUTY);
+        w->writeS((val & 0xffff) * state.pwm_autoreload[channel] / 0xffff);
 
-        if(state.duty[channel] != (int)(val & 0xffff))
+        /*if(state.duty[channel] != (int)(val & 0xffff))
         {
           state.duty[channel] = (val & 0xffff);
           w->writeC(chan_base_addr[channel] + CMD_AD9833_PWM_DUTY);
           w->writeS(val & 0xffff);
-        }
+        }*/
         break;
       }
       case 6: //zero cross
