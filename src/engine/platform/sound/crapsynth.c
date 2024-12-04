@@ -708,10 +708,11 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
                             case 0:
                             case 1:
                             case 2:
-                            case 3: //AD9833
+                            case 3: //AD9833/PWM timer
                             {
                                 AD9833Chan* ch = &crapsynth->ad9833[j];
                                 ch->acc = 0;
+                                ch->timer_acc = 0;
                                 break;
                             }
                             case 4: //noise
