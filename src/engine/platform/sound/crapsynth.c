@@ -277,7 +277,7 @@ void crapsynth_write(STM32CrapSynth* crapsynth, uint8_t channel, uint32_t data_t
             }
             case 8:
             {
-                crapsynth->dac[chan].length = data & 0xffffff;
+                crapsynth->dac[chan].length = (data & 0xffffff) + crapsynth->dac[chan].start_addr;
                 break;
             }
             case 9:
