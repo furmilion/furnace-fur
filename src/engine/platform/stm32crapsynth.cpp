@@ -262,7 +262,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
         sample_offset |= 0x1000000;
       }
 
-      ad9833_write(i, 2, sample_offset);
+      ad9833_write(i, 2, sample_offset); //sample offset
       if(s->loop)
       {
         ad9833_write(i, 7, ((chan[i].sampleInRam ? (sampleOffRam[chan[i].dacSample]) : sampleOff[chan[i].dacSample]) + s->loopStart) | (chan[i].sampleInRam ? 0x1000000 : 0)); // loop point
@@ -271,7 +271,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
       {
         //ad9833_write(i, 7, sampleOff[chan[i].dacSample] | (chan[i].sampleInRam ? 0x1000000 : 0)); // loop point = start
       }
-      ad9833_write(i, 8, (s->length8) | (chan[i].sampleInRam ? 0x1000000 : 0));
+      ad9833_write(i, 8, (s->length8) | (chan[i].sampleInRam ? 0x1000000 : 0)); //length
 
       if(crap_synth->dac[i - 5].playing)
       {
