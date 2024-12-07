@@ -728,7 +728,7 @@ DivSamplePos DivPlatformSTM32CRAPSYNTH::getSamplePos(int ch) {
 }
 
 DivDispatchOscBuffer* DivPlatformSTM32CRAPSYNTH::getOscBuffer(int ch) {
-  return oscBuf[ch];
+  return ch > 7 ? NULL : oscBuf[ch];
 }
 
 int DivPlatformSTM32CRAPSYNTH::mapVelocity(int ch, float vel) {
