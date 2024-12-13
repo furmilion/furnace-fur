@@ -88,9 +88,18 @@ typedef struct
   int pwm_autoreload[4];
   int pwm_prescaler[4];
   bool pwm[4];
-  int volume[5];
+  int volume[8];
   int dac_wave_type[3];
   int dac_duty[3];
+  int dac_freq[3];
+  int dac_presc[3];
+  int noise_freq;
+  int noise_presc;
+  int timer_freq;
+  int timer_presc;
+  int systick_freq;
+  int uart_freq[4];
+  int bitmask[6];
 } CrapSynthState;
 
 uint32_t calc_autoreload_eng_tick(float hz)
@@ -191,9 +200,12 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 2: //AD9833 freq
       {
-        w->writeC(chan_base_addr[channel] + CMD_AD9833_FREQ);
-        w->writeI(val / 10);
-        state.ad9833_freq[channel] = val / 10;
+        if(state.ad9833_freq[channel] != val / 10)
+        {
+          w->writeC(chan_base_addr[channel] + CMD_AD9833_FREQ);
+          w->writeI(val / 10);
+          state.ad9833_freq[channel] = val / 10;
+        }
         break;
       }
       case 3: //phase reset
@@ -203,12 +215,16 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 4: //PWM freq
       {
-        w->writeC(chan_base_addr[channel] + CMD_AD9833_PWM_FREQ);
         uint32_t values = calc_prescaler_and_autoreload(val);
-        w->writeC(values >> 16);
-        w->writeS(values & 0xffff);
-        state.pwm_autoreload[channel] = values & 0xffff;
-        state.pwm_prescaler[channel] = values >> 16;
+
+        if(state.pwm_autoreload[channel] != (values & 0xffff) || state.pwm_prescaler[channel] != (values >> 16))
+        {
+          w->writeC(chan_base_addr[channel] + CMD_AD9833_PWM_FREQ);
+          w->writeC(values >> 16);
+          w->writeS(values & 0xffff);
+          state.pwm_autoreload[channel] = values & 0xffff;
+          state.pwm_prescaler[channel] = values >> 16;
+        }
         break;
       }
       case 5: //duty
@@ -255,10 +271,16 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 4: //timer freq
       {
-        w->writeC(chan_base_addr[channel] + CMD_NOISE_FREQ);
         uint32_t values = calc_prescaler_and_autoreload(val);
-        w->writeC(values >> 16);
-        w->writeS(values & 0xffff);
+
+        if(state.noise_freq != (values & 0xffff) || state.noise_presc != (values >> 16))
+        {
+          w->writeC(chan_base_addr[channel] + CMD_NOISE_FREQ);
+          w->writeC(values >> 16);
+          w->writeS(values & 0xffff);
+          state.noise_freq = values & 0xffff;
+          state.noise_presc = values >> 16;
+        }
         break;
       }
       case 3: //phase reset
@@ -289,8 +311,12 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
     {
       case 0: //volume
       {
-        w->writeC(chan_base_addr[channel] + CMD_DAC_VOLUME);
-        w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
+        if(state.volume[channel] != (int)(val & 0xff))
+        {
+          w->writeC(chan_base_addr[channel] + CMD_DAC_VOLUME);
+          w->writeC(crapsynth->crap_synth->muted[channel] ? 0 : (val & 0xff));
+          state.volume[channel] = (int)(val & 0xff);
+        }
         break;
       }
       case 1: //start/stop playback of wavetable/sample
@@ -339,10 +365,17 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
       }
       case 4: //DAC timer freq
       {
-        w->writeC(chan_base_addr[channel] + CMD_DAC_TIMER_FREQ);
         uint32_t values = calc_prescaler_and_autoreload(val);
-        w->writeC(values >> 16);
-        w->writeS(values & 0xffff);
+
+        if(state.dac_freq[channel - 5] != (values & 0xffff) || state.dac_presc[channel - 5] != (values >> 16))
+        {
+          w->writeC(chan_base_addr[channel] + CMD_DAC_TIMER_FREQ);
+          w->writeC(values >> 16);
+          w->writeS(values & 0xffff);
+
+          state.dac_freq[channel - 5] = (values & 0xffff);
+          state.dac_presc[channel - 5] = (values >> 16);
+        }
         break;
       }
       case 6: //zero cross vol upd
@@ -433,38 +466,64 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
 
   if(channel > 7) //phase reset timers
   {
+    if(crapsynth->crap_synth->muted[channel]) return;
+
     switch(cmd_type)
     {
       case 0: //bitmask
       {
-        w->writeC(chan_base_addr[channel] + CMD_TIMER_CHANNEL_BITMASK);
-        w->writeC(val);
+        if(state.bitmask[channel - 8] != val)
+        {
+          w->writeC(chan_base_addr[channel] + CMD_TIMER_CHANNEL_BITMASK);
+          w->writeC(val);
+
+          state.bitmask[channel - 8] = val;
+        }
         break;
       }
       case 1: //timer freq
       {
         if(channel == 8) //usual timer
         {
-          w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ);
           uint32_t values = calc_prescaler_and_autoreload(val);
-          w->writeC(values >> 16);
-          w->writeS(values & 0xffff);
+
+          if(state.timer_freq != (values & 0xffff) || state.timer_presc != (values >> 16))
+          {
+            w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ);
+            w->writeC(values >> 16);
+            w->writeS(values & 0xffff);
+
+            state.timer_freq = (values & 0xffff);
+            state.timer_presc = (values >> 16);
+          }
         }
 
         if(channel == 9) //systick
         {
-          w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ_SYSTICK);
           uint32_t value = calc_systick_autoreload(val);
-          w->writeC((value >> 16) & 0xff);
-          w->writeC((value >> 8) & 0xff);
-          w->writeC(value & 0xff);
+
+          if(state.systick_freq != value)
+          {
+            w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ_SYSTICK);
+            w->writeC((value >> 16) & 0xff);
+            w->writeC((value >> 8) & 0xff);
+            w->writeC(value & 0xff);
+
+            state.systick_freq = value;
+          }
         }
 
         if(channel == 10 || channel == 11 || channel == 12 || channel == 13) //UARTs
         {
-          w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ_UART);
           uint32_t values = calc_uart_freq(channel - 10, val);
-          w->writeS(values & 0xffff);
+
+          if(state.uart_freq[channel - 10] != values)
+          {
+            w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ_UART);
+            w->writeS(values & 0xffff);
+
+            state.uart_freq[channel - 10] = values & 0xffff;
+          }
         }
 
         break;
@@ -497,14 +556,33 @@ void DivExportCrapSynth::run() {
 
   state.dac_duty[0] = state.dac_duty[1] = state.dac_duty[2] = -1;
   state.dac_wave_type[0] = state.dac_wave_type[1] = state.dac_wave_type[2] = -1;
+  state.dac_freq[0] = state.dac_freq[1] = state.dac_freq[2] = -1;
+  state.dac_presc[0] = state.dac_presc[1] = state.dac_presc[2] = -1;
 
   for(int i = 0; i < 4; i++)
   {
     state.duty[i] = -1;
+    state.ad9833_freq[i] = -1;
+    state.pwm_autoreload[i] = -1;
+    state.pwm_prescaler[i] = -1;
+    state.pwm[i] = false;
+
+    state.uart_freq[i] = -1;
+  }
+  for(int i = 0; i < 6; i++)
+  {
+    state.bitmask[i] = -1;
+  }
+  for(int i = 0; i < 8; i++)
+  {
     state.volume[i] = -1;
   }
 
-  state.volume[4] = -1;
+  state.timer_freq = -1;
+  state.timer_presc = -1;
+  state.noise_freq = -1;
+  state.noise_presc = -1;
+  state.systick_freq = -1;
 
   double origRate = e->got.rate;
   e->stop();

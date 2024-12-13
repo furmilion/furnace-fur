@@ -685,8 +685,15 @@ void crapsynth_clock(STM32CrapSynth* crapsynth)
 
     if(!crapsynth->muted[7])
     {
-        crapsynth->chan_outputs[7] = (crapsynth->dac[2].output - (2047 * 7)) * 2 * ((int)crapsynth->volume[7] * 3 + 256) / 1024;
-        crapsynth->final_output += crapsynth->dac[2].output * ((int)crapsynth->volume[7] * 3 + 256) / 1024;
+        if((int)crapsynth->volume[7] == 0)
+        {
+            crapsynth->chan_outputs[7] = 0;
+        }
+        else
+        {
+            crapsynth->chan_outputs[7] = (crapsynth->dac[2].output - (2047 * 7)) * 2 * ((int)crapsynth->volume[7] * 3 + 256) / 1024;
+            crapsynth->final_output += crapsynth->dac[2].output * ((int)crapsynth->volume[7] * 3 + 256) / 1024;
+        }
     }
 
     for(int i = 0; i < 6; i++)
