@@ -472,7 +472,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
     {
       case 0: //bitmask
       {
-        if(state.bitmask[channel - 8] != val)
+        if(state.bitmask[channel - 8] != (int)val)
         {
           w->writeC(chan_base_addr[channel] + CMD_TIMER_CHANNEL_BITMASK);
           w->writeC(val);
@@ -502,7 +502,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
         {
           uint32_t value = calc_systick_autoreload(val);
 
-          if(state.systick_freq != value)
+          if(state.systick_freq != (int)value)
           {
             w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ_SYSTICK);
             w->writeC((value >> 16) & 0xff);
@@ -517,7 +517,7 @@ void write_command(SafeWriter* w, unsigned int addr, unsigned int val, uint32_t 
         {
           uint32_t values = calc_uart_freq(channel - 10, val);
 
-          if(state.uart_freq[channel - 10] != values)
+          if(state.uart_freq[channel - 10] != (int)values)
           {
             w->writeC(chan_base_addr[channel] + CMD_TIMER_FREQ_UART);
             w->writeS(values & 0xffff);
