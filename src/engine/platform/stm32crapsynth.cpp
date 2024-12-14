@@ -24,7 +24,7 @@
 #include <math.h>
 
 //#define rWrite(a,v) pendingWrites[a]=v;
-#define rWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
+#define rWrite(a,v) { writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
 
 #define ad9833_write(ch,type,val) rWrite(((ch << 8) | (type)), val)
 
@@ -91,7 +91,8 @@ void DivPlatformSTM32CRAPSYNTH::updateWave(int ch) {
   {
     if(chan[ch].wave == 6 || chan[ch].wave == 7) return;
     bool need_update = false;
-    for (int i=0; i<STM32CRAPSYNTH_WAVETABLE_SIZE; i++) {
+    for (int i=0; i<STM32CRAPSYNTH_WAVETABLE_SIZE; i++) 
+    {
       if(chan[ch].ws.output[i] != (int)crap_synth->dac[ch-5].wavetable[i])
       {
         need_update = true;
@@ -99,8 +100,11 @@ void DivPlatformSTM32CRAPSYNTH::updateWave(int ch) {
       }
     }
     if(!need_update) return;
-    for (int i=0; i<STM32CRAPSYNTH_WAVETABLE_SIZE; i++) {
-      ad9833_write(ch, 10, (chan[ch].ws.output[i]) | (i << 8));
+    for (int i=0; i<STM32CRAPSYNTH_WAVETABLE_SIZE; i++) 
+    {
+      ad9833_write(ch, 10, ((uint32_t)chan[ch].ws.output[i] | (i << 8)));
+
+      crap_synth->dac[ch - 5].wavetable[i] = chan[ch].ws.output[i];
     }
   }
 }
@@ -196,7 +200,7 @@ void DivPlatformSTM32CRAPSYNTH::tick(bool sysTick)
     }
 
     if (chan[i].std.ex3.had) { //wavetable index
-      if(i > 4 && i < 8 && chan[i].do_wavetable)
+      if(i > 4 && i < 8)
       {
         chan[i].wavetable = chan[i].std.ex3.val;
         chan[i].ws.changeWave1(chan[i].wavetable);
