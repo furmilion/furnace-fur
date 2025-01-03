@@ -542,6 +542,8 @@ extern/YM2608-LLE/fmopna_2612.c
 
 extern/pwrnoise/pwrnoise.c
 
+extern/AMYlator/amy.c
+
 src/pch.cpp
 
 src/engine/platform/sound/sn76496.cpp
