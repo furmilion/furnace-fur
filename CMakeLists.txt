@@ -733,6 +733,7 @@ src/engine/wavOps.cpp
 src/engine/vgmOps.cpp
 
 src/engine/platform/abstract.cpp
+src/engine/platform/amy.cpp
 src/engine/platform/genesis.cpp
 src/engine/platform/genesisext.cpp
 src/engine/platform/sms.cpp

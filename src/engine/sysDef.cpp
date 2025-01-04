@@ -803,6 +803,10 @@ void DivEngine::registerSystems() {
   for (int i=0; i<16; i++) SID3PostEffectHandlerMap.emplace(0x30+i,SID3FineCutoffHandler3);
   for (int i=0; i<16; i++) SID3PostEffectHandlerMap.emplace(0x40+i,SID3FineCutoffHandler4);
 
+  EffectHandlerMap AMYPostEffectHandlerMap={
+    {0x10, {DIV_CMD_WAVE, _("10xx: Set voice type (0: harmonic, 1: noise generator 0, 2: noise generator 1)")}},
+  };
+
   // SysDefs
 
   // this chip uses YMZ ADPCM, but the emulator uses ADPCM-B because I got it wrong back then.
@@ -2314,6 +2318,18 @@ void DivEngine::registerSystems() {
     {},
     {}, 
     SID3PostEffectHandlerMap
+  );
+
+  sysDefs[DIV_SYSTEM_AMY]=new DivSysDef(   
+    _("AMY"), NULL, 0xff, 0, 8, false, true, 0, false, 0, 0, 0,
+    _("Atari's unique additive synthesis sound chip, which was never mass-manufactured. features 64 assignable harmonic generators, 8 sound channels and a lot of envelopes."),
+    {_("Channel 1"), _("Channel 2"), _("Channel 3"), _("Channel 4"), _("Channel 5"), _("Channel 6"), _("Channel 7"), _("Channel 8")},
+    {"CH1", "CH2", "CH3", "CH4", "CH5", "CH6", "CH7", "CH8"},
+    {DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE},
+    {DIV_INS_AMY, DIV_INS_AMY, DIV_INS_AMY, DIV_INS_AMY, DIV_INS_AMY, DIV_INS_AMY, DIV_INS_AMY, DIV_INS_AMY},
+    {},
+    {}, 
+    AMYPostEffectHandlerMap
   );
 
   sysDefs[DIV_SYSTEM_DUMMY]=new DivSysDef(
