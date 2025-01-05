@@ -3666,7 +3666,7 @@ void FurnaceGUI::initSystemPresets() {
     }
   );
   ENTRY(
-    _("AMY"), {
+    _("AMY-1"), {
       CH(DIV_SYSTEM_AMY, 1.0f, 0, "")
     }
   );
