@@ -262,10 +262,36 @@ uint16_t amy_slope_to_step_pitch(uint8_t slope)
     return (((slope & 0x80) && !(slope & 0x10)) ? -1 : 1) * (((*(int8_t*)&slope_signed / 8)) + ((slope == 0x7f || slope == 0xE1) ? 1 : 0)); /*WTF is this*/
 }
 
-//this one converts 20-bit phase (14 MSBs of it) to sine wave using sine ROMs
-int16_t get_sin_rom(uint32_t phase)
+//get 1st quarter of sine
+uint16_t get_sin_rom_aux(AMY* amy, uint16_t phase)
 {
+    return (((uint32_t)amy->base_sin_rom[phase >> 4] + (uint32_t)amy->int_sin_rom[((((0x100 * 0x10 - phase) / 0x100) & 15) << 4) + (phase & 15)] * 0x40) >> 5);
+}
 
+//this one converts 20-bit phase (14 MSBs of it) to sine wave using sine ROMs
+//13-bit signed output?
+int16_t get_sin_rom(AMY* amy, uint32_t phase)
+{
+    switch(phase >> (12 + 6)) //two MSBs tell shich quarter of sine wave is used
+    {
+        case 0:
+        {
+            return get_sin_rom_aux(amy, (phase >> 6)); break;
+        }
+        case 1:
+        {
+            return get_sin_rom_aux(amy, (1 << 12) - (phase >> 6)); break;
+        }
+        case 2:
+        {
+            return -1 * get_sin_rom_aux(amy, (phase >> 6) - (1 << 13)); break;
+        }
+        case 3:
+        {
+            return -1 * get_sin_rom_aux(amy, (1 << 14) - (phase >> 6)); break;
+        }
+        default: break;
+    }
 }
 
 void amy_clock(AMY* amy) //one sound sample
