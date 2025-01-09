@@ -292,6 +292,8 @@ int16_t get_sin_rom(AMY* amy, uint32_t phase)
         }
         default: break;
     }
+
+    return 0;
 }
 
 void amy_clock(AMY* amy) //one sound sample
