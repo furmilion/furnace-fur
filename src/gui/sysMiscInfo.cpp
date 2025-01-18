@@ -427,6 +427,7 @@ void FurnaceGUI::drawSystemChannelInfoText(const DivSysDef* whichDef) {
       case DIV_INS_MIKEY:
       case DIV_INS_BIFURCATOR:
       case DIV_INS_SID2:
+      case DIV_INS_AMY:
         chanCount[CHANNEL_TYPE_OTHER]++;
         break;
       default:

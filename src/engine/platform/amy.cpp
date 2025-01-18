@@ -24,6 +24,74 @@
 #include "../../ta-log.h"
 
 #define rWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
+#define writeFFBP(ch,dest,slope) if (!skipRegisterWrites) \
+{ \
+  writes.push(QueuedWrite(AMY_FREQ_ENV_BREAKPOINT_CMD_CODE | (ch & 7),(((dest & 0xff) << 16) | (((dest >> 8) & 0x1f) << 8) | slope))); \
+  if (dumpWrites) \
+  { \
+    addWrite(AMY_FREQ_ENV_BREAKPOINT_CMD_CODE | (ch & 7),(((dest & 0xff) << 16) | (((dest >> 8) & 0x1f) << 8) | slope)); \
+  } \
+}
+
+#define writeVoiceType(ch,type) if (!skipRegisterWrites) \
+{ \
+  writes.push(QueuedWrite(AMY_VOICE_TYPE_CMD_CODE | (ch & 7),(type & 3))); \
+  if (dumpWrites) \
+  { \
+    addWrite(AMY_VOICE_TYPE_CMD_CODE | (ch & 7),(type & 3)); \
+  } \
+}
+
+#define writeSystemOptions(reg) if (!skipRegisterWrites) \
+{ \
+  writes.push(QueuedWrite(AMY_SYSTEM_OPTIONS_CMD_CODE | (reg & 15),0)); \
+  if (dumpWrites) \
+  { \
+    addWrite(AMY_SYSTEM_OPTIONS_CMD_CODE | (reg & 15),0); \
+  } \
+}
+
+#define writeSystemControl(reg) if (!skipRegisterWrites) \
+{ \
+  writes.push(QueuedWrite(AMY_CONTROL_CMD_CODE | (reg & 3),0)); \
+  if (dumpWrites) \
+  { \
+    addWrite(AMY_CONTROL_CMD_CODE | (reg & 3),0); \
+  } \
+}
+
+#define writeVolBP(ch,dest,slope) if (!skipRegisterWrites) \
+{ \
+  writes.push(QueuedWrite(AMY_VOL_ENV_BREAKPOINT_CMD_CODE | (ch & 7),(((dest & 0xff) << 16) | slope))); \
+  if (dumpWrites) \
+  { \
+    addWrite(AMY_VOL_ENV_BREAKPOINT_CMD_CODE | (ch & 7),(((dest & 0xff) << 16) | slope)); \
+  } \
+}
+
+#define writeLastHarmPairFlag(addr,bit) if (!skipRegisterWrites) \
+{ \
+  bool amy_nzinit = amy->nzinit; \
+  writeSystemControl(amy->seq_reset | (0 << 1)); /*clear nzinit*/ \
+  writes.push(QueuedWrite(AMY_HARM_PAIR_NOISE_RAM_CMD_CODE | ((addr & 0x1f) << 1) | bit,0)); \
+  if (dumpWrites) \
+  { \
+    addWrite(AMY_HARM_PAIR_NOISE_RAM_CMD_CODE | ((addr & 0x1f) << 1) | bit,0); \
+  } \
+  writeSystemControl(amy->seq_reset | ((amy_nzinit ? 1 : 0) << 1)); /*restore nzinit*/ \
+}
+
+#define writeNoiseRAM(addr,val) if (!skipRegisterWrites) \
+{ \
+  bool amy_nzinit = amy->nzinit; \
+  writeSystemControl(amy->seq_reset | (1 << 1)); /*set nzinit*/ \
+  writes.push(QueuedWrite(AMY_HARM_PAIR_NOISE_RAM_CMD_CODE | (addr & 0x3f),((val & 7) | (1 << 24)))); \
+  if (dumpWrites) \
+  { \
+    addWrite(AMY_HARM_PAIR_NOISE_RAM_CMD_CODE | (addr & 0x3f),((val & 7) | (1 << 24))); /*(1 << 24) is a marker that we should write to reg A*/ \
+  } \
+  writeSystemControl(amy->seq_reset | ((amy_nzinit ? 1 : 0) << 1)); /*restore nzinit*/ \
+}
 
 #define CHIP_FREQBASE 524288
 #define CHIP_DIVIDER 1
@@ -41,6 +109,62 @@ void DivPlatformAMY::acquire(short** buf, size_t len)
   for (size_t i=0; i<len; i++) 
   {
     amy_clock(amy);
+
+    if (!writes.empty()) 
+    {
+      QueuedWrite w=writes.front();
+      unsigned char reg_a = w.val & 0xff;
+      unsigned char reg_b = (w.val >> 8) & 0xff;
+      unsigned char reg_c = (w.val >> 16) & 0xff;
+      //doWrite(w.addr,w.val);
+      //regPool[w.addr&0x1f]=w.val;
+
+      if((w.addr & AMY_FREQ_ENV_BREAKPOINT_CMD_MASK) == AMY_FREQ_ENV_BREAKPOINT_CMD_CODE)
+      {
+        amy_write_reg_a(amy, reg_a);
+        amy_write_reg_b(amy, reg_b);
+        amy_write_reg_c(amy, reg_c);
+        amy_write_reg_command(amy, w.addr);
+      }
+      if((w.addr & AMY_VOICE_TYPE_CMD_MASK) == AMY_VOICE_TYPE_CMD_CODE)
+      {
+        amy_write_reg_a(amy, reg_a);
+        amy_write_reg_command(amy, w.addr);
+      }
+      /*if((w.addr & AMY_READ_CURR_FREQ_CMD_MASK) == AMY_READ_CURR_FREQ_CMD_CODE)
+      {
+        
+      }*/
+      if((w.addr & AMY_SYSTEM_OPTIONS_CMD_MASK) == AMY_SYSTEM_OPTIONS_CMD_CODE)
+      {
+        amy_write_reg_command(amy, w.addr);
+      }
+      if((w.addr & AMY_CONTROL_CMD_MASK) == AMY_CONTROL_CMD_CODE)
+      {
+        amy_write_reg_command(amy, w.addr);
+      }
+      if((w.addr & AMY_VOL_ENV_BREAKPOINT_CMD_MASK) == AMY_VOL_ENV_BREAKPOINT_CMD_CODE)
+      {
+        amy_write_reg_a(amy, reg_a);
+        amy_write_reg_c(amy, reg_c);
+        amy_write_reg_command(amy, w.addr);
+      }
+      if((w.addr & AMY_HARM_PAIR_NOISE_RAM_CMD_MASK) == AMY_HARM_PAIR_NOISE_RAM_CMD_CODE)
+      {
+        if(w.val & (1 << 24))
+        {
+          amy_write_reg_a(amy, reg_a);
+        }
+
+        amy_write_reg_command(amy, w.addr);
+      }
+      /*if((w.addr & AMY_READ_CURR_VOL_ENV_CMD_MASK) == AMY_READ_CURR_VOL_ENV_CMD_CODE)
+      {
+        
+      }*/
+
+      writes.pop();
+    }
 
     buf[0][i]=amy->output;
 
