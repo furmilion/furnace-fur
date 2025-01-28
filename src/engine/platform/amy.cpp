@@ -72,25 +72,25 @@
 #define writeLastHarmPairFlag(addr,bit) if (!skipRegisterWrites) \
 { \
   bool amy_nzinit = amy->nzinit; \
-  writeSystemControl(amy->seq_reset | (0 << 1)); /*clear nzinit*/ \
+  writeSystemControl((amy->seq_reset ? 1 : 0) | (0 << 1)); /*clear nzinit*/ \
   writes.push(QueuedWrite(AMY_HARM_PAIR_NOISE_RAM_CMD_CODE | ((addr & 0x1f) << 1) | bit,0)); \
   if (dumpWrites) \
   { \
     addWrite(AMY_HARM_PAIR_NOISE_RAM_CMD_CODE | ((addr & 0x1f) << 1) | bit,0); \
   } \
-  writeSystemControl(amy->seq_reset | ((amy_nzinit ? 1 : 0) << 1)); /*restore nzinit*/ \
+  writeSystemControl((amy->seq_reset ? 1 : 0) | ((amy_nzinit ? 1 : 0) << 1)); /*restore nzinit*/ \
 }
 
 #define writeNoiseRAM(addr,val) if (!skipRegisterWrites) \
 { \
   bool amy_nzinit = amy->nzinit; \
-  writeSystemControl(amy->seq_reset | (1 << 1)); /*set nzinit*/ \
+  writeSystemControl((amy->seq_reset ? 1 : 0) | (1 << 1)); /*set nzinit*/ \
   writes.push(QueuedWrite(AMY_HARM_PAIR_NOISE_RAM_CMD_CODE | (addr & 0x3f),((val & 7) | (1 << 24)))); \
   if (dumpWrites) \
   { \
     addWrite(AMY_HARM_PAIR_NOISE_RAM_CMD_CODE | (addr & 0x3f),((val & 7) | (1 << 24))); /*(1 << 24) is a marker that we should write to reg A*/ \
   } \
-  writeSystemControl(amy->seq_reset | ((amy_nzinit ? 1 : 0) << 1)); /*restore nzinit*/ \
+  writeSystemControl((amy->seq_reset ? 1 : 0) | ((amy_nzinit ? 1 : 0) << 1)); /*restore nzinit*/ \
 }
 
 #define CHIP_FREQBASE 524288
@@ -166,7 +166,7 @@ void DivPlatformAMY::acquire(short** buf, size_t len)
       writes.pop();
     }
 
-    buf[0][i]=amy->output;
+    buf[0][i] = amy->output;
 
     for(int j = 0; j < AMY_NUM_CHANNELS; j++)
     {
@@ -208,8 +208,6 @@ void DivPlatformAMY::tick(bool sysTick)
     }
     if (chan[i].std.wave.had) {
       DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_AMY);
-
-      
     }
 
     if (chan[i].freqChanged || chan[i].keyOn || chan[i].keyOff) 
@@ -218,11 +216,14 @@ void DivPlatformAMY::tick(bool sysTick)
 
       if (chan[i].keyOn) 
       {
-        
+        //TODO: test stuff, remove
+        writeFFBP(i, 4, 0);
+        writeLastHarmPairFlag(2, 1);
       }
       if (chan[i].keyOff) 
       {
-        
+        writeFFBP(i, 0, 0);
+        writeLastHarmPairFlag(2, 1);
       }
 
       if (chan[i].keyOn) chan[i].keyOn=false;
