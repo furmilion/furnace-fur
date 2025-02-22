@@ -40,6 +40,7 @@
 #include <math.h>
 #include <float.h>
 #include <fmt/printf.h>
+#include <chrono>
 
 void process(void* u, float** in, float** out, int inChans, int outChans, unsigned int size) {
   ((DivEngine*)u)->nextBuf(in,out,inChans,outChans,size);
@@ -2338,7 +2339,7 @@ void DivEngine::stopWavePreviewNoLock() {
 }
 
 bool DivEngine::isPreviewingSample() {
-  return (sPreview.sample>=0 && sPreview.sample<(int)song.sample.size());
+  return (sPreview.sample>=0 && sPreview.sample<(int)song.sample.size() && sPreview.pos!=sPreview.pEnd);
 }
 
 int DivEngine::getSamplePreviewSample() {
