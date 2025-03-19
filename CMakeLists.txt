@@ -544,6 +544,8 @@ extern/pwrnoise/pwrnoise.c
 
 extern/blip_buf/blip_buf.c
 
+extern/AMYlator/amy.c
+
 src/pch.cpp
 
 src/engine/platform/sound/sn76496.cpp
@@ -732,6 +734,7 @@ src/engine/wavOps.cpp
 src/engine/vgmOps.cpp
 
 src/engine/platform/abstract.cpp
+src/engine/platform/amy.cpp
 src/engine/platform/genesis.cpp
 src/engine/platform/genesisext.cpp
 src/engine/platform/sms.cpp
