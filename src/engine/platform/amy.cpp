@@ -106,6 +106,11 @@ const char** DivPlatformAMY::getRegisterSheet() {
 
 void DivPlatformAMY::acquire(short** buf, size_t len) 
 {
+  for (int i=0; i<AMY_NUM_CHANNELS; i++) 
+  {
+    oscBuf[i]->begin(len);
+  }
+
   for (size_t i=0; i<len; i++) 
   {
     amy_clock(amy);
@@ -168,10 +173,20 @@ void DivPlatformAMY::acquire(short** buf, size_t len)
 
     buf[0][i] = amy->output;
 
+    /*if(amy->chan[0].env.curr_val != 0 && (i & 15) == 0)
+    {
+      logI("ph %08X", amy->chan[0].phase);
+    }*/
+
     for(int j = 0; j < AMY_NUM_CHANNELS; j++)
     {
-      oscBuf[j]->data[oscBuf[j]->needle++] = amy->muted[j] ? 0 : (amy->channel_output[j] / 4);
+      oscBuf[j]->putSample(i, amy->muted[j] ? 0 : (amy->channel_output[j] / 4));
     }
+  }
+
+  for (int i=0; i<AMY_NUM_CHANNELS; i++) 
+  {
+    oscBuf[i]->end(len);
   }
 }
 
@@ -212,12 +227,16 @@ void DivPlatformAMY::tick(bool sysTick)
 
     if (chan[i].freqChanged || chan[i].keyOn || chan[i].keyOff) 
     {
-      chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE);
+      chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE / 4);
+      chan[i].freq &= (1 << 13) - 1;
+      
+      logI("freq %d", chan[i].freq);
 
       if (chan[i].keyOn) 
       {
         //TODO: test stuff, remove
-        writeFFBP(i, 4, 0);
+        //TODO: write actual freq calc...
+        writeFFBP(i, chan[i].freq, 0);
         writeLastHarmPairFlag(2, 1);
       }
       if (chan[i].keyOff) 
