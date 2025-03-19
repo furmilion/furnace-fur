@@ -1905,6 +1905,7 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
       break;
     }
     case DIV_SYSTEM_PCM_DAC: {
+      supportsCustomRate=false;
       // default to 44100Hz 16-bit stereo
       int sampRate=flags.getInt("rate",44100);
       int bitDepth=flags.getInt("outDepth",15)+1;
@@ -2665,7 +2666,6 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
     case DIV_SYSTEM_BIFURCATOR:
     case DIV_SYSTEM_POWERNOISE:
     case DIV_SYSTEM_UPD1771C:
-    case DIV_SYSTEM_UPD1771C_TONE:
     case DIV_SYSTEM_AMY:
       break;
     case DIV_SYSTEM_YMU759:
