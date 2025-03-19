@@ -230,7 +230,7 @@ void DivPlatformAMY::tick(bool sysTick)
       chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE / 4);
       chan[i].freq &= (1 << 13) - 1;
       
-      logI("freq %d", chan[i].freq);
+      //logI("freq %d", chan[i].freq);
 
       if (chan[i].keyOn) 
       {
