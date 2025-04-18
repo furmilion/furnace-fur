@@ -2,7 +2,7 @@ name: Build furnace
 
 on:
   push:
-    branches: [master, theUltimateFix, snes-more-memory]
+    branches: [master, theUltimateFix, snes-more-memory, src3453]
   pull_request:
     branches: master
 
