@@ -2713,6 +2713,72 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
       }
       break;
     }
+    case DIV_SYSTEM_S3HS: {
+      supportsCustomRate=false;      
+      bool sysEnableComp=flags.getBool("enableComp",false);
+      int sysCompThreshold=flags.getInt("compThresh",0);
+      int sysCompRatio=flags.getInt("compRatio",0);
+      int sysCompVolume=flags.getInt("compVolume",32);
+      if (ImGui::Checkbox(_("Enable Compressor"),&sysEnableComp)) {
+        altered=true;
+      }
+      ImGui::Text(_("Compressor Target Gain:"));
+      if (CWSliderInt("##S3HS_CompThresh",&sysCompThreshold,0,255)) {
+        if (sysCompThreshold<0) sysCompThreshold=0;
+        if (sysCompThreshold>255) sysCompThreshold=255;
+        altered=true;
+      } rightClickable
+      ImGui::Text(_("Compressor Decay Rate:"));
+      if (CWSliderInt("##S3HS_CompRatio",&sysCompRatio,0,255)) {
+        if (sysCompRatio<0) sysCompRatio=0;
+        if (sysCompRatio>255) sysCompRatio=255;
+        altered=true;
+      } rightClickable
+      ImGui::Text(_("Compressor Volume:"));
+      if (CWSliderInt("##S3HS_CompVolume",&sysCompVolume,0,255)) {
+        if (sysCompVolume<0) sysCompVolume=0;
+        if (sysCompVolume>255) sysCompVolume=255;
+        altered=true;
+      } rightClickable
+      bool sysEnableEQ=flags.getBool("enableEQ",false);
+      int sysEQlo=flags.getInt("EQlo",0);
+      int sysEQmid=flags.getInt("EQmid",0);
+      int sysEQhi=flags.getInt("EQhi",0);
+      if (ImGui::Checkbox(_("Enable Equalizer"),&sysEnableEQ)) {
+        altered=true;
+      }
+      ImGui::Text(_("Equalizer low band gain:"));
+      if (CWSliderInt("##S3HS_EQlo",&sysEQlo,0,255)) {
+        if (sysEQlo<0) sysEQlo=0;
+        if (sysEQlo>255) sysEQlo=255;
+        altered=true;
+      } rightClickable
+      ImGui::Text(_("Equalizer mid band gain:"));
+      if (CWSliderInt("##S3HS_EQmid",&sysEQmid,0,255)) {
+        if (sysEQmid<0) sysEQmid=0;
+        if (sysEQmid>255) sysEQmid=255;
+        altered=true;
+      } rightClickable
+      ImGui::Text(_("Equalizer high band gain:"));
+      if (CWSliderInt("##S3HS_EQhi",&sysEQhi,0,255)) {
+        if (sysEQhi<0) sysEQhi=0;
+        if (sysEQhi>255) sysEQhi=255;
+        altered=true;
+      } rightClickable
+      if (altered) {
+        e->lockSave([&]() {  
+          flags.set("enableComp",sysEnableComp);
+          flags.set("compThresh",sysCompThreshold);
+          flags.set("compRatio",sysCompRatio);
+          flags.set("compVolume",sysCompVolume);
+          flags.set("enableEQ",sysEnableEQ);
+          flags.set("EQlo",sysEQlo);
+          flags.set("EQmid",sysEQmid);
+          flags.set("EQhi",sysEQhi);
+        });
+      }
+      break; }
+      
     default: {
       bool sysPal=flags.getInt("clockSel",0);
 

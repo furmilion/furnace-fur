@@ -2328,6 +2328,66 @@ void DivEngine::registerSystems() {
     c64PostEffectHandlerMap
   );
 
+  sysDefs[DIV_SYSTEM_3FS44U]=new DivSysDef(
+    "3FS44U", NULL, 0xfb, 0, 4, false, true, 0, false, 0, 0, 0,
+    "Basically CPT100, but lack of wavetable channels.",
+    {"FM 1", "FM 2", "FM 3", "FM 4"},
+    {"FM1", "FM2", "FM3", "FM4"},
+    {DIV_CH_FM, DIV_CH_FM, DIV_CH_FM, DIV_CH_FM},
+    {DIV_INS_CPT100, DIV_INS_CPT100, DIV_INS_CPT100, DIV_INS_CPT100},
+    {DIV_INS_NULL, DIV_INS_NULL, DIV_INS_NULL, DIV_INS_NULL},
+    {}
+  );
+  //const EffectHandler suCutoffHandler(DIV_CMD_C64_FINE_CUTOFF, _("4xxx: Set cutoff (0 to FFF)"), effectValLong<12>);
+  EffectHandlerMap s3hsEffectHandlerMap = {
+    {0x10, {DIV_CMD_S3HS_OP_VOLUME, _("10xx: Set volume of operator 1"), constVal<0>, effectVal}},
+    {0x11, {DIV_CMD_S3HS_OP_VOLUME, _("11xx: Set volume of operator 2"), constVal<1>, effectVal}},
+    {0x12, {DIV_CMD_S3HS_OP_VOLUME, _("12xx: Set volume of operator 3"), constVal<2>, effectVal}},
+    {0x13, {DIV_CMD_S3HS_OP_VOLUME, _("13xx: Set volume of operator 4"), constVal<3>, effectVal}},
+    {0x14, {DIV_CMD_S3HS_OP_VOLUME, _("14xx: Set volume of operator 5"), constVal<4>, effectVal}},
+    {0x15, {DIV_CMD_S3HS_OP_VOLUME, _("15xx: Set volume of operator 6"), constVal<5>, effectVal}},
+    {0x16, {DIV_CMD_S3HS_OP_VOLUME, _("16xx: Set volume of operator 7"), constVal<6>, effectVal}},
+    {0x17, {DIV_CMD_S3HS_OP_VOLUME, _("17xx: Set volume of operator 8"), constVal<7>, effectVal}},
+    {0x18, {DIV_CMD_S3HS_OP_WAVE, _("18xx: Set waveform type of operator 1 (0 to F)"), constVal<0>, effectVal}},
+    {0x19, {DIV_CMD_S3HS_OP_WAVE, _("19xx: Set waveform type of operator 2 (0 to F)"), constVal<1>, effectVal}},
+    {0x1a, {DIV_CMD_S3HS_OP_WAVE, _("1Axx: Set waveform type of operator 3 (0 to F)"), constVal<2>, effectVal}},
+    {0x1b, {DIV_CMD_S3HS_OP_WAVE, _("1Bxx: Set waveform type of operator 4 (0 to F)"), constVal<3>, effectVal}},
+    {0x1c, {DIV_CMD_S3HS_OP_WAVE, _("1Cxx: Set waveform type of operator 5 (0 to F)"), constVal<4>, effectVal}},
+    {0x1d, {DIV_CMD_S3HS_OP_WAVE, _("1Dxx: Set waveform type of operator 6 (0 to F)"), constVal<5>, effectVal}},
+    {0x1e, {DIV_CMD_S3HS_OP_WAVE, _("1Exx: Set waveform type of operator 7 (0 to F)"), constVal<6>, effectVal}},
+    {0x1f, {DIV_CMD_S3HS_OP_WAVE, _("1Fxx: Set waveform type of operator 8 (0 to F)"), constVal<7>, effectVal}},
+    {0x20, {DIV_CMD_S3HS_MODMODE, _("20xx: Set modulation mode")}},
+    {0x21, {DIV_CMD_S3HS_FEEDBACK, _("21xx: Set modulation feedback amount (with reversed signed byte format)")}},
+    {0x22, {DIV_CMD_S3HS_OP_FREQ_FU, _("22xx: Set freq high byte (FU) of operator 2"), constVal<1>, effectVal}},
+    {0x23, {DIV_CMD_S3HS_OP_FREQ_FL, _("23xx: Set freq low byte (FL) of operator 2"), constVal<1>, effectVal}},
+    {0x24, {DIV_CMD_S3HS_OP_FREQ_FU, _("24xx: Set freq high byte (FU) of operator 3"), constVal<2>, effectVal}},
+    {0x25, {DIV_CMD_S3HS_OP_FREQ_FL, _("25xx: Set freq low byte (FL) of operator 3"), constVal<2>, effectVal}},
+    {0x26, {DIV_CMD_S3HS_OP_FREQ_FU, _("26xx: Set freq high byte (FU) of operator 4"), constVal<3>, effectVal}},
+    {0x27, {DIV_CMD_S3HS_OP_FREQ_FL, _("27xx: Set freq low byte (FL) of operator 4"), constVal<3>, effectVal}},
+    {0x28, {DIV_CMD_S3HS_OP_FREQ_FU, _("28xx: Set freq high byte (FU) of operator 5"), constVal<4>, effectVal}},
+    {0x29, {DIV_CMD_S3HS_OP_FREQ_FL, _("29xx: Set freq low byte (FL) of operator 5"), constVal<4>, effectVal}},
+    {0x2a, {DIV_CMD_S3HS_OP_FREQ_FU, _("2Axx: Set freq high byte (FU) of operator 6"), constVal<5>, effectVal}},
+    {0x2b, {DIV_CMD_S3HS_OP_FREQ_FL, _("2Bxx: Set freq low byte (FL) of operator 6"), constVal<5>, effectVal}},
+    {0x2c, {DIV_CMD_S3HS_OP_FREQ_FU, _("2Cxx: Set freq high byte (FU) of operator 7"), constVal<6>, effectVal}},
+    {0x2d, {DIV_CMD_S3HS_OP_FREQ_FL, _("2Dxx: Set freq low byte (FL) of operator 7"), constVal<6>, effectVal}},
+    {0x2e, {DIV_CMD_S3HS_OP_FREQ_FU, _("2Exx: Set freq high byte (FU) of operator 8"), constVal<7>, effectVal}},
+    {0x2f, {DIV_CMD_S3HS_OP_FREQ_FL, _("2Fxx: Set freq low byte (FL) of operator 8"), constVal<7>, effectVal}},
+    {0x30, {DIV_CMD_S3HS_FILTER, _("30xx: Set filter type (0: lowpass, 1: highpass, 2: bandpass, 3: bandstop)"), constVal<0>, effectVal}},
+    {0x31, {DIV_CMD_S3HS_FILTER, _("31xx: Set filter cutoff frequency"), constVal<1>, effectVal}},
+    {0x32, {DIV_CMD_S3HS_FILTER, _("32xx: Set filter resonance/bandwidth"), constVal<2>, effectVal}},
+  };
+
+  sysDefs[DIV_SYSTEM_S3HS]=new DivSysDef(
+    "3HS88PWN4", NULL, 0xfc, 0, 12, false, true, 0, false, 1U<<DIV_SAMPLE_DEPTH_8BIT, 32, 256,
+    "src3453's another fantasy sound chip. It supports harmonic synthesize.",
+    {"HS 1", "HS 2", "HS 3", "HS 4", "HS 5", "HS 6", "HS 7", "HS 8", "PCM 1", "PCM 2", "PCM 3", "PCM 4"},
+    {"H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "P1", "P2", "P3", "P4"},
+    {DIV_CH_FM, DIV_CH_FM, DIV_CH_FM, DIV_CH_FM, DIV_CH_FM, DIV_CH_FM, DIV_CH_FM, DIV_CH_FM, DIV_CH_PCM, DIV_CH_PCM, DIV_CH_PCM, DIV_CH_PCM},
+    {DIV_INS_S3HS, DIV_INS_S3HS, DIV_INS_S3HS, DIV_INS_S3HS, DIV_INS_S3HS, DIV_INS_S3HS, DIV_INS_S3HS, DIV_INS_S3HS, DIV_INS_S3HS, DIV_INS_S3HS, DIV_INS_S3HS, DIV_INS_S3HS},
+    {DIV_INS_NULL, DIV_INS_NULL, DIV_INS_NULL, DIV_INS_NULL, DIV_INS_NULL, DIV_INS_NULL, DIV_INS_NULL, DIV_INS_NULL, DIV_INS_AMIGA, DIV_INS_AMIGA, DIV_INS_AMIGA, DIV_INS_AMIGA},
+    s3hsEffectHandlerMap
+  );
+
   sysDefs[DIV_SYSTEM_DUMMY]=new DivSysDef(
     _("Dummy System"), NULL, 0xfd, 0, 8, false, true, 0, false, 0, 0, 0,
     _("this is a system designed for testing purposes."),
@@ -2336,6 +2396,18 @@ void DivEngine::registerSystems() {
     {DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE, DIV_CH_NOISE},
     {DIV_INS_STD, DIV_INS_STD, DIV_INS_STD, DIV_INS_STD, DIV_INS_STD, DIV_INS_STD, DIV_INS_STD, DIV_INS_STD}
   );
+
+  sysDefs[DIV_SYSTEM_CPT100]=new DivSysDef(
+    "CPT100", NULL, 0xfe, 0, 6, false, true, 0, false, 1U<<DIV_SAMPLE_DEPTH_8BIT, 32, 256,
+    "src3453's fantasy console is now ported to furnace! Please enjoy!",
+    {"FM 1", "FM 2", "FM 3", "FM 4", "Channel 5", "Channel 6"},
+    {"FM1", "FM2", "FM3", "FM4", "CH5", "CH6"},
+    {DIV_CH_FM, DIV_CH_FM, DIV_CH_FM, DIV_CH_FM, DIV_CH_WAVE, DIV_CH_WAVE},
+    {DIV_INS_CPT100, DIV_INS_CPT100, DIV_INS_CPT100, DIV_INS_CPT100, DIV_INS_CPT100, DIV_INS_CPT100},
+    {DIV_INS_NULL, DIV_INS_NULL, DIV_INS_NULL, DIV_INS_NULL, DIV_INS_AMIGA, DIV_INS_AMIGA},
+    waveOnlyEffectHandlerMap
+  );
+
 
   for (int i=0; i<DIV_MAX_CHIP_DEFS; i++) {
     if (sysDefs[i]==NULL) continue;

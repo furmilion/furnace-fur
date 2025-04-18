@@ -309,7 +309,14 @@ const char* cmdName[]={
   "SID3_CUTOFF_SCALING",
   "SID3_RESONANCE_SCALING",
 
-  "WS_GLOBAL_SPEAKER_VOLUME"
+  "WS_GLOBAL_SPEAKER_VOLUME",
+  "DIV_CMD_S3HS_OP_VOLUME", // (OP, value)
+  "DIV_CMD_S3HS_OP_WAVE", // (OP, value)
+  "DIV_CMD_S3HS_MODMODE", // (value)
+  "DIV_CMD_S3HS_FEEDBACK", // (value)
+  "DIV_CMD_S3HS_OP_FREQ_FU", // (OP, value)
+  "DIV_CMD_S3HS_OP_FREQ_FL", // (OP, value)
+  "DIV_CMD_S3HS_FILTER", // (OP, value)
 };
 
 static_assert((sizeof(cmdName)/sizeof(void*))==DIV_CMD_MAX,"update cmdName!");
