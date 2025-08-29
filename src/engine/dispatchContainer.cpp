@@ -93,7 +93,11 @@
 #include "platform/bifurcator.h"
 #include "platform/sid2.h"
 #include "platform/sid3.h"
+<<<<<<< HEAD
 #include "platform/nextsound.h"
+=======
+#include "platform/multipcm.h"
+>>>>>>> 957b57f3d9271ad978db441751c221b733a321f5
 #include "platform/dummy.h"
 #include "../ta-log.h"
 #include "song.h"
@@ -788,8 +792,13 @@ void DivDispatchContainer::init(DivSystem sys, DivEngine* eng, int chanCount, do
         ((DivPlatformOPL*)dispatch)->setCore(eng->getConfInt("opl4Core",0));
       }
       break;
+<<<<<<< HEAD
 	case DIV_SYSTEM_NEXTSOUND:
       dispatch=new DivPlatformNextSound;
+=======
+    case DIV_SYSTEM_MULTIPCM:
+      dispatch=new DivPlatformMultiPCM;
+>>>>>>> 957b57f3d9271ad978db441751c221b733a321f5
       break;
     case DIV_SYSTEM_DUMMY:
       dispatch=new DivPlatformDummy;

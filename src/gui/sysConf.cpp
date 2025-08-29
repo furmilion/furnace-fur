@@ -2728,7 +2728,11 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
     case DIV_SYSTEM_BIFURCATOR:
     case DIV_SYSTEM_POWERNOISE:
     case DIV_SYSTEM_UPD1771C:
+<<<<<<< HEAD
 	case DIV_SYSTEM_NEXTSOUND:
+=======
+    case DIV_SYSTEM_MULTIPCM:
+>>>>>>> 957b57f3d9271ad978db441751c221b733a321f5
       break;
     case DIV_SYSTEM_YMU759:
     case DIV_SYSTEM_ESFM:

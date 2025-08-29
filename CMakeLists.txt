@@ -817,7 +817,11 @@ src/engine/platform/nds.cpp
 src/engine/platform/bifurcator.cpp
 src/engine/platform/sid2.cpp
 src/engine/platform/sid3.cpp
+<<<<<<< HEAD
 src/engine/platform/nextsound.cpp
+=======
+src/engine/platform/multipcm.cpp
+>>>>>>> 957b57f3d9271ad978db441751c221b733a321f5
 src/engine/platform/pcmdac.cpp
 src/engine/platform/dummy.cpp
 
