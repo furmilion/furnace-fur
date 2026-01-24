@@ -2,7 +2,7 @@
 // OK, sorry for inserting the define here but I'm so tired of this extension
 /**
  * Furnace Tracker - multi-system chiptune tracker
- * Copyright (C) 2021-2025 tildearrow and contributors
+ * Copyright (C) 2021-2026 tildearrow and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -647,7 +647,7 @@ const char* FurnaceGUI::getSystemName(DivSystem which) {
 }
 
 void FurnaceGUI::updateScroll(int amount) {
-  float lineHeight=(PAT_FONT_SIZE+2*dpiScale);
+  float lineHeight=round(PAT_FONT_SIZE+2*dpiScale);
   nextScroll=lineHeight*amount;
   haveHitBounds=false;
 }
@@ -658,13 +658,13 @@ void FurnaceGUI::updateScrollRaw(float amount) {
 }
 
 void FurnaceGUI::addScroll(int amount) {
-  float lineHeight=(PAT_FONT_SIZE+2*dpiScale);
+  float lineHeight=round(PAT_FONT_SIZE+2*dpiScale);
   nextAddScroll=lineHeight*amount;
   haveHitBounds=false;
 }
 
 void FurnaceGUI::addScrollX(int amount) {
-  float lineHeight=(PAT_FONT_SIZE+2*dpiScale);
+  float lineHeight=round(PAT_FONT_SIZE+2*dpiScale);
   nextAddScrollX=lineHeight*amount;
   haveHitBounds=false;
 }
@@ -3987,7 +3987,7 @@ bool FurnaceGUI::loop() {
           break;
         case SDL_WINDOWEVENT:
           switch (ev.window.event) {
-            case SDL_WINDOWEVENT_RESIZED:
+            case SDL_WINDOWEVENT_RESIZED: {
               scrW=ev.window.data1;
               scrH=ev.window.data2;
               portrait=(scrW<scrH);
@@ -3995,7 +3995,32 @@ bool FurnaceGUI::loop() {
               logD("window resized to %dx%d",scrW,scrH);
               updateWindow=true;
               rend->resized(ev);
+
+              // check whether we're in fullscreen
+              int displayOfWindow=SDL_GetWindowDisplayIndex(sdlWin);
+              SDL_Rect displayRect;
+              if (displayOfWindow<0) {
+                logW("couldn't get display of window after resize! (%s)",SDL_GetError());
+                break;
+              }
+
+              if (SDL_GetDisplayBounds(displayOfWindow,&displayRect)!=0) {
+                logW("couldn't get display bounds after resize! (%s)",SDL_GetError());
+                break;
+              }
+
+              if (fullScreen) {
+                sysFullScreen=false;
+              } else {
+                if (scrW==displayRect.w && scrH==displayRect.h) {
+                  logD("we may be in fullscreen");
+                  sysFullScreen=true;
+                } else {
+                  sysFullScreen=false;
+                }
+              }
               break;
+            }
             case SDL_WINDOWEVENT_MOVED:
               scrX=ev.window.data1;
               scrY=ev.window.data2;
@@ -4160,7 +4185,7 @@ bool FurnaceGUI::loop() {
     // update config x/y/w/h values based on scrMax state
     if (updateWindow) {
       logV("updateWindow is true");
-      if (!scrMax && !fullScreen) {
+      if (!scrMax && !fullScreen && !sysFullScreen) {
         logV("updating scrConf");
         scrConfX=scrX;
         scrConfY=scrY;
@@ -4829,8 +4854,13 @@ bool FurnaceGUI::loop() {
       }
       if (ImGui::BeginMenu(settings.capitalMenuBar?_("Settings"):_("settings"))) {
 #ifndef IS_MOBILE
-        if (ImGui::MenuItem(_("full screen"),BIND_FOR(GUI_ACTION_FULLSCREEN),fullScreen)) {
+        ImGui::BeginDisabled(sysFullScreen);
+        if (ImGui::MenuItem(_("full screen"),BIND_FOR(GUI_ACTION_FULLSCREEN),fullScreen || sysFullScreen)) {
           doAction(GUI_ACTION_FULLSCREEN);
+        }
+        ImGui::EndDisabled();
+        if (sysFullScreen) {
+          ImGui::SetItemTooltip(_("the system has set Furnace to full screen."));
         }
 #endif
         if (ImGui::MenuItem(_("lock layout"),NULL,lockLayout)) {
@@ -4922,6 +4952,12 @@ bool FurnaceGUI::loop() {
         ImGui::EndMenu();
       }
       if (ImGui::BeginMenu(settings.capitalMenuBar?_("Help"):_("help"))) {
+        if (ImGui::MenuItem(_("online manual"))) 
+#ifdef DIV_UNSTABLE
+          SDL_OpenURL("https://github.com/tildearrow/furnace/tree/master/doc");
+#else
+          SDL_OpenURL("https://tildearrow.org/furnace/doc/v" DIV_VERSION "/manual.pdf");
+#endif
         if (ImGui::MenuItem(_("effect list"),BIND_FOR(GUI_ACTION_WINDOW_EFFECT_LIST),effectListOpen)) effectListOpen=!effectListOpen;
         if (ImGui::MenuItem(_("debug menu"),BIND_FOR(GUI_ACTION_WINDOW_DEBUG))) debugOpen=!debugOpen;
         if (ImGui::MenuItem(_("inspector"))) inspectorOpen=!inspectorOpen;
@@ -5048,6 +5084,7 @@ bool FurnaceGUI::loop() {
     }
 
     MEASURE(calcChanOsc,calcChanOsc());
+    updateKeyHitPre();
 
     if (mobileUI) {
       globalWinFlags=ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoBringToFrontOnFocus;
@@ -5194,10 +5231,7 @@ bool FurnaceGUI::loop() {
       }
     }
 
-    for (int i=0; i<e->getTotalChannelCount(); i++) {
-      keyHit1[i]-=0.08f;
-      if (keyHit1[i]<0.0f) keyHit1[i]=0.0f;
-    }
+    updateKeyHitPost();
 
     if (inspectorOpen) ImGui::ShowMetricsWindow(&inspectorOpen);
 
@@ -7677,7 +7711,7 @@ bool FurnaceGUI::init() {
   logI("initializing GUI.");
 
   // new pattern renderer "field" trial.
-  newPatternRenderer=(rand()&1);
+  newPatternRenderer=(rand()&3);
 
   newFilePicker=new FurnaceFilePicker;
   newFilePicker->setConfigPrefix("fp_");
@@ -8769,6 +8803,7 @@ FurnaceGUI::FurnaceGUI():
   displayNew(false),
   displayPalette(false),
   fullScreen(false),
+  sysFullScreen(false),
   preserveChanPos(false),
   sysDupCloneChannels(true),
   sysDupEnd(false),
