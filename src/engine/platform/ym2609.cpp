@@ -425,6 +425,147 @@ void DivPlatformYM2609::getPaired(int ch, std::vector<DivChannelPair>& ret)
   
 }
 
+const DivMemoryComposition* DivPlatformYM2609::getMemCompo(int index) {
+  if (index==0) return &memCompoA;
+  if (index==1) return &memCompoB[0];
+  if (index==2) return &memCompoB[1];
+  if (index==3) return &memCompoB[2];
+  return NULL;
+}
+
+const void* DivPlatformYM2609::getSampleMem(int index) {
+  if(index == 0) return adpcma_buf;
+  if(index == 1) return ym2609->get_adpcmb_buf_pointer(0);
+  if(index == 2) return ym2609->get_adpcmb_buf_pointer(1);
+  if(index == 3) return ym2609->get_adpcmb_buf_pointer(2);
+  return NULL;
+}
+
+size_t DivPlatformYM2609::getSampleMemCapacity(int index) {
+  if(index == 0) return 0x1000000;
+  if(index == 1) return 0x40000;
+  if(index == 2) return 0x1000000;
+  if(index == 3) return 0x1000000;
+  return 0;
+}
+
+const char* DivPlatformYM2609::getSampleMemName(int index) {
+  if(index == 0) return "ADPCM-A";
+  if(index == 1) return "ADPCM-B 1";
+  if(index == 2) return "ADPCM-B 2";
+  if(index == 3) return "ADPCM-B 3";
+  return NULL;
+}
+
+size_t DivPlatformYM2609::getSampleMemUsage(int index) {
+  if(index == 0) return adpcmAMemLen;
+  if(index == 1) return adpcmBMemLen[0];
+  if(index == 2) return adpcmBMemLen[1];
+  if(index == 3) return adpcmBMemLen[2];
+  return NULL;
+}
+
+bool DivPlatformYM2609::isSampleLoaded(int index, int sample) {
+  if (index<0 || index>3) return false;
+  if (sample<0 || sample>32767) return false;
+  return sampleLoaded[index][sample];
+}
+
+void DivPlatformYM2609::renderSamples(int sysID)
+{
+  memset(adpcma_buf,0,getSampleMemCapacity(0));
+  memset(sampleOffA,0,32768*sizeof(unsigned int));
+  memset(sampleOffB[0],0,32768*sizeof(unsigned int));
+  memset(sampleOffB[1],0,32768*sizeof(unsigned int));
+  memset(sampleOffB[2],0,32768*sizeof(unsigned int));
+  memset(sampleLoaded[0],0,32768*sizeof(bool));
+  memset(sampleLoaded[1],0,32768*sizeof(bool));
+  memset(sampleLoaded[2],0,32768*sizeof(bool));
+  memset(sampleLoaded[3],0,32768*sizeof(bool));
+
+  memCompoA=DivMemoryComposition();
+  memCompoA.name="ADPCM-A";
+
+  memCompoB[0]=DivMemoryComposition();
+  memCompoB[0].name="ADPCM-B 1";
+  memCompoB[1]=DivMemoryComposition();
+  memCompoB[1].name="ADPCM-B 2";
+  memCompoB[2]=DivMemoryComposition();
+  memCompoB[2].name="ADPCM-B 3";
+
+  size_t memPos=0;
+  for (int i=0; i<parent->song.sampleLen; i++) 
+  {
+    DivSample* s=parent->song.sample[i];
+    if (!s->renderOn[0][sysID]) {
+      sampleOffA[i]=0;
+      continue;
+    }
+
+    int paddedLen=(s->lengthA+255)&(~0xff);
+    if ((memPos&0xf00000)!=((memPos+paddedLen)&0xf00000)) {
+      memPos=(memPos+0xfffff)&0xf00000;
+    }
+    if (memPos>=getSampleMemCapacity(0)) {
+      logW("out of ADPCM-A memory for sample %d!",i);
+      break;
+    }
+    if (memPos+paddedLen>=getSampleMemCapacity(0)) {
+      memcpy(adpcma_buf+memPos,s->dataA,getSampleMemCapacity(0)-memPos);
+      logW("out of ADPCM-A memory for sample %d!",i);
+    } else {
+      memcpy(adpcma_buf+memPos,s->dataA,paddedLen);
+      sampleLoaded[0][i]=true;
+    }
+    sampleOffA[i]=memPos;
+    memCompoA.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"Sample",i,memPos,memPos+paddedLen));
+    memPos+=paddedLen;
+  }
+  adpcmAMemLen=memPos+256;
+
+  memCompoA.used=adpcmAMemLen;
+  memCompoA.capacity=getSampleMemCapacity(0);
+
+  for(int m = 0; m < 3; m++)
+  {
+    unsigned char* adpcmBMem = ym2609->get_adpcmb_buf_pointer(m);
+
+    memset(adpcmBMem,0,getSampleMemCapacity(1+m));
+
+    memPos=0;
+    for (int i=0; i<parent->song.sampleLen; i++) {
+      DivSample* s=parent->song.sample[i];
+      if (!s->renderOn[1+m][sysID]) {
+        sampleOffB[m][i]=0;
+        continue;
+      }
+
+      int paddedLen=(s->lengthB+255)&(~0xff);
+      if ((memPos&0xf00000)!=((memPos+paddedLen)&0xf00000)) {
+        memPos=(memPos+0xfffff)&0xf00000;
+      }
+      if (memPos>=getSampleMemCapacity(1+m)) {
+        logW("out of ADPCM-B %d memory for sample %d!",m+1,i);
+        break;
+      }
+      if (memPos+paddedLen>=getSampleMemCapacity(1+m)) {
+        memcpy(adpcmBMem+memPos,s->dataB,getSampleMemCapacity(1+m)-memPos);
+        logW("out of ADPCM-B %d memory for sample %d!",m+1,i);
+      } else {
+        memcpy(adpcmBMem+memPos,s->dataB,paddedLen);
+        sampleLoaded[1+m][i]=true;
+      }
+      sampleOffB[m][i]=memPos;
+      memCompoB[m].entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"Sample",i,memPos,memPos+paddedLen));
+      memPos+=paddedLen;
+    }
+    adpcmBMemLen[m]=memPos+256;
+
+    memCompoB[m].used=adpcmBMemLen[m];
+    memCompoB[m].capacity=getSampleMemCapacity(1+m);
+  }
+}
+
 int DivPlatformYM2609::init(DivEngine* p, int channels, int sugRate, const DivConfig& flags) {
   parent=p;
   dumpWrites=false;
@@ -435,6 +576,18 @@ int DivPlatformYM2609::init(DivEngine* p, int channels, int sugRate, const DivCo
 
   output_buf[0] = new int[1];
   output_buf[1] = new int[1];
+
+  adpcma_buf = new uint8_t[0x1000000];
+  adpcma_buf_size = 0x1000000;
+
+  sampleOffA=new unsigned int[32768];
+  sampleOffB[0]=new unsigned int[32768];
+  sampleOffB[1]=new unsigned int[32768];
+  sampleOffB[2]=new unsigned int[32768];
+  sampleLoaded[0]=new bool[32768];
+  sampleLoaded[1]=new bool[32768];
+  sampleLoaded[2]=new bool[32768];
+  sampleLoaded[3]=new bool[32768];
   
   for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
   {
@@ -442,17 +595,17 @@ int DivPlatformYM2609::init(DivEngine* p, int channels, int sugRate, const DivCo
     oscBuf[i]=new DivDispatchOscBuffer;
   }
 
-    rev = new reverb(YM2609_DSP_RATE * 4, 39);
-    dist = new distortion(YM2609_CLOCK, 39);
-    chor = new chorus(YM2609_CLOCK, 39);
-    eq = new eq3band(YM2609_DSP_RATE);
-    filt = new HPFLPF(YM2609_CLOCK, 39);
-    reph = new ReversePhase();
-    comp = new Compressor(YM2609_DSP_RATE, 39);
+  rev = new reverb(YM2609_DSP_RATE * 4, 39);
+  dist = new distortion(YM2609_CLOCK, 39);
+  chor = new chorus(YM2609_CLOCK, 39);
+  eq = new eq3band(YM2609_DSP_RATE);
+  filt = new HPFLPF(YM2609_CLOCK, 39);
+  reph = new ReversePhase();
+  comp = new Compressor(YM2609_DSP_RATE, 39);
 
-    ym2609 = new OPNA2(0, rev, dist, chor, eq, filt, reph, comp);
+  ym2609 = new OPNA2(0, rev, dist, chor, eq, filt, reph, comp);
 
-    ym2609->Init(YM2609_CLOCK, YM2609_CLOCK);
+  ym2609->Init(YM2609_CLOCK, YM2609_CLOCK, false, adpcma_buf, adpcma_buf_size);
 
   setFlags(flags);
 
@@ -482,7 +635,18 @@ void DivPlatformYM2609::quit() {
   delete[] output_buf[0];
   delete[] output_buf[1];
   delete[] output_buf;
+
+  delete[] adpcma_buf;
+  adpcma_buf_size = 0;
 }
 
 DivPlatformYM2609::~DivPlatformYM2609() {
+  delete[] sampleOffA;
+  delete[] sampleOffB[0];
+  delete[] sampleOffB[1];
+  delete[] sampleOffB[2];
+  delete[] sampleLoaded[0];
+  delete[] sampleLoaded[1];
+  delete[] sampleLoaded[2];
+  delete[] sampleLoaded[3];
 }

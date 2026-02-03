@@ -177,6 +177,15 @@ class OPNA2 /*: public OPNABase*/
             return Init(c, r, ipflag, NULL, 0);
         }
 
+        uint8_t* get_adpcmb_buf_pointer(int index)
+        {
+            if(index == 0) return adpcmb[0].adpcmbuf;
+            if(index == 1) return adpcmb[1].adpcmbuf;
+            if(index == 2) return adpcmb[2].adpcmbuf;
+
+            return NULL;
+        }
+
         bool Init(uint32_t c, uint32_t r, bool ipflag, uint8_t* _adpcma = NULL, int _adpcma_size = 0)
         {
             rate = 8000;

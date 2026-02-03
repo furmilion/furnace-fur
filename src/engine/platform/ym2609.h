@@ -61,11 +61,24 @@ class DivPlatformYM2609: public DivDispatch {
 
   OPNA2* ym2609;
 
+  uint8_t* adpcma_buf;
+  uint32_t adpcma_buf_size;
+
+  size_t adpcmAMemLen;
+  size_t adpcmBMemLen[3];
+  bool* sampleLoaded[4];
+
+  unsigned int* sampleOffA;
+  unsigned int* sampleOffB[3];
+
   unsigned char regPool[YM2609_NUM_REGISTERS];
 
   bool isMuted[YM2609_NUM_CHANNELS];
 
   int** output_buf;
+
+  DivMemoryComposition memCompoA;
+  DivMemoryComposition memCompoB[3];
   
   friend void putDispatchChip(void*,int);
   friend void putDispatchChan(void*,int,int);
@@ -107,6 +120,13 @@ class DivPlatformYM2609: public DivDispatch {
     int getOutputCount();
     bool hasSoftPan(int ch);
     void getPaired(int ch, std::vector<DivChannelPair>& ret);
+    const DivMemoryComposition* getMemCompo(int index);
+    void renderSamples(int sysID);
+    const void* getSampleMem(int index);
+    size_t getSampleMemCapacity(int index);
+    const char* getSampleMemName(int index=0);
+    size_t getSampleMemUsage(int index);
+    bool isSampleLoaded(int index, int sample);
     void quit();
     ~DivPlatformYM2609();
 };
