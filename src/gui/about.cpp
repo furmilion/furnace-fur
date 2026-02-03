@@ -189,6 +189,8 @@ const char* aboutLine[]={
   _N("openMSX YMF278 emulator (modified version) by the openMSX developers"),
   _N("SID2 emulator by LTVA (modification of reSID emulator)"),
   _N("SID3 emulator by LTVA"),
+  _N("YM2609 emulator by kuma4649"),
+  _N("with tweaks for Furnace and C# to C++ conversion by LTVA"),
   "",
   _N("greetings to:"),
   "floxy!",
