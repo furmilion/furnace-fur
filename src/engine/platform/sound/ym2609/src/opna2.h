@@ -23,6 +23,8 @@
 
 #include "macros.h"
 
+#define PI 3.1415
+
 //	YM2609(OPNA2) ---------------------------------------------------
 class OPNA2 /*: public OPNABase*/
 {
@@ -213,6 +215,24 @@ class OPNA2 /*: public OPNABase*/
                 //return false;
 
             Reset();
+
+            for (int i = -FM_TLPOS; i < FM_TLENTS; i++)
+            {
+                tltable_opna[i + FM_TLPOS] = (int)((uint32_t)(65536.0 * pow(2.0, i * -16.0 / FM_TLENTS))) - 1;
+            }
+
+            for (int c = 0; c < 256; c++)
+            {
+                int v;
+                if (c < 0x40) v = c * 2 + 0x80;
+                else if (c < 0xc0) v = 0x7f - (c - 0x40) * 2 + 0x80;
+                else v = (c - 0xc0) * 2;
+                pmtable_opna[c] = c;
+
+                if (c < 0x80) v = 0xff - c * 2;
+                else v = (c - 0x80) * 2;
+                amtable_opna[c] = v & ~3;
+            }
 
             SetVolumeFM(0);
             SetVolumePSG(0);
@@ -432,6 +452,12 @@ class OPNA2 /*: public OPNABase*/
         void SetReg(uint32_t addr, uint32_t data)
         {
             addr &= 0x3ff;
+
+            if((addr & 0xff) >= 0x2d && (addr & 0xff) <= 0x2f && !(addr & (1 << 8)))
+            {
+                SetPrescaler((addr & 0xff) - 0x2d);
+                return;
+            }
 
             if (addr < 0x10)
             {

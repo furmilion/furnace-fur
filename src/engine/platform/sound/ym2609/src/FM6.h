@@ -7,6 +7,7 @@
 #include "macros.h"
 #include "Timer.h"
 #include "fmvgen.h"
+//#include "opna2.h"
 
 extern int amtable_opna[];
 extern int pmtable_opna[];

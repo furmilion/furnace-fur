@@ -3240,6 +3240,10 @@ void FurnaceGUI::insTabWavetable(DivInstrument* ins)
         wavePreviewLen=256;
         wavePreviewHeight=255;
         break;
+      case DIV_INS_YM2609_FM:
+        wavePreviewLen=1024;
+        wavePreviewHeight=8191;
+        break;
       default:
         wavePreviewLen=32;
         wavePreviewHeight=31;
@@ -3292,9 +3296,9 @@ void FurnaceGUI::insTabWavetable(DivInstrument* ins)
           wavePreviewAccum=0.0f;
           wavePreviewInit=false;
         }
-        float wavePreview1[257];
-        float wavePreview2[257];
-        float wavePreview3[257];
+        float wavePreview1[DIV_WAVETABLE_MAX_WIDTH + 1];
+        float wavePreview2[DIV_WAVETABLE_MAX_WIDTH + 1];
+        float wavePreview3[DIV_WAVETABLE_MAX_WIDTH + 1];
         for (int i=0; i<wave1->len; i++) {
           if (wave1->data[i]>wave1->max) {
             wavePreview1[i]=wave1->max;
@@ -6632,6 +6636,14 @@ void FurnaceGUI::drawInsSID3(DivInstrument* ins) {
   }
 }
 
+void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
+{
+  if (ImGui::BeginTabItem("FM")) 
+  {
+    ImGui::EndTabItem();
+  }
+}
+
 void FurnaceGUI::drawInsEdit() {
   if (nextWindow==GUI_WINDOW_INS_EDIT) {
     insEditOpen=true;
@@ -7623,6 +7635,9 @@ void FurnaceGUI::drawInsEdit() {
         }
         if (ins->type==DIV_INS_SID3) {
           drawInsSID3(ins);
+        }
+        if (ins->type==DIV_INS_YM2609_FM) {
+          drawInsYM2609FM(ins);
         }
         if (ins->type==DIV_INS_MSM6258 ||
             ins->type==DIV_INS_MSM6295 ||

@@ -339,6 +339,23 @@ bool DivInstrumentSID2::operator==(const DivInstrumentSID2& other) {
   );
 }
 
+bool DivInstrumentYM2609FM::Operator::operator==(const DivInstrumentYM2609FM::Operator& other) {
+  return (
+    _C(alg_link) &&
+    _C(phase_reset) &&
+    _C(wave_type)
+  );
+}
+
+bool DivInstrumentYM2609FM::operator==(const DivInstrumentYM2609FM& other) {
+  return (
+    _C(alg_construct_switch) &&
+    _C(feedback[0]) &&
+    _C(feedback[1]) &&
+    _C(feedback[2])
+  );
+}
+
 #undef _C
 
 #define CONSIDER(x,t) \
@@ -1149,6 +1166,14 @@ void DivInstrument::writeFeatureS3(SafeWriter* w) {
   FEATURE_END;
 }
 
+void DivInstrument::writeFeature9F(SafeWriter* w) {
+  FEATURE_BEGIN("9F");
+
+  
+
+  FEATURE_END;
+}
+
 void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bool insName) {
   size_t blockStartSeek=0;
   size_t blockEndSeek=0;
@@ -1196,6 +1221,7 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
   bool featurePN=false;
   bool featureS2=false;
   bool featureS3=false;
+  bool feature9F=false;
 
   bool checkForWL=false;
 
@@ -1452,6 +1478,12 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
         break;
       case DIV_INS_UPD1771C:
         break;
+      case DIV_INS_YM2609_FM:
+        featureFM=true;
+        feature9F=true; //additional data for YM2609 FM
+        if (amiga.useSample) featureSL=true;
+        if (ws.enabled) featureWS=true;
+        break;
       case DIV_INS_MAX:
         break;
       case DIV_INS_NULL:
@@ -1510,6 +1542,9 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
     }
     if (sid3!=defaultIns.sid3) {
       featureS3=true;
+    }
+    if (ym2609fm!=defaultIns.ym2609fm) {
+      feature9F=true;
     }
   }
 
@@ -1666,6 +1701,9 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
   }
   if (featureS3) {
     writeFeatureS3(w);
+  }
+  if (feature9F) {
+    writeFeature9F(w);
   }
 
   if (fui && (featureSL || featureWL)) {
@@ -2755,6 +2793,14 @@ void DivInstrument::readFeatureS3(SafeReader& reader, short version) {
     sid3.filt[i].bindResonanceToNoteStrength=reader.readC();
     sid3.filt[i].bindResonanceToNoteCenter=reader.readC();
   }
+
+  READ_FEAT_END;
+}
+
+void DivInstrument::readFeature9F(SafeReader& reader, short version) {
+  READ_FEAT_BEGIN;
+
+  
 
   READ_FEAT_END;
 }

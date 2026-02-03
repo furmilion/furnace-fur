@@ -76,7 +76,7 @@ void DivPlatformYM2609::tick(bool sysTick)
   {
     chan[i].std.next();
 
-    DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_SID3);
+    DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_YM2609_FM);
     
     if(sysTick)
     {
@@ -113,7 +113,7 @@ void DivPlatformYM2609::tick(bool sysTick)
 
       if (chan[i].keyOn) 
       {
-        DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_SID3);
+        DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_YM2609_FM);
         
         chan[i].gate = true;
       }
@@ -174,12 +174,12 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
   if (c.chan>YM2609_NUM_CHANNELS - 1) return 0;
 
   //bool updEnv = false;
-  DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_SID3);
+  DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
   //int filter = 0;
 
   switch (c.cmd) {
     case DIV_CMD_NOTE_ON: {
-      DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_SID3);
+      DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
       if (c.value!=DIV_NOTE_NULL) {
         chan[c.chan].baseFreq=NOTE_FREQUENCY(c.value);
         chan[c.chan].freqChanged=true;
@@ -267,7 +267,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
     case DIV_CMD_PRE_PORTA:
       if (chan[c.chan].active && c.value2) {
         if (parent->song.compatFlags.resetMacroOnPorta || parent->song.compatFlags.preNoteNoEffect) {
-          chan[c.chan].macroInit(parent->getIns(chan[c.chan].ins,DIV_INS_SID3));
+          chan[c.chan].macroInit(parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM));
           chan[c.chan].keyOn=true;
         }
       }
@@ -412,8 +412,33 @@ void DivPlatformYM2609::poke(std::vector<DivRegWrite>& wlist) {
 }
 
 void DivPlatformYM2609::setFlags(const DivConfig& flags) {
-    chipClock=1000000;
-    rate=YM2609_DSP_RATE;
+  chipClock=1000000;
+  rate=YM2609_DSP_RATE; //TODO: map somehow?
+  
+    // Prescaler flags
+  switch (flags.getInt("prescale",0)) {
+    case 0x01: // /3
+      prescale=0x2e;
+      /*fmFreqBase=9440540.0/2.0,
+      fmDivBase=36,
+      ayDiv=16;
+      nukedMult=16;*/
+      break;
+    case 0x02: // /2
+      prescale=0x2f;
+      /*fmFreqBase=9440540.0/3.0,
+      fmDivBase=24,
+      ayDiv=8;
+      nukedMult=24;*/
+      break;
+    default: // /6
+      prescale=0x2d;
+      /*fmFreqBase=9440540.0,
+      fmDivBase=72,
+      ayDiv=32;
+      nukedMult=8;*/
+      break;
+  }
   
   for (int i=0; i<YM2609_NUM_CHANNELS; i++) {
     oscBuf[i]->setRate(rate);

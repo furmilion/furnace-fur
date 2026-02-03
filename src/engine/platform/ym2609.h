@@ -77,6 +77,8 @@ class DivPlatformYM2609: public DivDispatch {
 
   int** output_buf;
 
+  unsigned char prescale;
+
   DivMemoryComposition memCompoA;
   DivMemoryComposition memCompoB[3];
   
