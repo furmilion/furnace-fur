@@ -191,7 +191,7 @@ class OPNA2 /*: public OPNABase*/
         bool Init(uint32_t c, uint32_t r, bool ipflag, uint8_t* _adpcma = NULL, int _adpcma_size = 0)
         {
             rate = 8000;
-            //LoadRhythmSample(appendFileReaderCallback);
+            //LoadRhythmSample(appendFileReaderCallback); //TODO add samples
             //dicOpeWav.Clear();
 
             //if (adpcmb[0].adpcmbuf == NULL)
