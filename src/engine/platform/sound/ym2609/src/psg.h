@@ -289,7 +289,7 @@ class PSG
                             sample /= (1 << oversampling);
                             fmvgen::StoreSample(dest[0][ptrDest], sample);
                             fmvgen::StoreSample(dest[1][ptrDest], sample);
-                            ptrDest += 2;
+                            ptrDest++;
 
                             visVolume = sample;
 
@@ -327,7 +327,7 @@ class PSG
                             sample /= (1 << oversampling);
                             fmvgen::StoreSample(dest[0][ptrDest], sample);
                             fmvgen::StoreSample(dest[1][ptrDest], sample);
-                            ptrDest += 2;
+                            ptrDest++;
 
                             visVolume = sample;
 

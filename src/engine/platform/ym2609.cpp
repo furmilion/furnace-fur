@@ -40,14 +40,31 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
 {
     for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
     {
-        oscBuf[i]->begin(len);
+      oscBuf[i]->begin(len);
     }
 
-    ym2609->Mix((int**)buf, len / 4); //TODO: rewrite all
+    for(size_t samp = 0; samp < len; samp++)
+    {
+      output_buf[0][0] = 0;
+      output_buf[1][0] = 0;
+
+      ym2609->Mix(output_buf, 1);
+
+      buf[0][len] = output_buf[0][0];
+      buf[1][len] = output_buf[1][0];
+
+      if (!writes.empty()) 
+      {
+        QueuedWrite w=writes.front();
+        //sid3_write(sid3, w.addr, w.val);
+        regPool[w.addr % YM2609_NUM_REGISTERS]=w.val;
+        writes.pop();
+      }
+    }
 
     for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
     {
-        oscBuf[i]->end(len);
+      oscBuf[i]->end(len);
     }
 }
 
@@ -60,7 +77,6 @@ void DivPlatformYM2609::tick(bool sysTick)
     chan[i].std.next();
 
     DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_SID3);
-
     
     if(sysTick)
     {
@@ -414,6 +430,11 @@ int DivPlatformYM2609::init(DivEngine* p, int channels, int sugRate, const DivCo
   dumpWrites=false;
   skipRegisterWrites=false;
   writeOscBuf=0;
+
+  output_buf = new int*[2];
+
+  output_buf[0] = new int[1];
+  output_buf[1] = new int[1];
   
   for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
   {
@@ -457,6 +478,10 @@ void DivPlatformYM2609::quit() {
     delete ym2609;
     ym2609 = NULL;
   }
+
+  delete[] output_buf[0];
+  delete[] output_buf[1];
+  delete[] output_buf;
 }
 
 DivPlatformYM2609::~DivPlatformYM2609() {

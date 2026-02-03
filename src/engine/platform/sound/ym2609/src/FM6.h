@@ -399,7 +399,7 @@ class FM6
 
             int limit = nsamples << 1;
             int v;
-            for (int dest = 0; dest < limit; dest += 2)
+            for (int dest = 0; dest < limit; dest++)
             {
                 //0,1 素
                 //2,3 rev

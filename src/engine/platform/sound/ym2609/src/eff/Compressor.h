@@ -158,8 +158,8 @@ class Compressor
 
             for (int i = 0; i < nsamples; i++)
             {
-                fl = buffer[0][i * 2] / convInt;
-                fr = buffer[1][i * 2] / convInt;
+                fl = buffer[0][i] / convInt;
+                fr = buffer[1][i] / convInt;
 
                 float tmpL = sysInfo.envfilterL.Process(fabs(fl));
                 float tmpR = sysInfo.envfilterR.Process(fabs(fr));
@@ -188,8 +188,8 @@ class Compressor
                 fl = sysInfo.volume * gainL * fl;
                 fr = sysInfo.volume * gainR * fr;
 
-                buffer[0][i * 2] = (int)(fl * convInt);
-                buffer[1][i * 2] = (int)(fr * convInt);
+                buffer[0][i] = (int)(fl * convInt);
+                buffer[1][i] = (int)(fr * convInt);
             }
         }
 

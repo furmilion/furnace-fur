@@ -335,7 +335,7 @@ class PSG2 : public PSG
                             fmvgen::StoreSample(dest[0][ptrDest], sampleL);
                             fmvgen::StoreSample(dest[1][ptrDest], sampleR);
                             rever->StoreDataC(revSampleL, revSampleR);
-                            ptrDest += 2;
+                            ptrDest++;
 
                             visVolume = sampleL;
 
@@ -392,7 +392,7 @@ class PSG2 : public PSG
                             fmvgen::StoreSample(dest[0][ptrDest], sampleL);
                             fmvgen::StoreSample(dest[1][ptrDest], sampleR);
                             rever->StoreDataC(revSampleL, revSampleR);
-                            ptrDest += 2;
+                            ptrDest++;
 
                             visVolume = sampleL;
 

@@ -27,20 +27,20 @@ DivSysDef* DivEngine::sysDefs[DIV_MAX_CHIP_DEFS];
 DivSystem DivEngine::sysFileMapFur[DIV_MAX_CHIP_DEFS];
 DivSystem DivEngine::sysFileMapDMF[DIV_MAX_CHIP_DEFS];
 
-DivSystem DivEngine::systemFromFileFur(unsigned char val) {
+DivSystem DivEngine::systemFromFileFur(unsigned short val) {
   return sysFileMapFur[val];
 }
 
-unsigned char DivEngine::systemToFileFur(DivSystem val) {
+unsigned short DivEngine::systemToFileFur(DivSystem val) {
   if (sysDefs[val]==NULL) return 0;
   return sysDefs[val]->id;
 }
 
-DivSystem DivEngine::systemFromFileDMF(unsigned char val) {
+DivSystem DivEngine::systemFromFileDMF(unsigned short val) {
   return sysFileMapDMF[val];
 }
 
-unsigned char DivEngine::systemToFileDMF(DivSystem val) {
+unsigned short DivEngine::systemToFileDMF(DivSystem val) {
   if (sysDefs[val]==NULL) return 0;
   return sysDefs[val]->id_DMF;
 }

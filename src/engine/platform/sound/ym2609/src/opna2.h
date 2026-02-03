@@ -696,7 +696,7 @@ class OPNA2 /*: public OPNABase*/
         {
             if (rhythmtvol < 128 && rhythm[0].sample != NULL && ((rhythmkey & 0x3f) != 0))
             {
-                int limit = (int)count * 2;
+                //int limit = (int)count * 2;
                 //visRtmVolume[0] = 0;
                 //visRtmVolume[1] = 0;
                 for (int i = 0; i < 6; i++)
@@ -714,7 +714,7 @@ class OPNA2 /*: public OPNABase*/
                             maskl = maskr = 0;
                         }
 
-                        for (int dest = 0; dest < limit && r.pos < r.size; dest += 2)
+                        for (int dest = 0; dest < count && r.pos < r.size; dest++)
                         {
                             int sample = (r.sample[r.pos / 1024] * vol) >> 12;
                             r.pos += r.step;

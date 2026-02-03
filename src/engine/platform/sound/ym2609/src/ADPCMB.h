@@ -90,7 +90,7 @@ class ADPCMB
                         reverb->StoreDataC(revSampleL, revSampleR);
                         //visAPCMVolume[0] = (int)(s & maskl);
                         //visAPCMVolume[1] = (int)(s & maskr);
-                        ptrDest += 2;
+                        ptrDest++;
                         adplc -= adpld;
                     }
                     for (; count > 0 && apout0 != 0; count--)
@@ -118,7 +118,7 @@ class ADPCMB
                         reverb->StoreDataC(revSampleL, revSampleR);
                         //visAPCMVolume[0] = (int)(s & maskl);
                         //visAPCMVolume[1] = (int)(s & maskr);
-                        ptrDest += 2;
+                        ptrDest++;
                         adplc -= adpld;
                     }
                 }
@@ -154,7 +154,7 @@ class ADPCMB
                         reverb->StoreDataC(revSampleL, revSampleR);
                         //visAPCMVolume[0] = (int)(s & maskl);
                         //visAPCMVolume[1] = (int)(s & maskr);
-                        ptrDest += 2;
+                        ptrDest++;
                     }
                 stop:
                     ;

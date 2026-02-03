@@ -96,7 +96,7 @@ class ADPCMA
             if (tvol < 128 && (key & 0x3f) != 0)
             {
                 //Sample* limit = buffer + count * 2;
-                uint32_t limit = count * 2;
+                //uint32_t limit = count * 2;
                 int revSampleL = 0;
                 int revSampleR = 0;
                 for (int i = 0; i < 6; i++)
@@ -112,7 +112,7 @@ class ADPCMA
 
                         //Sample* dest = buffer;
                         uint32_t dest = 0;
-                        for (; dest < limit; dest += 2)
+                        for (; dest < count; dest++)
                         {
                             r.step += (uint32_t)step;
                             if (r.pos >= r.stop)
