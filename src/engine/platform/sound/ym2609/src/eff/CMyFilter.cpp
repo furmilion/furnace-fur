@@ -1,9 +1,9 @@
 #include "CMyFilter.h"
 #include "../pantable_opna.h"
 
-float* freqTable;
-float* gainTable;
-float* QTable;
+float* freqTable = NULL;
+float* gainTable = NULL;
+float* QTable = NULL;
 
 float convInt = 21474.83647f;
 
@@ -12,7 +12,7 @@ uint32_t amtable[2][4][FM_LFOENTS];
 bool tablemade = false;
 
 float panTable_opna[4] = { 1.0f, 0.7512f, 0.4512f, 0.0500f };
-uint32_t sinetable_opna[12][4][1024];
+//uint32_t sinetable_opna[12][4][1024];
 
 int amtable_opna[FM_LFOENTS];
 int pmtable_opna[FM_LFOENTS];
@@ -20,6 +20,8 @@ int tltable_opna[FM_TLENTS + FM_TLPOS];
 
 void CMyFilter::makeTable()
 {
+    if(freqTable != NULL || freqTable != NULL || freqTable != NULL) return;
+
     freqTable = new float[256];
     gainTable = new float[256];
     QTable = new float[256];

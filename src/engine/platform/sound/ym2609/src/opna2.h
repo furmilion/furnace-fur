@@ -34,6 +34,8 @@ class OPNA2 /*: public OPNABase*/
     public:
         static constexpr float panTable[4] = { 1.0f, 0.7512f, 0.4512f, 0.0500f };
 
+        uint32_t sinetable_opna[12][4][1024];
+
         // ---------------------------------------------------------------------------
         //	構築
         //
@@ -52,7 +54,7 @@ class OPNA2 /*: public OPNABase*/
 
             for(int i = 0; i < 2; i++)
             {
-                fm6[i] = FM6(0, reverb, distortion, chorus, hpflpf,reversePhase,compressor, i * 6);
+                fm6[i] = FM6(0, reverb, distortion, chorus, hpflpf,reversePhase,compressor, i * 6, &this->sinetable_opna);
             }
 
             for(int i = 0; i < 4; i++)
@@ -190,7 +192,8 @@ class OPNA2 /*: public OPNABase*/
 
         bool Init(uint32_t c, uint32_t r, bool ipflag, uint8_t* _adpcma = NULL, int _adpcma_size = 0)
         {
-            rate = 8000;
+            rate = r;
+            psgrate = r;
             //LoadRhythmSample(appendFileReaderCallback); //TODO add samples
             //dicOpeWav.Clear();
 

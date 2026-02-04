@@ -27,7 +27,7 @@
 #define FM_EGBITS 16
 
 extern float panTable_opna[4];
-extern uint32_t sinetable_opna[12][4][1024];
+//extern uint32_t sinetable_opna[12][4][1024];
 
 extern int amtable_opna[FM_LFOENTS];
 extern int pmtable_opna[FM_LFOENTS];

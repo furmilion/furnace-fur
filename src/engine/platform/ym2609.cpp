@@ -630,7 +630,7 @@ int DivPlatformYM2609::init(DivEngine* p, int channels, int sugRate, const DivCo
 
   ym2609 = new OPNA2(0, rev, dist, chor, eq, filt, reph, comp);
 
-  ym2609->Init(YM2609_CLOCK, YM2609_CLOCK, false, adpcma_buf, adpcma_buf_size);
+  ym2609->Init(YM2609_CLOCK, YM2609_DSP_RATE, false, adpcma_buf, adpcma_buf_size);
 
   setFlags(flags);
 

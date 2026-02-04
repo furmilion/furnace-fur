@@ -17,6 +17,7 @@ class FM6
 {
     public:
         //OPNA2* parent = NULL;
+        uint32_t (*sinetable_opna)[12][4][1024] = NULL;
 
         int fmvolume;
         fmvgen::Channel4 ch[6];
@@ -49,7 +50,7 @@ class FM6
 
         }
 
-        FM6(int n, reverb* rever = NULL, distortion* distort = NULL, chorus* chor = NULL, HPFLPF* hpflpf = NULL, ReversePhase* reversePhase = NULL, Compressor* compressor = NULL, int efcStartCh = 0)
+        FM6(int n, reverb* rever = NULL, distortion* distort = NULL, chorus* chor = NULL, HPFLPF* hpflpf = NULL, ReversePhase* reversePhase = NULL, Compressor* compressor = NULL, int efcStartCh = 0, uint32_t(*sinetable_opna)[12][4][1024] = NULL)
         {
             this->num = n;
             this->reverb = rever;
@@ -60,11 +61,13 @@ class FM6
             this->efcStartCh = efcStartCh;
             this->compressor = compressor;
 
+            this->sinetable_opna = sinetable_opna;
+
             chip = Chip();
 
             for (int i = 0; i < 6; i++)
             {
-                ch[i] = fmvgen::Channel4(i + n * 6);
+                ch[i] = fmvgen::Channel4(i + n * 6, sinetable_opna);
                 ch[i].SetChip(chip);
                 //ch[i].SetType(fmgen::OpType.typeN);
                 ch[i].SetType((OpType)0);
@@ -114,6 +117,19 @@ class FM6
             if ((act & 0x555) == 0) return;
 
             Mix6(buffer, nsamples, act);
+        }
+
+        void waveReset(int waveCh, int wavetype)
+        {
+            double log2 = log(2.0);
+            for (int i = 0; i < FM_OPSINENTS / 2; i++)
+            {
+                double r = (i * 2 + 1) * FM_PI / FM_OPSINENTS;
+                double q = -256 * log(sin(r)) / log2;
+                uint32_t s = (uint32_t)((int)(floor(q + 0.5)) + 1);
+                (*sinetable_opna)[waveCh][wavetype][i] = s * 2;
+                (*sinetable_opna)[waveCh][wavetype][FM_OPSINENTS / 2 + i] = s * 2 + 1;
+            }
         }
 
         // ---------------------------------------------------------------------------
@@ -171,7 +187,7 @@ class FM6
                     waveCh = (int)((data >> 4) & 0xf);
                     waveCh = my_max(my_min(waveCh, 11), 0);
                     wavecounter = 0;
-                    if ((data & 0x4) != 0) fmvgen::waveReset(waveCh, wavetype);
+                    if ((data & 0x4) != 0) waveReset(waveCh, wavetype);
                     waveSetDic = ((data & 0x8) != 0);
                     break;
 
@@ -195,10 +211,10 @@ class FM6
                         s = (uint8_t)data;
                     }
                     else {
-                        s = ((sinetable_opna[waveCh][wavetype][cnt] & 0xff) | ((data & 0x1f) << 8));
+                        s = (((*sinetable_opna)[waveCh][wavetype][cnt] & 0xff) | ((data & 0x1f) << 8));
                     }
 
-                    sinetable_opna[waveCh][wavetype][cnt] = s;
+                    (*sinetable_opna)[waveCh][wavetype][cnt] = s;
                     wavecounter++;
 
                     if (FM_OPSINENTS * 2 <= wavecounter) wavecounter = 0;

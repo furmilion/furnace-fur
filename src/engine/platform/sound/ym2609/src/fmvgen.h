@@ -123,6 +123,8 @@ class Chip
 class fmvgen /*: public fmgen*/
 {
     public:
+        uint32_t (*sinetable_opna)[12][4][1024] = NULL;
+        
         const int waveChSize = 12;
         const static int waveTypeSize = 4;
         const static int waveBufSize = 1024;
@@ -193,6 +195,8 @@ class fmvgen /*: public fmgen*/
         class Operator /*: fmgen::Operator*/
         {
             public:
+                uint32_t (*sinetable_opna)[12][4][1024] = NULL;
+
                 static constexpr const uint8_t notetable[128] =
                 {
                 0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  3,  3,  3,  3,  3,  3,
@@ -361,8 +365,10 @@ class fmvgen /*: public fmgen*/
                 //	構築
                 //FM::Operator::Operator()
                 //: chip_(0)
-                Operator()
+                Operator(uint32_t(*sinetable_opna)[12][4][1024] = NULL)
                 {
+                    this->sinetable_opna = sinetable_opna;
+
                     for(int i = 0; i < FM_CLENTS; i++)
                     {
                         cltable[i] = 0;
@@ -410,6 +416,19 @@ class fmvgen /*: public fmgen*/
                     //PARAMCHANGE(0);
                 }
 
+                void waveReset(int waveCh, int wavetype)
+                {
+                    double log2 = log(2.0);
+                    for (int i = 0; i < FM_OPSINENTS / 2; i++)
+                    {
+                        double r = (i * 2 + 1) * FM_PI / FM_OPSINENTS;
+                        double q = -256 * log(sin(r)) / log2;
+                        uint32_t s = (uint32_t)((int)(floor(q + 0.5)) + 1);
+                        (*sinetable_opna)[waveCh][wavetype][i] = s * 2;
+                        (*sinetable_opna)[waveCh][wavetype][FM_OPSINENTS / 2 + i] = s * 2 + 1;
+                    }
+                }
+
                 void MakeTable()
                 {
                     // 対数テーブルの作成
@@ -433,10 +452,10 @@ class fmvgen /*: public fmgen*/
 
                     for (int j = 0; j < 12; j++)
                     {
-                        fmvgen::waveReset(j, 0);
-                        fmvgen::waveReset(j, 1);
-                        fmvgen::waveReset(j, 2);
-                        fmvgen::waveReset(j, 3);
+                        waveReset(j, 0);
+                        waveReset(j, 1);
+                        waveReset(j, 2);
+                        waveReset(j, 3);
                     }
                     //}
 
@@ -617,12 +636,12 @@ class fmvgen /*: public fmgen*/
                 // 入力: s = 20+FM_PGBITS = 29
                 uint32_t Sine(int c,int s)
                 {
-                    return sinetable_opna[c][wt_][((s) >> (20 + FM_PGBITS - FM_OPSINBITS)) & (FM_OPSINENTS - 1)];
+                    return (*sinetable_opna)[c][wt_][((s) >> (20 + FM_PGBITS - FM_OPSINBITS)) & (FM_OPSINENTS - 1)];
                 }
 
                 int SINE(int c,int s)
                 {
-                    return (int)sinetable_opna[c][wt_][(s) & (FM_OPSINENTS - 1)];
+                    return (int)(*sinetable_opna)[c][wt_][(s) & (FM_OPSINENTS - 1)];
                 }
 
 
@@ -1125,11 +1144,11 @@ class fmvgen /*: public fmgen*/
 
                 uint32_t* dbgGetSineTable(int c, int t)
                 {
-                    return sinetable_opna[c][t];
+                    return (*sinetable_opna)[c][t];
                 }
     };
 
-    static void waveReset(int waveCh, int wavetype)
+    void waveReset(int waveCh, int wavetype)
     {
         double log2 = log(2.0);
         for (int i = 0; i < FM_OPSINENTS / 2; i++)
@@ -1137,8 +1156,8 @@ class fmvgen /*: public fmgen*/
             double r = (i * 2 + 1) * FM_PI / FM_OPSINENTS;
             double q = -256 * log(sin(r)) / log2;
             uint32_t s = (uint32_t)((int)(floor(q + 0.5)) + 1);
-            sinetable_opna[waveCh][wavetype][i] = s * 2;
-            sinetable_opna[waveCh][wavetype][FM_OPSINENTS / 2 + i] = s * 2 + 1;
+            (*sinetable_opna)[waveCh][wavetype][i] = s * 2;
+            (*sinetable_opna)[waveCh][wavetype][FM_OPSINENTS / 2 + i] = s * 2 + 1;
         }
     }
 
@@ -1150,7 +1169,9 @@ class fmvgen /*: public fmgen*/
         public:
             static constexpr const uint8_t fbtable[8] = { 31, 7, 6, 5, 4, 3, 2, 1 };
 
-            fmvgen::Operator* op = NULL;
+            //fmvgen::Operator* op = NULL;
+            std::vector<fmvgen::Operator> op;
+
             bool op_allocated = false;
 
             Channel4()
@@ -1158,9 +1179,14 @@ class fmvgen /*: public fmgen*/
                 op_allocated = false;
             }
 
-            Channel4(int ch)
+            Channel4(int ch, uint32_t(*sinetable_opna)[12][4][1024] = NULL)
             {
-                op = new fmvgen::Operator[4];
+                //op = new fmvgen::Operator[4](sinetable_opna);
+                for (int i = 0; i < 4; i++)
+                {
+                    op.push_back(fmvgen::Operator(sinetable_opna));
+                }
+
                 op_allocated = true;
                 //if (!tablehasmade)
                     MakeTable();
@@ -1168,19 +1194,14 @@ class fmvgen /*: public fmgen*/
                 SetAlgorithm(0);
                 pms = pmtable[0][0];
                 this->ch = ch;
-
-                for(int i = 0; i < 4; i++)
-                {
-                    //op[i] = fmvgen::Operator();
-                }
             }
 
             void channel4_free()
             {
                 if (op_allocated)
                 {
-                   delete[] op;
-                   op = NULL;
+                   //delete[] op;
+                   //op = NULL;
                    op_allocated = false;
                 }
             }
