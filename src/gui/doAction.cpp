@@ -888,7 +888,12 @@ void FurnaceGUI::doAction(int what) {
           waveSizeList.push_back(FurnaceGUIWaveSizeEntry(64,sysDef->waveHeight,sysDef->name));
           waveSizeList.push_back(FurnaceGUIWaveSizeEntry(128,sysDef->waveHeight,sysDef->name));
         } else {
-          waveSizeList.push_back(FurnaceGUIWaveSizeEntry(sysDef->waveWidth,sysDef->waveHeight,sysDef->name));
+          waveSizeList.push_back(FurnaceGUIWaveSizeEntry(sysDef->waveWidth, sysDef->waveHeight, sysDef->name));
+
+          if (e->song.system[i] == DIV_SYSTEM_YM2609 || e->song.system[i] == DIV_SYSTEM_YM2609_EXT || e->song.system[i] == DIV_SYSTEM_YM2609_CSM)
+          {
+            waveSizeList.push_back(FurnaceGUIWaveSizeEntry(64, 256, sysDef->name)); //PSG custom wave
+          }
         }
       }
 

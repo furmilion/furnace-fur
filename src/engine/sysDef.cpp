@@ -2776,7 +2776,7 @@ void DivEngine::registerSystems() {
 
   sysDefs[DIV_SYSTEM_YM2609]=new DivSysDef(
     _("YM2609"), NULL, 0x100, 0, 39, 39, 39,
-    true, false, 0, false, (1U<<DIV_SAMPLE_DEPTH_ADPCM_A)|(1U<<DIV_SAMPLE_DEPTH_ADPCM_B), 0, 0,
+    true, false, 0, false, (1U<<DIV_SAMPLE_DEPTH_ADPCM_A)|(1U<<DIV_SAMPLE_DEPTH_ADPCM_B), 1024, 8192,
     _("a fictional sound chip, basically an improved and extended version of Yamaha YM2608. supports DSP effects, custom waves for FM operators and much more."),
     DivChanDefFunc({
       DivChanDef(_("FM 1")     , "F1", DIV_CH_FM   , DIV_INS_YM2609_FM),
@@ -2825,7 +2825,7 @@ void DivEngine::registerSystems() {
 
   sysDefs[DIV_SYSTEM_YM2609_EXT]=new DivSysDef(
     _("YM2609 Extended Channels 3 and 9"), NULL, 0x101, 0, 45, 45, 45,
-    true, false, 0, false, (1U<<DIV_SAMPLE_DEPTH_ADPCM_A)|(1U<<DIV_SAMPLE_DEPTH_ADPCM_B), 0, 0,
+    true, false, 0, false, (1U<<DIV_SAMPLE_DEPTH_ADPCM_A)|(1U<<DIV_SAMPLE_DEPTH_ADPCM_B), 1024, 8192,
     _("a fictional sound chip, basically an improved and extended version of Yamaha YM2608. supports DSP effects, custom waves for FM operators and much more.\nthis one is in Extended Channel mode, which turns the third and ninth FM channels each into four operators with independent notes/frequencies."),
     DivChanDefFunc({
       DivChanDef(_("FM 1")     , "F1", DIV_CH_FM   , DIV_INS_YM2609_FM),
@@ -2880,7 +2880,7 @@ void DivEngine::registerSystems() {
 
   sysDefs[DIV_SYSTEM_YM2609_CSM]=new DivSysDef(
     _("YM2609 CSM"), NULL, 0x102, 0, 47, 47, 47,
-    true, false, 0, false, (1U<<DIV_SAMPLE_DEPTH_ADPCM_A)|(1U<<DIV_SAMPLE_DEPTH_ADPCM_B), 0, 0,
+    true, false, 0, false, (1U<<DIV_SAMPLE_DEPTH_ADPCM_A)|(1U<<DIV_SAMPLE_DEPTH_ADPCM_B), 1024, 8192,
     _("a fictional sound chip, basically an improved and extended version of Yamaha YM2608. supports DSP effects, custom waves for FM operators and much more.\nthis one is in Extended Channel mode, which turns the third and ninth FM channels each into four operators with independent notes/frequencies.\n"
     "this one includes CSM mode control for special effects on FM Channels 3 and 9."),
     DivChanDefFunc({
