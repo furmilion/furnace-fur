@@ -343,7 +343,8 @@ bool DivInstrumentYM2609FM::Operator::operator==(const DivInstrumentYM2609FM::Op
   return (
     _C(alg_link) &&
     _C(phase_reset) &&
-    _C(wave_type)
+    _C(custom_wave) &&
+    _C(custom_wave_index)
   );
 }
 
@@ -1543,7 +1544,7 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
     if (sid3!=defaultIns.sid3) {
       featureS3=true;
     }
-    if (ym2609fm!=defaultIns.ym2609fm) {
+    if (ym2609.ym2609fm!=defaultIns.ym2609.ym2609fm) {
       feature9F=true;
     }
   }
