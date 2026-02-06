@@ -344,16 +344,14 @@ bool DivInstrumentYM2609FM::Operator::operator==(const DivInstrumentYM2609FM::Op
     _C(alg_link) &&
     _C(phase_reset) &&
     _C(custom_wave) &&
-    _C(custom_wave_index)
+    _C(custom_wave_index) &&
+    _C(feedback)
   );
 }
 
 bool DivInstrumentYM2609FM::operator==(const DivInstrumentYM2609FM& other) {
   return (
-    _C(alg_construct_switch) &&
-    _C(feedback[0]) &&
-    _C(feedback[1]) &&
-    _C(feedback[2])
+    _C(alg_construct_switch)
   );
 }
 

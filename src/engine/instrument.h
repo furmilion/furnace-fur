@@ -1005,7 +1005,6 @@ struct DivInstrumentSID3 {
 struct DivInstrumentYM2609FM {
   
   bool alg_construct_switch;
-  unsigned char feedback[3];
 
   bool operator==(const DivInstrumentYM2609FM& other);
   bool operator!=(const DivInstrumentYM2609FM& other) {
@@ -1017,6 +1016,7 @@ struct DivInstrumentYM2609FM {
     bool phase_reset;
     bool custom_wave;
     unsigned short custom_wave_index;
+    unsigned char feedback;
 
     bool operator==(const Operator& other);
     bool operator!=(const Operator& other) {
@@ -1024,12 +1024,14 @@ struct DivInstrumentYM2609FM {
     }
     Operator():
       alg_link(0),
-      phase_reset(false) {}
+      phase_reset(false),
+      custom_wave(false),
+      custom_wave_index(0),
+      feedback(0) {}
   } op[4];
 
   DivInstrumentYM2609FM():
-    alg_construct_switch(0),
-    feedback{0,0,0} {}
+    alg_construct_switch(0) {}
 };
 
 struct DivInstrumentYM2609 {

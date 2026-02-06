@@ -3169,15 +3169,19 @@ void FurnaceGUI::alterSampleMap(int column, int val) {
             e->lockEngine([ins,destOp,sourceOp]() { \
               ins->fm.op[destOp]=ins->fm.op[sourceOp]; \
               ins->esfm.op[destOp]=ins->esfm.op[sourceOp]; \
+              ins->ym2609.ym2609fm.op[destOp]=ins->ym2609.ym2609fm.op[sourceOp]; \
             }); \
           } else { \
             e->lockEngine([ins,destOp,sourceOp]() { \
               DivInstrumentFM::Operator origOp=ins->fm.op[sourceOp]; \
               DivInstrumentESFM::Operator origOpE=ins->esfm.op[sourceOp]; \
+              DivInstrumentYM2609FM::Operator origOpYM2609=ins->ym2609.ym2609fm.op[sourceOp]; \
               ins->fm.op[sourceOp]=ins->fm.op[destOp]; \
               ins->esfm.op[sourceOp]=ins->esfm.op[destOp]; \
+              ins->ym2609.ym2609fm.op[sourceOp]=ins->ym2609.ym2609fm.op[destOp]; \
               ins->fm.op[destOp]=origOp; \
               ins->esfm.op[destOp]=origOpE; \
+              ins->ym2609.ym2609fm.op[destOp]=origOpYM2609; \
             }); \
           } \
           PARAMETER; \
@@ -6676,23 +6680,35 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
 
       //for opn it was
       ImGui::TableNextColumn();
-      P(CWSliderScalar(FM_NAME(FM_FB),ImGuiDataType_U8,&ins->fm.fb,&_ZERO,&_SEVEN)); rightClickable
+      P(CWSliderScalar(fmt::sprintf("OP1 %s",FM_NAME(FM_FB)).c_str(),ImGuiDataType_U8,&ins->fm.fb,&_ZERO,&_SEVEN)); rightClickable
       P(CWSliderScalar(FM_NAME(FM_FMS),ImGuiDataType_U8,&ins->fm.fms,&_ZERO,&_SEVEN)); rightClickable
       P(CWSliderScalar(FM_NAME(FM_BLOCK),ImGuiDataType_U8,&ins->fm.block,&_ZERO,&_EIGHT,blockTxt.c_str())); rightClickable
       ImGui::TableNextColumn();
       P(CWSliderScalar(FM_NAME(FM_ALG),ImGuiDataType_U8,&ins->fm.alg,&_ZERO,&_SEVEN)); rightClickable
       P(CWSliderScalar(FM_NAME(FM_AMS),ImGuiDataType_U8,&ins->fm.ams,&_ZERO,&_THREE)); rightClickable
-      ImGui::TableNextColumn();
-      if (fmPreviewOn) {
-        drawFMPreview(ImVec2(ImGui::GetContentRegionAvail().x,48.0*dpiScale));
-        if (!fmPreviewPaused) {
-          renderFMPreview(ins,1);
-          WAKE_UP;
-        }
-      } else {
-        drawAlgorithm(ins->fm.alg,FM_ALGS_4OP,ImVec2(ImGui::GetContentRegionAvail().x,48.0*dpiScale));
+      bool customalgOn=ins->ym2609.ym2609fm.alg_construct_switch;
+      if (ImGui::Checkbox(_("AC Switch"),&customalgOn)) { PARAMETER
+        ins->ym2609.ym2609fm.alg_construct_switch=customalgOn;
       }
-      kvsConfig(ins);
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(_("Algorithm construction switch (enables creation of custom algorithm)"));
+      }
+      ImGui::TableNextColumn();
+
+      if(!ins->ym2609.ym2609fm.alg_construct_switch)
+      {
+        if (fmPreviewOn) {
+          drawFMPreview(ImVec2(ImGui::GetContentRegionAvail().x,48.0*dpiScale));
+          if (!fmPreviewPaused) {
+            renderFMPreview(ins,1);
+            WAKE_UP;
+          }
+        } else {
+          drawAlgorithm(ins->fm.alg,FM_ALGS_4OP,ImVec2(ImGui::GetContentRegionAvail().x,48.0*dpiScale));
+        }
+        kvsConfig(ins);
+      }
+      
       /* 
       ImGui::SameLine();
       if (ImGui::Button("Send to TX81Z")) {
@@ -6724,7 +6740,8 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
       ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,ImVec2(8.0f*dpiScale,4.0f*dpiScale));
       if (ImGui::BeginTable("AltFMOperators",columns,ImGuiTableFlags_SizingStretchSame|ImGuiTableFlags_BordersInner)) {
         for (int i=0; i<opCount; i++) {
-          DivInstrumentFM::Operator& op=fmOrigin.op[(opCount==4 && ins->type!=DIV_INS_OPL_DRUMS && ins->type!=DIV_INS_ESFM)?opOrder[i]:i];
+          DivInstrumentFM::Operator& op=fmOrigin.op[opOrder[i]];
+          DivInstrumentYM2609FM::Operator& op_ym2609=ins->ym2609.ym2609fm.op[opOrder[i]];
           if ((settings.fmLayout!=6 && ((i+1)&1)) || i==0 || settings.fmLayout==5) ImGui::TableNextRow();
           ImGui::TableNextColumn();
           ImGui::PushID(fmt::sprintf("op%d",i).c_str());
@@ -6865,6 +6882,14 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
             TOOLTIP_TEXT(FM_NAME(FM_D2R));
 
             ImGui::SetCursorPos(prevCurPos);
+
+            bool phaseresetOn=op_ym2609.phase_reset;
+            if (ImGui::Checkbox("PR",&phaseresetOn)) { PARAMETER
+              op_ym2609.phase_reset=phaseresetOn;
+            }
+            if (ImGui::IsItemHovered()) {
+              ImGui::SetTooltip(_("Phase reset operator on new note"));
+            }
             
             ImGui::TableNextColumn();
 
@@ -6886,9 +6911,9 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
               
                 // waveform
                 drawWaveform(op.ws&7,ins->type==DIV_INS_OPZ,ImVec2(waveWidth,waveHeight / 2));
-                bool custom_wave = ins->ym2609.ym2609fm.op[i].custom_wave;
+                bool custom_wave = op_ym2609.custom_wave;
                 if (ImGui::Checkbox(_("CW##CustomWaveOn"),&custom_wave)) { PARAMETER
-                  ins->ym2609.ym2609fm.op[i].custom_wave=custom_wave;
+                  op_ym2609.custom_wave=custom_wave;
                 }
                 if (ImGui::IsItemHovered()) {
                   ImGui::SetTooltip(_("Enable custom wave for this FM operator"));
@@ -6896,8 +6921,8 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
 
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-                int wave_index = ins->ym2609.ym2609fm.op[i].custom_wave_index;
-                ImGui::BeginDisabled(!ins->ym2609.ym2609fm.op[i].custom_wave);
+                int wave_index = op_ym2609.custom_wave_index;
+                ImGui::BeginDisabled(!op_ym2609.custom_wave);
                 ImGui::InputInt("##CustomWavetableIndex", &wave_index); rightClickable
                 if (ImGui::IsItemHovered()) {
                   ImGui::SetTooltip(_("Custom wave wavetable index"));
@@ -6914,7 +6939,7 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
                   wave_index = 0;
                 }
                 
-                ins->ym2609.ym2609fm.op[i].custom_wave_index = wave_index;
+                op_ym2609.custom_wave_index = wave_index;
 
                 // params
                 ImGui::Separator();
@@ -6936,13 +6961,63 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
                 snprintf(tempID,1024,"%s: %%d",FM_NAME(FM_DT2));
                 P(CWSliderScalar("##DT2",ImGuiDataType_U8,&op.dt2,&_ZERO,&_THREE,tempID)); rightClickable
 
+                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                snprintf(tempID,1024,"%s: %%d",FM_NAME(FM_RS));
+                P(CWSliderScalar("##RS",ImGuiDataType_U8,&op.rs,&_ZERO,&_THREE,tempID)); rightClickable
+
             ImGui::TableNextColumn();
             float envHeight=sliderHeight;//-ImGui::GetStyle().ItemSpacing.y*2.0f;
             envHeight-=ImGui::GetFrameHeightWithSpacing()*2.0f;
             drawFMEnv(op.tl&maxTl,op.ar&maxArDr,op.dr&maxArDr,op.d2r&31,op.rr&15,op.sl&15,op.sus,op.ssgEnv&8,fmOrigin.alg,maxTl,maxArDr,15,ImVec2(ImGui::GetContentRegionAvail().x,envHeight),ins->type);
 
             ImGui::Separator();
-            if (ImGui::BeginTable("FMParamsInnerOPZ",2)) {
+            
+            ImGui::BeginDisabled(!ins->ym2609.ym2609fm.alg_construct_switch);
+            bool linkOn=op_ym2609.alg_link & (1 << opOrder[i]);
+            if (ImGui::Checkbox(fmt::sprintf(_("OUT"), opOrder[i]).c_str(), &linkOn)) { PARAMETER
+              op_ym2609.alg_link &= ~(1 << opOrder[i]);
+              op_ym2609.alg_link |= (linkOn ? (1 << opOrder[i]) : 0);
+            }
+            if (ImGui::IsItemHovered()) {
+              ImGui::SetTooltip(_("Enable operator's sound output"));
+            }
+            ImGui::EndDisabled();
+            
+            if(i != 0)
+            {
+              ImGui::SameLine();
+
+              snprintf(tempID,1024,"OP FB: %%d",FM_NAME(FM_FB));
+              P(CWSliderScalar("##OP_FDBCK",ImGuiDataType_U8,&op_ym2609.feedback,&_ZERO,&_SEVEN,tempID)); rightClickable
+              if (ImGui::IsItemHovered() && (op_ym2609.alg_link & (1 << opOrder[i]))) {
+                ImGui::SetTooltip(_("This operator's feedback"));
+              }
+            }
+
+            if(i == 0) ImGui::NewLine();
+
+            ImGui::BeginDisabled(!ins->ym2609.ym2609fm.alg_construct_switch);
+
+            for(int j = 0; j < 4; j++)
+            {
+              if(j != opOrder[i])
+              {
+                bool linkOn=op_ym2609.alg_link & (1 << opOrder[j]);
+                if (ImGui::Checkbox(fmt::sprintf("O%d", opOrder[j]+1).c_str(), &linkOn)) { PARAMETER
+                  op_ym2609.alg_link &= ~(1 << opOrder[j]);
+                  op_ym2609.alg_link |= (linkOn ? (1 << opOrder[j]) : 0);
+                }
+                if (ImGui::IsItemHovered()) {
+                  ImGui::SetTooltip(fmt::sprintf(_("Modulate this operator by operator %d output"), j + 1).c_str());
+                }
+              }
+
+              ImGui::SameLine();
+            }
+
+            ImGui::EndDisabled();
+            
+            /*if (ImGui::BeginTable("FMParamsInnerOPZ",2)) {
               ImGui::TableNextRow();
               ImGui::TableNextColumn();
 
@@ -6975,12 +7050,12 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
 
 
               ImGui::EndTable();
-            }
+            }*/
 
             ImGui::TableNextColumn();
             op.tl&=maxTl;
-            float tlSliderWidth=(ins->type==DIV_INS_ESFM)?20.0f*dpiScale:ImGui::GetFrameHeight();
-            float tlSliderHeight=sliderHeight-((ins->type==DIV_INS_FM || ins->type==DIV_INS_OPM)?(ImGui::GetFrameHeightWithSpacing()+ImGui::CalcTextSize(FM_SHORT_NAME(FM_AM)).y+ImGui::GetStyle().ItemSpacing.y):0.0f);
+            float tlSliderWidth=ImGui::GetFrameHeight();
+            float tlSliderHeight=sliderHeight;
             float textX_tl=ImGui::GetCursorPosX();
             P(CWVSliderScalar("##TL",ImVec2(tlSliderWidth,tlSliderHeight),ImGuiDataType_U8,&op.tl,&maxTl,&_ZERO)); rightClickable
 
