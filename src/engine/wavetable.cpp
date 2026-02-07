@@ -68,9 +68,9 @@ DivDataErrors DivWavetable::readWaveData(SafeReader& reader, short version) {
     min=0;
   }
 
-  if (max>DIV_WAVETABLE_MAX_HEIGHT) {
+  if (max>DIV_WAVETABLE_MAX_HEIGHT-1) {
     logW("invalid max %d",max);
-    max=255;
+    max=DIV_WAVETABLE_MAX_HEIGHT-1;
   }
 
   for (int i=0; i<len; i++) {

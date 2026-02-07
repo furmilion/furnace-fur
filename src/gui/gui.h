@@ -2949,6 +2949,7 @@ class FurnaceGUI {
 
   void drawSSGEnv(unsigned char type, const ImVec2& size);
   void drawWaveform(unsigned char type, bool opz, const ImVec2& size);
+  void drawYM2609CustomFMWaveform(DivInstrumentYM2609FM::Operator& op_ym2609, const ImVec2& size);
   void drawWaveformSID3(unsigned char type, const ImVec2& size);
   void drawAlgorithm(unsigned char alg, FurnaceGUIFMAlgs algType, const ImVec2& size);
   void drawESFMAlgorithm(DivInstrumentESFM& esfm, const ImVec2& size);

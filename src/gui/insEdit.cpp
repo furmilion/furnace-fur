@@ -1153,6 +1153,52 @@ void FurnaceGUI::drawWaveform(unsigned char type, bool opz, const ImVec2& size) 
   }
 }
 
+void FurnaceGUI::drawYM2609CustomFMWaveform(DivInstrumentYM2609FM::Operator& op_ym2609, const ImVec2& size)
+{
+  int wave_index = op_ym2609.custom_wave_index;
+
+  ImDrawList* dl=ImGui::GetWindowDrawList();
+  ImGuiWindow* window=ImGui::GetCurrentWindow();
+
+  ImVec2 waveform[257];
+  const size_t waveformLen=256;
+
+  ImVec2 minArea=window->DC.CursorPos;
+  ImVec2 maxArea=ImVec2(
+    minArea.x+size.x,
+    minArea.y+size.y
+  );
+  ImRect rect=ImRect(minArea,maxArea);
+  ImGuiStyle& style=ImGui::GetStyle();
+  ImU32 color=ImGui::GetColorU32(uiColors[GUI_COLOR_FM_WAVE]);
+  ImGui::ItemSize(size,style.FramePadding.y);
+  if (ImGui::ItemAdd(rect,ImGui::GetID("wsDisplay"))) {
+    ImGui::RenderFrame(rect.Min,rect.Max,ImGui::GetColorU32(ImGuiCol_FrameBg),true,style.FrameRounding);
+
+    if(e->song.waveLen == 0) return;
+    else
+    {
+      if(wave_index > e->song.waveLen - 1 || wave_index < 0) return;
+    }
+
+    DivWavetable* wave = e->song.wave[wave_index];
+
+    if(wave->len != 1024 || wave->max != 8191)
+    {
+      dl->AddText(rect.Min+ImVec2(5.0f,5.0f), color, _("Invalid wave size!\n(not 1024×8192!)"));
+      return;
+    }
+    
+    for (size_t i=0; i<=waveformLen; i++) {
+      float x=(float)i/(float)waveformLen;
+      float y=((float)(wave->data[i*(1024 - 1) / waveformLen]) - 4096.0f) / 4096.0f;// sin(x*2.0*M_PI);
+      waveform[i]=ImLerp(rect.Min,rect.Max,ImVec2(x,0.5-y*0.4));
+    }
+
+    dl->AddPolyline(waveform,waveformLen+1,color,ImDrawFlags_None,dpiScale);
+  }
+}
+
 typedef double (*WaveFunc) (double a);
 
 WaveFunc waveFuncsIns[]={
@@ -6672,9 +6718,9 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
         blockTxt=fmt::sprintf("%d",ins->fm.block-1);
       }
 
-      ImGui::TableSetupColumn("c0",ImGuiTableColumnFlags_WidthStretch,((ins->type==DIV_INS_ESFM)?0.40f:0.0f));
-      ImGui::TableSetupColumn("c1",ImGuiTableColumnFlags_WidthStretch,((ins->type==DIV_INS_ESFM)?0.25f:0.0f));
-      ImGui::TableSetupColumn("c2",ImGuiTableColumnFlags_WidthStretch,((ins->type==DIV_INS_ESFM)?0.35f:0.0f));
+      ImGui::TableSetupColumn("c0",ImGuiTableColumnFlags_WidthStretch,0.0f);
+      ImGui::TableSetupColumn("c1",ImGuiTableColumnFlags_WidthStretch,0.0f);
+      ImGui::TableSetupColumn("c2",ImGuiTableColumnFlags_WidthStretch,0.0f);
 
       ImGui::TableNextRow();
 
@@ -6684,7 +6730,9 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
       P(CWSliderScalar(FM_NAME(FM_FMS),ImGuiDataType_U8,&ins->fm.fms,&_ZERO,&_SEVEN)); rightClickable
       P(CWSliderScalar(FM_NAME(FM_BLOCK),ImGuiDataType_U8,&ins->fm.block,&_ZERO,&_EIGHT,blockTxt.c_str())); rightClickable
       ImGui::TableNextColumn();
+      ImGui::BeginDisabled(ins->ym2609.ym2609fm.alg_construct_switch);
       P(CWSliderScalar(FM_NAME(FM_ALG),ImGuiDataType_U8,&ins->fm.alg,&_ZERO,&_SEVEN)); rightClickable
+      ImGui::EndDisabled();
       P(CWSliderScalar(FM_NAME(FM_AMS),ImGuiDataType_U8,&ins->fm.ams,&_ZERO,&_THREE)); rightClickable
       bool customalgOn=ins->ym2609.ym2609fm.alg_construct_switch;
       if (ImGui::Checkbox(_("AC Switch"),&customalgOn)) { PARAMETER
@@ -6895,7 +6943,7 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
 
                 // SSG
                 ImGui::BeginDisabled(!ssgOn);
-                drawSSGEnv(op.ssgEnv&7,ImVec2(waveWidth,waveHeight / 2));
+                drawSSGEnv(op.ssgEnv&7,ImVec2(waveWidth,waveHeight / 3));
                 ImGui::EndDisabled();
                 if (ImGui::Checkbox("##SSGOn",&ssgOn)) { PARAMETER
                   op.ssgEnv=(op.ssgEnv&7)|(ssgOn<<3);
@@ -6910,7 +6958,14 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
               
               
                 // waveform
-                drawWaveform(op.ws&7,ins->type==DIV_INS_OPZ,ImVec2(waveWidth,waveHeight / 2));
+                if(op_ym2609.custom_wave)
+                {
+                  drawYM2609CustomFMWaveform(op_ym2609,ImVec2(waveWidth,waveHeight / 2));
+                }
+                else
+                {
+                  drawWaveform(0,ins->type==DIV_INS_OPZ,ImVec2(waveWidth,waveHeight / 2)); //always sine
+                }
                 bool custom_wave = op_ym2609.custom_wave;
                 if (ImGui::Checkbox(_("CW##CustomWaveOn"),&custom_wave)) { PARAMETER
                   op_ym2609.custom_wave=custom_wave;
@@ -6974,7 +7029,7 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
             
             ImGui::BeginDisabled(!ins->ym2609.ym2609fm.alg_construct_switch);
             bool linkOn=op_ym2609.alg_link & (1 << opOrder[i]);
-            if (ImGui::Checkbox(fmt::sprintf(_("OUT"), opOrder[i]).c_str(), &linkOn)) { PARAMETER
+            if (ImGui::Checkbox(fmt::sprintf(i == 0 ? _("OUT") : _("O"), opOrder[i]).c_str(), &linkOn)) { PARAMETER
               op_ym2609.alg_link &= ~(1 << opOrder[i]);
               op_ym2609.alg_link |= (linkOn ? (1 << opOrder[i]) : 0);
             }
@@ -6989,12 +7044,12 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
 
               snprintf(tempID,1024,"OP FB: %%d",FM_NAME(FM_FB));
               P(CWSliderScalar("##OP_FDBCK",ImGuiDataType_U8,&op_ym2609.feedback,&_ZERO,&_SEVEN,tempID)); rightClickable
-              if (ImGui::IsItemHovered() && (op_ym2609.alg_link & (1 << opOrder[i]))) {
+              if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(_("This operator's feedback"));
               }
             }
 
-            if(i == 0) ImGui::NewLine();
+            //if(i == 0) ImGui::NewLine();
 
             ImGui::BeginDisabled(!ins->ym2609.ym2609fm.alg_construct_switch);
 
@@ -7010,9 +7065,9 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
                 if (ImGui::IsItemHovered()) {
                   ImGui::SetTooltip(fmt::sprintf(_("Modulate this operator by operator %d output"), j + 1).c_str());
                 }
-              }
 
-              ImGui::SameLine();
+                ImGui::SameLine();
+              }
             }
 
             ImGui::EndDisabled();
@@ -7055,10 +7110,11 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
             ImGui::TableNextColumn();
             op.tl&=maxTl;
             float tlSliderWidth=ImGui::GetFrameHeight();
-            float tlSliderHeight=sliderHeight;
+            float tlSliderHeight=sliderHeight-ImGui::GetStyle().ItemSpacing.y-ImGui::GetFrameHeightWithSpacing();
             float textX_tl=ImGui::GetCursorPosX();
             P(CWVSliderScalar("##TL",ImVec2(tlSliderWidth,tlSliderHeight),ImGuiDataType_U8,&op.tl,&maxTl,&_ZERO)); rightClickable
 
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY()-25.0f*dpiScale);
             CENTER_TEXT(FM_SHORT_NAME(FM_AM));
             ImGui::TextUnformatted(FM_SHORT_NAME(FM_AM));
             TOOLTIP_TEXT(FM_NAME(FM_AM));
