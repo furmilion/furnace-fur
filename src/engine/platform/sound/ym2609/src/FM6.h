@@ -357,7 +357,7 @@ class FM6
             if ((addr & 3) < 3)
             {
                 uint32_t slot = slottable[(addr >> 2) & 3];
-                fmvgen::Operator op = ch->op[slot];
+                fmvgen::Operator& op = ch->op[slot];
 
                 switch ((addr >> 4) & 15)
                 {
@@ -414,9 +414,8 @@ class FM6
             idest[4] = pan[4];
             idest[5] = pan[5];
 
-            int limit = nsamples << 1;
             int v;
-            for (int dest = 0; dest < limit; dest++)
+            for (int dest = 0; dest < nsamples; dest++)
             {
                 //0,1 素
                 //2,3 rev

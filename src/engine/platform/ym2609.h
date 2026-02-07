@@ -30,13 +30,20 @@
 
 class DivPlatformYM2609: public DivDispatch {
   struct Channel: public SharedChannel<signed short> {
-    unsigned char panLeft, panRight;
+    DivInstrumentFM state;
+    DivInstrumentYM2609FM state_ym2609fm;
+    unsigned char opMask;
+    unsigned char panLeft, panRight; //soft pan
+    unsigned char pan; //hard pan
     bool gate;
+    bool opMaskChanged;
     Channel():
       SharedChannel<signed short>(0xff),
+      opMask(15),
       panLeft(0x3),
       panRight(0x3),
-      gate(false) {}
+      gate(false),
+      opMaskChanged(false) {}
   };
   Channel chan[YM2609_NUM_CHANNELS];
   DivDispatchOscBuffer* oscBuf[YM2609_NUM_CHANNELS];
@@ -48,6 +55,52 @@ class DivPlatformYM2609: public DivDispatch {
   };
   FixedQueue<QueuedWrite,YM2609_NUM_REGISTERS * 4> writes;
   DivWaveSynth ws;
+
+  const unsigned short ADDR_MULT_DT=0x30;
+  const unsigned short ADDR_TL=0x40;
+  const unsigned short ADDR_RS_AR=0x50;
+  const unsigned short ADDR_AM_DR=0x60;
+  const unsigned short ADDR_DT2_D2R=0x70;
+  const unsigned short ADDR_SL_RR=0x80;
+  const unsigned short ADDR_SSG=0x90;
+  const unsigned short ADDR_FREQ=0xa0;
+  const unsigned short ADDR_FREQH=0xa4;
+  const unsigned short ADDR_FB_ALG=0xb0;
+  const unsigned short ADDR_LRAF=0xb4;
+
+  const unsigned short chanOffs[12]={
+    0x00, 0x01, 0x02, 0x100, 0x101, 0x102, 
+    0x200, 0x201, 0x202, 0x300, 0x301, 0x302
+  };
+
+  const unsigned short opOffs[4]={
+    0x00, 0x04, 0x08, 0x0c
+  };
+
+  const bool isOutput[8][4]={
+    // 1     3     2    4
+    {false,false,false,true},
+    {false,false,false,true},
+    {false,false,false,true},
+    {false,false,false,true},
+    {false,false,true ,true},
+    {false,true ,true ,true},
+    {false,true ,true ,true},
+    {true ,true ,true ,true},
+  };
+  const unsigned char dtTable[8]={
+    7,6,5,0,1,2,3,4
+  };
+
+  const int orderedOps[4]={
+    0,2,1,3
+  };
+
+  const unsigned char konOffs[6]={
+    0, 1, 2, 4, 5, 6
+  };
+
+  double fmFreqBase;
 
   unsigned char writeOscBuf;
 
@@ -97,6 +150,7 @@ class DivPlatformYM2609: public DivDispatch {
 
   public:
     void acquire(short** buf, size_t len);
+    void commitState(int ch, DivInstrument* ins);
     int dispatch(DivCommand c);
     void* getChanState(int chan);
     DivDispatchOscBuffer* getOscBuffer(int chan);

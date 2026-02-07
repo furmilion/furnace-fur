@@ -22,15 +22,18 @@
 #include <math.h>
 #include "../../ta-log.h"
 
-#define rWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
+#define KVS(x,y) ((chan[x].state.op[y].kvs==2 && isOutput[chan[x].state.alg][y]) || chan[x].state.op[y].kvs==1)
 
-#define CHIP_FREQBASE 524288*64
-#define CHIP_DIVIDER 1
+#define rWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
+#define immWrite(a,v) if (!skipRegisterWrites) {writes.push_back(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
 
 //TODO: replace with custom clock
 
 #define YM2609_CLOCK 8000000
-#define YM2609_DSP_RATE 44100
+#define YM2609_DSP_RATE 48000
+
+#define CHIP_FREQBASE fmFreqBase
+#define CHIP_DIVIDER fmDivBase
 
 const char** DivPlatformYM2609::getRegisterSheet() {
   return NULL;
@@ -50,13 +53,14 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
 
       ym2609->Mix(output_buf, 1);
 
-      buf[0][len] = output_buf[0][0];
-      buf[1][len] = output_buf[1][0];
+      buf[0][samp] = output_buf[0][0];
+      buf[1][samp] = output_buf[1][0];
 
       if (!writes.empty()) 
       {
         QueuedWrite w=writes.front();
         //sid3_write(sid3, w.addr, w.val);
+        ym2609->SetReg(w.addr, w.val);
         regPool[w.addr % YM2609_NUM_REGISTERS]=w.val;
         writes.pop();
       }
@@ -92,7 +96,7 @@ void DivPlatformYM2609::tick(bool sysTick)
       chan[i].handleArp();
     } else if (chan[i].std.arp.had) {
       if (!chan[i].inPorta) {
-        chan[i].baseFreq=NOTE_FREQUENCY(parent->calcArp(chan[i].note,chan[i].std.arp.val));
+        chan[i].baseFreq=NOTE_FNUM_BLOCK(parent->calcArp(chan[i].note,chan[i].std.arp.val),11,chan[i].state.block);
       }
       chan[i].freqChanged=true;
     }
@@ -105,53 +109,54 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
       chan[i].freqChanged=true;
     }
-    
+  }
 
+  for (int i=0; i<12; i++) {
+    //if (i==2 && extMode) continue;
+    if (chan[i].keyOff) {
+      immWrite(((i > 5) ? 0x228 : 0x28),0x00|konOffs[i % 6]);
+      chan[i].keyOff=false;
+    }
+  }
+    
+  for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
+  {
     if (chan[i].freqChanged || chan[i].keyOn || chan[i].keyOff) 
     {
-      chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE);
-
-      if (chan[i].keyOn) 
-      {
-        DivInstrument* ins=parent->getIns(chan[i].ins,DIV_INS_YM2609_FM);
-        
-        chan[i].gate = true;
-      }
-      if (chan[i].keyOff) 
-      {
-        chan[i].gate = false;
-      }
-
-      //if (chan[i].freq<0) chan[i].freq=0;
-      //if (chan[i].freq>0xffffff) chan[i].freq=0xffffff;
-
-      //updateFreq(i);
-      
-      
-
-      /*if (chan[i].pcm && i == YM2609_NUM_CHANNELS - 1) {
-        double off=1.0;
-        if (chan[i].dacSample>=0 && chan[i].dacSample<parent->song.sampleLen) {
-          DivSample* s=parent->getSample(chan[i].dacSample);
-          if (s->centerRate<1) {
-            off=1.0;
-          } else {
-            off=(double)s->centerRate/parent->getCenterRate();
+      if (chan[i].freqChanged) {
+        if (parent->song.compatFlags.linearPitch) {
+          chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE,11,chan[i].state.block);
+        } else {
+          int fNum=parent->calcFreq(chan[i].baseFreq&0x7ff,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE,11);
+          int block=(chan[i].baseFreq&0xf800)>>11;
+          if (fNum<0) fNum=0;
+          if (fNum>2047) {
+            while (block<7) {
+              fNum>>=1;
+              block++;
+            }
+            if (fNum>2047) fNum=2047;
           }
+          chan[i].freq=(block<<11)|fNum;
         }
-        chan[i].dacRate=chan[i].freq*(off / 32.0)*(double)chipClock/1000000.0;
+        if (chan[i].freq>0x3fff) chan[i].freq=0x3fff;
+        //if (i<6) {
+          immWrite(chanOffs[i]+ADDR_FREQH,chan[i].freq>>8);
+          immWrite(chanOffs[i]+ADDR_FREQ,chan[i].freq&0xff);
+        //}
+        chan[i].freqChanged=false;
       }
-
-      chan[i].noiseFreqChanged = true;
-
-      if(chan[i].independentNoiseFreq)
-      {
-        chan[i].noise_pitch2 = chan[i].pitch2;
-      }*/
-
-      if (chan[i].keyOn) chan[i].keyOn=false;
-      if (chan[i].keyOff) chan[i].keyOff=false;
-      chan[i].freqChanged=false;
+      if ((chan[i].keyOn || chan[i].opMaskChanged)) {
+        if (i<6) {
+          immWrite(0x28,(chan[i].opMask<<4)|konOffs[i]);
+        }
+        else
+        {
+          immWrite(0x228,(chan[i].opMask<<4)|konOffs[i]);
+        }
+        chan[i].opMaskChanged=false;
+        chan[i].keyOn=false;
+      }
     }
   }
 
@@ -170,29 +175,83 @@ void DivPlatformYM2609::tick(bool sysTick)
   }*/
 }
 
+void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
+  if (chan[ch].insChanged) {
+    chan[ch].state=ins->fm;
+    chan[ch].opMask=
+      (chan[ch].state.op[0].enable?1:0)|
+      (chan[ch].state.op[2].enable?2:0)|
+      (chan[ch].state.op[1].enable?4:0)|
+      (chan[ch].state.op[3].enable?8:0);
+  }
+  
+  for (int i=0; i<4; i++) {
+    unsigned short baseAddr=chanOffs[ch]|opOffs[i];
+    DivInstrumentFM::Operator& op=chan[ch].state.op[i];
+    if (isMuted[ch] || !op.enable) {
+      if (chan[ch].insChanged) {
+        rWrite(baseAddr+ADDR_TL,127);
+      }
+    } else {
+      if (KVS(ch,i)) {
+        if (!chan[ch].active || chan[ch].insChanged) {
+          rWrite(baseAddr+ADDR_TL,127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[ch].outVol&0x7f,127));
+        }
+      } else {
+        if (chan[ch].insChanged) {
+          rWrite(baseAddr+ADDR_TL,op.tl);
+        }
+      }
+    }
+    if (chan[ch].insChanged) {
+      rWrite(baseAddr+ADDR_MULT_DT,(op.mult&15)|(dtTable[op.dt&7]<<4));
+      rWrite(baseAddr+ADDR_RS_AR,(op.ar&31)|(op.rs<<6));
+      rWrite(baseAddr+ADDR_AM_DR,(op.dr&31)|(op.am<<7));
+      rWrite(baseAddr+ADDR_DT2_D2R,op.d2r&31);
+      rWrite(baseAddr+ADDR_SL_RR,(op.rr&15)|(op.sl<<4));
+      rWrite(baseAddr+ADDR_SSG,op.ssgEnv&15);
+    }
+  }
+  if (chan[ch].insChanged) {
+    rWrite(chanOffs[ch]+ADDR_FB_ALG,(chan[ch].state.alg&7)|(chan[ch].state.fb<<3));
+    rWrite(chanOffs[ch]+ADDR_LRAF,(isMuted[ch]?0:(chan[ch].pan<<6))|(chan[ch].state.fms&7)|((chan[ch].state.ams&3)<<4));
+  }
+}
+
 int DivPlatformYM2609::dispatch(DivCommand c) {
   if (c.chan>YM2609_NUM_CHANNELS - 1) return 0;
 
   //bool updEnv = false;
-  DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
+  //DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
   //int filter = 0;
 
   switch (c.cmd) {
     case DIV_CMD_NOTE_ON: {
-      DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
-      if (c.value!=DIV_NOTE_NULL) {
-        chan[c.chan].baseFreq=NOTE_FREQUENCY(c.value);
-        chan[c.chan].freqChanged=true;
-        chan[c.chan].note=c.value;
-      }
-      chan[c.chan].active=true;
-      chan[c.chan].keyOn=true;
-
-      if (chan[c.chan].insChanged) 
+      if(c.chan < 12) //FM
       {
+        DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
+
+        chan[c.chan].insChanged=true;
+        commitState(c.chan,ins);
         chan[c.chan].insChanged=false;
+
+        chan[c.chan].macroInit(ins);
+
+        if (!chan[c.chan].std.vol.will) {
+          chan[c.chan].outVol=chan[c.chan].vol;
+        }
+
+        if (c.value!=DIV_NOTE_NULL) {
+          chan[c.chan].baseFreq=NOTE_FNUM_BLOCK(c.value,11,chan[c.chan].state.block);
+          chan[c.chan].portaPause=false;
+          chan[c.chan].freqChanged=true;
+          chan[c.chan].note=c.value;
+        }
+
+        chan[c.chan].active=true;
+        chan[c.chan].keyOn=true;
       }
-      chan[c.chan].macroInit(ins);
+      
       break;
     }
     case DIV_CMD_NOTE_OFF:
@@ -380,7 +439,7 @@ void DivPlatformYM2609::reset() {
     
   }
 
-  ym2609->Init(YM2609_CLOCK, YM2609_CLOCK);
+  //ym2609->Init(YM2609_CLOCK, YM2609_CLOCK);
   ym2609->Reset();
 
   //ws.setEngine(parent);
@@ -412,33 +471,36 @@ void DivPlatformYM2609::poke(std::vector<DivRegWrite>& wlist) {
 }
 
 void DivPlatformYM2609::setFlags(const DivConfig& flags) {
-  chipClock=1000000;
+  chipClock=YM2609_CLOCK;
   rate=YM2609_DSP_RATE; //TODO: map somehow?
   
     // Prescaler flags
   switch (flags.getInt("prescale",0)) {
     case 0x01: // /3
       prescale=0x2e;
-      /*fmFreqBase=9440540.0/2.0,
-      fmDivBase=36,
+      fmFreqBase=9440540.0/2.0;
+      /*fmDivBase=36,
       ayDiv=16;
       nukedMult=16;*/
       break;
     case 0x02: // /2
       prescale=0x2f;
-      /*fmFreqBase=9440540.0/3.0,
-      fmDivBase=24,
+      fmFreqBase=9440540.0/3.0;
+      /*fmDivBase=24,
       ayDiv=8;
       nukedMult=24;*/
       break;
     default: // /6
       prescale=0x2d;
-      /*fmFreqBase=9440540.0,
-      fmDivBase=72,
+      fmFreqBase=9440540.0;
+      /*fmDivBase=72,
       ayDiv=32;
       nukedMult=8;*/
       break;
   }
+
+  immWrite(0x2d,0xff);
+  immWrite(prescale,0xff);
   
   for (int i=0; i<YM2609_NUM_CHANNELS; i++) {
     oscBuf[i]->setRate(rate);

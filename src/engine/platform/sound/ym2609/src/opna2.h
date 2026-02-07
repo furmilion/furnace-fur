@@ -360,7 +360,6 @@ class OPNA2 /*: public OPNABase*/
         //
         void Mix(int** buffer, int nsamples)
         {
-
             fm6[0].Mix(buffer, nsamples, fm6[0].tim.regtc);
             fm6[1].Mix(buffer, nsamples, fm6[1].tim.regtc);
             psg2[0].Mix(buffer, nsamples);
