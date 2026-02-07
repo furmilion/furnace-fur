@@ -42,6 +42,7 @@ class DivPlatformYM2609: public DivDispatch {
       opMask(15),
       panLeft(0x3),
       panRight(0x3),
+      pan(3),
       gate(false),
       opMaskChanged(false) {}
   };

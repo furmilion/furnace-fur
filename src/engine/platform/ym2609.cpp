@@ -24,8 +24,10 @@
 
 #define KVS(x,y) ((chan[x].state.op[y].kvs==2 && isOutput[chan[x].state.alg][y]) || chan[x].state.op[y].kvs==1)
 
-#define rWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
-#define immWrite(a,v) if (!skipRegisterWrites) {writes.push_back(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
+//#define rWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
+#define rWrite(a,v) ym2609->SetReg(a, v);
+//#define immWrite(a,v) if (!skipRegisterWrites) {writes.push_back(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
+#define immWrite(a,v) ym2609->SetReg(a, v);
 
 //TODO: replace with custom clock
 
@@ -41,35 +43,35 @@ const char** DivPlatformYM2609::getRegisterSheet() {
 
 void DivPlatformYM2609::acquire(short** buf, size_t len) 
 {
-    for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
-    {
-      oscBuf[i]->begin(len);
-    }
+  for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
+  {
+    oscBuf[i]->begin(len);
+  }
 
-    for(size_t samp = 0; samp < len; samp++)
-    {
-      output_buf[0][0] = 0;
-      output_buf[1][0] = 0;
+  while (!writes.empty()) 
+  {
+    QueuedWrite w=writes.front();
+    //sid3_write(sid3, w.addr, w.val);
+    //ym2609->SetReg(w.addr, w.val);
+    regPool[w.addr % YM2609_NUM_REGISTERS]=w.val;
+    writes.pop();
+  }
 
-      ym2609->Mix(output_buf, 1);
+  for(size_t samp = 0; samp < len; samp++)
+  {
+    output_buf[0][0] = 0;
+    output_buf[1][0] = 0;
 
-      buf[0][samp] = output_buf[0][0];
-      buf[1][samp] = output_buf[1][0];
+    ym2609->Mix(output_buf, 1);
 
-      if (!writes.empty()) 
-      {
-        QueuedWrite w=writes.front();
-        //sid3_write(sid3, w.addr, w.val);
-        ym2609->SetReg(w.addr, w.val);
-        regPool[w.addr % YM2609_NUM_REGISTERS]=w.val;
-        writes.pop();
-      }
-    }
+    buf[0][samp] = output_buf[0][0];
+    buf[1][samp] = output_buf[1][0];
+  }
 
-    for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
-    {
-      oscBuf[i]->end(len);
-    }
+  for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
+  {
+    oscBuf[i]->end(len);
+  }
 }
 
 void DivPlatformYM2609::tick(bool sysTick) 
@@ -188,6 +190,7 @@ void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
   for (int i=0; i<4; i++) {
     unsigned short baseAddr=chanOffs[ch]|opOffs[i];
     DivInstrumentFM::Operator& op=chan[ch].state.op[i];
+    DivInstrumentYM2609FM::Operator& op_ym2609=chan[ch].state_ym2609fm.op[i];
     if (isMuted[ch] || !op.enable) {
       if (chan[ch].insChanged) {
         rWrite(baseAddr+ADDR_TL,127);
@@ -501,6 +504,12 @@ void DivPlatformYM2609::setFlags(const DivConfig& flags) {
 
   immWrite(0x2d,0xff);
   immWrite(prescale,0xff);
+
+  // enable 6 channel mode
+  immWrite(0x29,0x80);
+
+  // enable 6 channel mode
+  immWrite(0x229,0x80);
   
   for (int i=0; i<YM2609_NUM_CHANNELS; i++) {
     oscBuf[i]->setRate(rate);
@@ -561,6 +570,9 @@ bool DivPlatformYM2609::isSampleLoaded(int index, int sample) {
 void DivPlatformYM2609::renderSamples(int sysID)
 {
   memset(adpcma_buf,0,getSampleMemCapacity(0));
+  memset(ym2609->get_adpcmb_buf_pointer(0),0,getSampleMemCapacity(1));
+  memset(ym2609->get_adpcmb_buf_pointer(1),0,getSampleMemCapacity(2));
+  memset(ym2609->get_adpcmb_buf_pointer(2),0,getSampleMemCapacity(3));
   memset(sampleOffA,0,32768*sizeof(unsigned int));
   memset(sampleOffB[0],0,32768*sizeof(unsigned int));
   memset(sampleOffB[1],0,32768*sizeof(unsigned int));
@@ -723,7 +735,7 @@ void DivPlatformYM2609::quit() {
   delete[] output_buf[1];
   delete[] output_buf;
 
-  delete[] adpcma_buf;
+  //delete[] adpcma_buf;
   adpcma_buf_size = 0;
 }
 
