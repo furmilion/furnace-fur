@@ -854,7 +854,7 @@ class fmvgen /*: public fmgen*/
                 //	キーオン
                 void KeyOn()
                 {
-                    if (keyon_) return;
+                    //if (keyon_) return;
 
                     keyon_ = true;
 
