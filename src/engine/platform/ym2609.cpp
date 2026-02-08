@@ -22,6 +22,67 @@
 #include <math.h>
 #include "../../ta-log.h"
 
+#define PLEASE_HELP_ME(_targetChan,blk) \
+  int boundaryBottom=parent->calcBaseFreq(chipClock,CHIP_FREQBASE,0,false); \
+  int boundaryTop=parent->calcBaseFreq(chipClock,CHIP_FREQBASE,12,false); \
+  int destFreq=NOTE_FNUM_BLOCK(c.value2,11,blk); \
+  int newFreq; \
+  bool return2=false; \
+  if (_targetChan.portaPause) { \
+    if (parent->song.compatFlags.oldOctaveBoundary) { \
+      if ((_targetChan.portaPauseFreq&0xf800)>(_targetChan.baseFreq&0xf800)) { \
+        _targetChan.baseFreq=((_targetChan.baseFreq&0x7ff)>>1)|(_targetChan.portaPauseFreq&0xf800); \
+      } else { \
+        _targetChan.baseFreq=((_targetChan.baseFreq&0x7ff)<<1)|(_targetChan.portaPauseFreq&0xf800); \
+      } \
+      c.value*=2; \
+    } else { \
+      _targetChan.baseFreq=_targetChan.portaPauseFreq; \
+    } \
+  } \
+  if (destFreq>_targetChan.baseFreq) { \
+    newFreq=_targetChan.baseFreq+c.value; \
+    if (newFreq>=destFreq) { \
+      newFreq=destFreq; \
+      return2=true; \
+    } \
+  } else { \
+    newFreq=_targetChan.baseFreq-c.value; \
+    if (newFreq<=destFreq) { \
+      newFreq=destFreq; \
+      return2=true; \
+    } \
+  } \
+  /* check for octave boundary */ \
+  /* what the heck! */ \
+  if (!_targetChan.portaPause) { \
+    if ((newFreq&0x7ff)>boundaryTop && (newFreq&0xf800)<0x3800) { \
+      if (parent->song.compatFlags.fbPortaPause) { \
+        _targetChan.portaPauseFreq=(boundaryBottom)|((newFreq+0x800)&0xf800); \
+        _targetChan.portaPause=true; \
+        break; \
+      } else { \
+        newFreq=((newFreq&0x7ff)>>1)|((newFreq+0x800)&0xf800); \
+      } \
+    } \
+    if ((newFreq&0x7ff)<boundaryBottom && (newFreq&0xf800)>0) { \
+      if (parent->song.compatFlags.fbPortaPause) { \
+        _targetChan.portaPauseFreq=newFreq=(boundaryTop-1)|((newFreq-0x800)&0xf800); \
+        _targetChan.portaPause=true; \
+        break; \
+      } else { \
+        newFreq=((newFreq&0x7ff)<<1)|((newFreq-0x800)&0xf800); \
+      } \
+    } \
+  } \
+  _targetChan.portaPause=false; \
+  _targetChan.freqChanged=true; \
+  _targetChan.baseFreq=newFreq; \
+  if (return2) { \
+    _targetChan.inPorta=false; \
+    return 2; \
+  }
+
 #define KVS(x,y) ((chan[x].state.op[y].kvs==2 && isOutput[chan[x].state.alg][y]) || chan[x].state.op[y].kvs==1)
 
 //#define rWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
@@ -143,7 +204,7 @@ void DivPlatformYM2609::tick(bool sysTick)
         }
         if (chan[i].freq>0x3fff) chan[i].freq=0x3fff;
         //if (i<6) {
-          immWrite(chanOffs[i]+ADDR_FREQH,chan[i].freq>>8);
+          immWrite(chanOffs[i]+ADDR_FREQH,(chan[i].freq>>8)|((chan[i].panLeft&3)<<6));
           immWrite(chanOffs[i]+ADDR_FREQ,chan[i].freq&0xff);
         //}
         chan[i].freqChanged=false;
@@ -178,7 +239,8 @@ void DivPlatformYM2609::tick(bool sysTick)
 }
 
 void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
-  if (chan[ch].insChanged) {
+  if (chan[ch].insChanged) 
+  {
     chan[ch].state=ins->fm;
     chan[ch].opMask=
       (chan[ch].state.op[0].enable?1:0)|
@@ -187,37 +249,49 @@ void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
       (chan[ch].state.op[3].enable?8:0);
   }
   
-  for (int i=0; i<4; i++) {
+  for (int i=0; i<4; i++) 
+  {
     unsigned short baseAddr=chanOffs[ch]|opOffs[i];
     DivInstrumentFM::Operator& op=chan[ch].state.op[i];
     DivInstrumentYM2609FM::Operator& op_ym2609=chan[ch].state_ym2609fm.op[i];
     if (isMuted[ch] || !op.enable) {
       if (chan[ch].insChanged) {
-        rWrite(baseAddr+ADDR_TL,127);
+        rWrite(baseAddr+ADDR_TL,127|(((chan[ch].op_ym2609[i].wave_type >> 1) & 1) << 7));
       }
     } else {
       if (KVS(ch,i)) {
         if (!chan[ch].active || chan[ch].insChanged) {
-          rWrite(baseAddr+ADDR_TL,127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[ch].outVol&0x7f,127));
+          rWrite(baseAddr+ADDR_TL,(127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[ch].outVol&0x7f,127))|(((chan[ch].op_ym2609[i].wave_type >> 1) & 1) << 7));
         }
       } else {
         if (chan[ch].insChanged) {
-          rWrite(baseAddr+ADDR_TL,op.tl);
+          rWrite(baseAddr+ADDR_TL,op.tl|(((chan[ch].op_ym2609[i].wave_type >> 1) & 1) << 7));
         }
       }
     }
     if (chan[ch].insChanged) {
-      rWrite(baseAddr+ADDR_MULT_DT,(op.mult&15)|(dtTable[op.dt&7]<<4));
-      rWrite(baseAddr+ADDR_RS_AR,(op.ar&31)|(op.rs<<6));
-      rWrite(baseAddr+ADDR_AM_DR,(op.dr&31)|(op.am<<7));
-      rWrite(baseAddr+ADDR_DT2_D2R,op.d2r&31);
+      rWrite(baseAddr+ADDR_MULT_DT,(op.mult&15)|(dtTable[op.dt&7]<<4)|((chan[ch].op_ym2609[i].wave_type & 1) << 7));
+      rWrite(baseAddr+ADDR_RS_AR,(op.ar&31)|(op.rs<<6)|((op_ym2609.phase_reset & 1) << 5));
+      rWrite(baseAddr+ADDR_AM_DR,(op.dr&31)|(op.am<<7)|(op.dt2<<5));
+
+      /*if(i != 0)
+      {
+        rWrite(baseAddr+ADDR_DT2_D2R,(op.d2r&31)|(op_ym2609.feedback<<5));
+      }
+      else
+      {
+        rWrite(baseAddr+ADDR_DT2_D2R,(op.d2r&31));
+      }*/
+
+      rWrite(baseAddr+ADDR_DT2_D2R,(op.d2r&31)|(op_ym2609.feedback<<5));
+      
       rWrite(baseAddr+ADDR_SL_RR,(op.rr&15)|(op.sl<<4));
-      rWrite(baseAddr+ADDR_SSG,op.ssgEnv&15);
+      rWrite(baseAddr+ADDR_SSG,(op.ssgEnv&15)|(op_ym2609.alg_link<<4));
     }
   }
   if (chan[ch].insChanged) {
-    rWrite(chanOffs[ch]+ADDR_FB_ALG,(chan[ch].state.alg&7)|(chan[ch].state.fb<<3));
-    rWrite(chanOffs[ch]+ADDR_LRAF,(isMuted[ch]?0:(chan[ch].pan<<6))|(chan[ch].state.fms&7)|((chan[ch].state.ams&3)<<4));
+    rWrite(chanOffs[ch]+ADDR_FB_ALG,(chan[ch].state.alg&7)|(chan[ch].state.fb<<3)|((chan[ch].panRight&3)<<6));
+    rWrite(chanOffs[ch]+ADDR_LRAF,(isMuted[ch]?0:(chan[ch].pan<<6))|(chan[ch].state.fms&7)|((chan[ch].state.ams&3)<<4)|(chan[ch].state_ym2609fm.alg_construct_switch<<3));
   }
 }
 
@@ -299,26 +373,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       chan[c.chan].freqChanged=true;
       break;
     case DIV_CMD_NOTE_PORTA: {
-      int destFreq=NOTE_FREQUENCY(c.value2);
-      bool return2=false;
-      if (destFreq>chan[c.chan].baseFreq) {
-        chan[c.chan].baseFreq+=c.value;
-        if (chan[c.chan].baseFreq>=destFreq) {
-          chan[c.chan].baseFreq=destFreq;
-          return2=true;
-        }
-      } else {
-        chan[c.chan].baseFreq-=c.value;
-        if (chan[c.chan].baseFreq<=destFreq) {
-          chan[c.chan].baseFreq=destFreq;
-          return2=true;
-        }
-      }
-      chan[c.chan].freqChanged=true;
-      if (return2) {
-        chan[c.chan].inPorta=false;
-        return 2;
-      }
+      PLEASE_HELP_ME(chan[c.chan],chan[c.chan].state.block);
       break;
     }
     case DIV_CMD_LEGATO:

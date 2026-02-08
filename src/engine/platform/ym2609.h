@@ -37,6 +37,21 @@ class DivPlatformYM2609: public DivDispatch {
     unsigned char pan; //hard pan
     bool gate;
     bool opMaskChanged;
+    bool ac_switch;
+    int portaPauseFreq;
+
+    struct Operator_YM2609 
+    {
+      unsigned char wave_type; //0-3, WT L + WT H
+
+      bool operator==(const Operator_YM2609& other);
+      bool operator!=(const Operator_YM2609& other) {
+        return !(*this==other);
+      }
+      Operator_YM2609():
+        wave_type(0) {}
+    } op_ym2609[4];
+
     Channel():
       SharedChannel<signed short>(0xff),
       opMask(15),
@@ -44,7 +59,9 @@ class DivPlatformYM2609: public DivDispatch {
       panRight(0x3),
       pan(3),
       gate(false),
-      opMaskChanged(false) {}
+      opMaskChanged(false),
+      ac_switch(false),
+      portaPauseFreq(0) {}
   };
   Channel chan[YM2609_NUM_CHANNELS];
   DivDispatchOscBuffer* oscBuf[YM2609_NUM_CHANNELS];

@@ -890,11 +890,11 @@ class fmvgen /*: public fmgen*/
                 //	キーオフ
                 void KeyOff()
                 {
-                    if (keyon_)
-                    {
+                    //if (keyon_)
+                    //{
                         keyon_ = false;
                         ShiftPhase(EGPhase::release);
-                    }
+                    //}
                 }
 
                 //	オペレータは稼働中か？
