@@ -360,7 +360,7 @@ class fmvgen /*: public fmgen*/
                 int dbgopout_;
                 int dbgpgout_;
                 //	Envelop Generator ---------------------------------------------------
-                enum EGPhase { next, attack, decay, sustain, release, off };
+                enum EGPhase { next = 0, attack, decay, sustain, release, off };
 
                 //	構築
                 //FM::Operator::Operator()
