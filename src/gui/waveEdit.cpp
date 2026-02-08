@@ -1097,7 +1097,7 @@ void FurnaceGUI::drawWaveEdit() {
       ImGui::SameLine();
       ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // wavetable text input size found here
       if (ImGui::InputText("##MMLWave",&mmlStringW)) {
-        int actualData[1024];
+        int actualData[DIV_WAVETABLE_MAX_WIDTH];
         decodeMMLStrW(mmlStringW,actualData,wave->len,(waveSigned && !waveHex)?(-((wave->max+1)/2)):0,(waveSigned && !waveHex)?(wave->max/2):wave->max,waveHex);
         MARK_MODIFIED;
         if (waveSigned && !waveHex) {
@@ -1108,8 +1108,8 @@ void FurnaceGUI::drawWaveEdit() {
         memcpy(wave->data,actualData,wave->len*sizeof(int));
       }
       if (!ImGui::IsItemActive()) {
-        int actualData[1024];
-        memcpy(actualData,wave->data,1024*sizeof(int));
+        int actualData[DIV_WAVETABLE_MAX_WIDTH];
+        memcpy(actualData,wave->data,DIV_WAVETABLE_MAX_WIDTH*sizeof(int));
         if (waveSigned && !waveHex) {
           for (int i=0; i<wave->len; i++) {
             actualData[i]-=(wave->max+1)/2;
