@@ -294,6 +294,12 @@ struct DivInstrumentMacro {
   unsigned char macroType;
 
   /**
+   * convert from the previous ADSR/LFO macro format.
+   * INTERNAL. DO NOT USE.
+   */
+  void convertOldADSRLFO();
+
+  /**
    * compile a macro. for use with ROM export.
    */
   void compile(SafeWriter* w, DivCompiledMacroFormat format, int min, int max);
@@ -356,6 +362,7 @@ struct DivInstrumentSTD {
     DivInstrumentMacro vibMacro;
     DivInstrumentMacro wsMacro;
     DivInstrumentMacro ksrMacro;
+    DivInstrumentMacro* macroByType(DivMacroTypeOp type);
     OpMacro():
       amMacro(DIV_MACRO_OP_AM), arMacro(DIV_MACRO_OP_AR), drMacro(DIV_MACRO_OP_DR), multMacro(DIV_MACRO_OP_MULT),
       rrMacro(DIV_MACRO_OP_RR), slMacro(DIV_MACRO_OP_SL), tlMacro(DIV_MACRO_OP_TL,true), dt2Macro(DIV_MACRO_OP_DT2),
@@ -1206,6 +1213,7 @@ struct DivInstrument : DivInstrumentPOD {
   DivDataErrors readInsDataNew(SafeReader& reader, short version, bool fui, DivSong* song);
 
   void convertC64SpecialMacro();
+  void convertOldADSRLFO();
 
   /**
    * save the instrument to a SafeWriter.
