@@ -1,4 +1,5 @@
-# Furnace (chiptune tracker)
+This fork of Furnace Tracker exists only to automatically build Release versions of dev versions and for merging pull requests from the upstream repo.
+
 
 ![screenshot](papers/screenshot3.png)
 
