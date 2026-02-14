@@ -436,6 +436,12 @@ class OPNA2 /*: public OPNABase*/
                 fm6[0].chip.SetRatio(ratio);
                 fm6[1].chip.SetRatio(ratio);
 
+                for(int i = 0; i < 6; i++)
+                {
+                    fm6[0].ch[i].SetChip(fm6[0].chip);
+                    fm6[1].ch[i].SetChip(fm6[1].chip);
+                }
+
                 psg2[0].SetClock((int)(clock / table[p][1]), (int)psgrate);
                 psg2[1].SetClock((int)(clock / table[p][1]), (int)psgrate);
                 psg2[2].SetClock((int)(clock / table[p][1]), (int)psgrate);
@@ -713,7 +719,7 @@ class OPNA2 /*: public OPNABase*/
         }
 
     // リズム音源関係
-    private:
+    //private:
         OPNA2::Rhythm rhythm[6];
 
         int8_t rhythmtl;      // リズム全体の音量
@@ -780,7 +786,7 @@ class OPNA2 /*: public OPNABase*/
             }
         }
 
-    protected:
+    //protected:
         FM6* fm6;
         PSG2* psg2;
         ADPCMB adpcmb[3];

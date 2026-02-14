@@ -1062,7 +1062,7 @@ class fmvgen /*: public fmgen*/
                     pg_diff_ = 0; pg_diff_lfo_ = 0;
                 }
 
-            private:
+            //private:
                 uint32_t bn_;       // Block/Note
                 int eg_level_;  // EG の出力値
                 int eg_level_on_next_phase_;    // 次の eg_phase_ に移る値
@@ -1587,7 +1587,7 @@ class fmvgen /*: public fmgen*/
                 }
             }
 
-        private:
+        //private:
             //static bool tablehasmade;
             int kftable[64];
             uint32_t fb;
