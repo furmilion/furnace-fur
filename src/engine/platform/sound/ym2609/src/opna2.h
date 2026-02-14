@@ -336,6 +336,7 @@ class OPNA2 /*: public OPNABase*/
         {
             //if (!OPNABase::SetRate(c, r, ipflag))
                 //return false;
+            clock = c;
 
             RebuildTimeTable();
             for (int i = 0; i < 6; i++)

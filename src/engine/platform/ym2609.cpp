@@ -85,10 +85,10 @@
 
 #define KVS(x,y) ((chan[x].state.op[y].kvs==2 && isOutput[chan[x].state.alg][y]) || chan[x].state.op[y].kvs==1)
 
-//#define rWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
-#define rWrite(a,v) ym2609->SetReg(a, v);
+#define rWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
+//#define rWrite(a,v) ym2609->SetReg(a, v);
 //#define immWrite(a,v) if (!skipRegisterWrites) {writes.push_back(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
-#define immWrite(a,v) ym2609->SetReg(a, v);
+#define immWrite(a,v) ym2609->SetReg(a, v); regPool[a % YM2609_NUM_REGISTERS]=v;
 
 //TODO: replace with custom clock
 
@@ -112,8 +112,7 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
   while (!writes.empty()) 
   {
     QueuedWrite w=writes.front();
-    //sid3_write(sid3, w.addr, w.val);
-    //ym2609->SetReg(w.addr, w.val);
+    ym2609->SetReg(w.addr, w.val);
     regPool[w.addr % YM2609_NUM_REGISTERS]=w.val;
     writes.pop();
   }
@@ -130,8 +129,8 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
       logD("ch0 op0 eg stage %d acc (level) %d eg_out_ %d tl_out_ %d", (int)ym2609->fm6[0].ch[0].op[0].eg_phase_, (int)ym2609->fm6[0].ch[0].op[0].eg_level_, (int)ym2609->fm6[0].ch[0].op[0].eg_out_, (int)ym2609->fm6[0].ch[0].op[0].tl_out_);
     }*/
 
-    buf[0][samp] = output_buf[0][0];
-    buf[1][samp] = output_buf[1][0];
+    buf[0][samp] = output_buf[0][0] * 8;
+    buf[1][samp] = output_buf[1][0] * 8;
   }
 
   for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
@@ -193,9 +192,9 @@ void DivPlatformYM2609::tick(bool sysTick)
     {
       if (chan[i].freqChanged) {
         if (parent->song.compatFlags.linearPitch) {
-          chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE,11,chan[i].state.block);
+          chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,1,chan[i].pitch2,chipClock,CHIP_FREQBASE,11,chan[i].state.block);
         } else {
-          int fNum=parent->calcFreq(chan[i].baseFreq&0x7ff,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE,11);
+          int fNum=parent->calcFreq(chan[i].baseFreq&0x7ff,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,1,chan[i].pitch2,chipClock,CHIP_FREQBASE,11);
           int block=(chan[i].baseFreq&0xf800)>>11;
           if (fNum<0) fNum=0;
           if (fNum>2047) {
