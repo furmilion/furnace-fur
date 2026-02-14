@@ -237,12 +237,12 @@ class OPNA2 /*: public OPNABase*/
                 amtable_opna[c] = v & ~3;
             }
 
-            SetVolumeFM(24);
-            SetVolumePSG(24);
-            SetVolumeADPCM(24);
-            SetVolumeRhythmTotal(24);
+            SetVolumeFM(40);
+            SetVolumePSG(40);
+            SetVolumeADPCM(40);
+            SetVolumeRhythmTotal(40);
             for (int i = 0; i < 6; i++)
-                SetVolumeRhythm(i, 24);
+                SetVolumeRhythm(i, 40);
             SetChannelMask(0);
 
             return true;
@@ -429,7 +429,7 @@ class OPNA2 /*: public OPNABase*/
 
                 // 合成周波数と出力周波数の比
                 //assert(fmclock< (0x80000000 >> FM_RATIOBITS));
-                uint32_t ratio = ((fmclock << FM_RATIOBITS) + rate / 2) / rate;
+                uint32_t ratio = ((fmclock << FM_RATIOBITS) + rate / 2) / rate / 2;
 
                 fm6[0].tim.SetTimerBase(fmclock);
                 fm6[1].tim.SetTimerBase(fmclock);

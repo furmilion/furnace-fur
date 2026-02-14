@@ -197,9 +197,9 @@ void DivPlatformYM2609::tick(bool sysTick)
     {
       if (chan[i].freqChanged) {
         if (parent->song.compatFlags.linearPitch) {
-          chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,1,chan[i].pitch2,chipClock,CHIP_FREQBASE,11,chan[i].state.block);
+          chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE,11,chan[i].state.block);
         } else {
-          int fNum=parent->calcFreq(chan[i].baseFreq&0x7ff,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,1,chan[i].pitch2,chipClock,CHIP_FREQBASE,11);
+          int fNum=parent->calcFreq(chan[i].baseFreq&0x7ff,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE,11);
           int block=(chan[i].baseFreq&0xf800)>>11;
           if (fNum<0) fNum=0;
           if (fNum>2047) {
@@ -213,7 +213,7 @@ void DivPlatformYM2609::tick(bool sysTick)
         }
         if (chan[i].freq>0x3fff) chan[i].freq=0x3fff;
         //if (i<6) {
-          immWrite(chanOffs[i]+ADDR_FREQH,(chan[i].freq>>8)|((chan[i].panLeft&3)<<6));
+          immWrite(chanOffs[i]+ADDR_FREQH,((chan[i].freq>>8)&0x3f)|((chan[i].panLeft&3)<<6));
           immWrite(chanOffs[i]+ADDR_FREQ,chan[i].freq&0xff);
         //}
         chan[i].freqChanged=false;
