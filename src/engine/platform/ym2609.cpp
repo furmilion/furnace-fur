@@ -109,14 +109,6 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
     oscBuf[i]->begin(len);
   }
 
-  while (!writes.empty()) 
-  {
-    QueuedWrite w=writes.front();
-    ym2609->SetReg(w.addr, w.val);
-    regPool[w.addr % YM2609_NUM_REGISTERS]=w.val;
-    writes.pop();
-  }
-
   for(size_t samp = 0; samp < len; samp++)
   {
     output_buf[0][0] = 0;
@@ -129,8 +121,21 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
       logD("ch0 op0 eg stage %d acc (level) %d eg_out_ %d tl_out_ %d", (int)ym2609->fm6[0].ch[0].op[0].eg_phase_, (int)ym2609->fm6[0].ch[0].op[0].eg_level_, (int)ym2609->fm6[0].ch[0].op[0].eg_out_, (int)ym2609->fm6[0].ch[0].op[0].tl_out_);
     }*/
 
-    buf[0][samp] = output_buf[0][0] * 8;
-    buf[1][samp] = output_buf[1][0] * 8;
+    if (!writes.empty()) 
+    {
+      for(int i = 0; i < clocks_per_sample; i++)
+      {
+        QueuedWrite w=writes.front();
+        ym2609->SetReg(w.addr, w.val);
+        regPool[w.addr % YM2609_NUM_REGISTERS]=w.val;
+        writes.pop();
+
+        if(writes.empty()) break;
+      }
+    }
+
+    buf[0][samp] = output_buf[0][0];
+    buf[1][samp] = output_buf[1][0];
   }
 
   for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
@@ -219,7 +224,7 @@ void DivPlatformYM2609::tick(bool sysTick)
         }
         else
         {
-          immWrite(0x228,(chan[i].opMask<<4)|konOffs[i]);
+          immWrite(0x228,(chan[i].opMask<<4)|konOffs[i-6]);
         }
         chan[i].opMaskChanged=false;
         chan[i].keyOn=false;
@@ -535,6 +540,8 @@ void DivPlatformYM2609::poke(std::vector<DivRegWrite>& wlist) {
 void DivPlatformYM2609::setFlags(const DivConfig& flags) {
   chipClock=YM2609_CLOCK;
   rate=YM2609_DSP_RATE; //TODO: map somehow?
+
+  clocks_per_sample = (int)ceil((double)chipClock / (double)rate);
   
     // Prescaler flags
   switch (flags.getInt("prescale",0)) {

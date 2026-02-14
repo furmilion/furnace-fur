@@ -72,7 +72,9 @@ class DivPlatformYM2609: public DivDispatch {
       QueuedWrite(unsigned short a, unsigned char v): addr(a), val(v) {}
   };
   FixedQueue<QueuedWrite,YM2609_NUM_REGISTERS * 4> writes;
-  DivWaveSynth ws;
+  //DivWaveSynth ws;
+
+  int clocks_per_sample; //to make one reg write per clock cycle
 
   const unsigned short ADDR_MULT_DT=0x30;
   const unsigned short ADDR_TL=0x40;

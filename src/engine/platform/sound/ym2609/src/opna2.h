@@ -54,22 +54,22 @@ class OPNA2 /*: public OPNABase*/
 
             for(int i = 0; i < 2; i++)
             {
-                fm6[i] = FM6(0, reverb, distortion, chorus, hpflpf,reversePhase,compressor, i * 6, &this->sinetable_opna);
+                fm6[i] = FM6(i, reverb, distortion, chorus, hpflpf,reversePhase,compressor, i * 6, &this->sinetable_opna);
             }
 
             for(int i = 0; i < 4; i++)
             {
-                psg2[i] = PSG2(0, reverb, distortion, chorus, hpflpf,reversePhase,compressor, 12 + i * 3);
+                psg2[i] = PSG2(i, reverb, distortion, chorus, hpflpf,reversePhase,compressor, 12 + i * 3);
             }
 
             for(int i = 0; i < 3; i++)
             {
-                adpcmb[i] = ADPCMB(0, reverb, distortion, chorus, hpflpf,reversePhase,compressor, 24 + i);
+                adpcmb[i] = ADPCMB(i, reverb, distortion, chorus, hpflpf,reversePhase,compressor, 24 + i);
             }
 
             for(int i = 0; i < 6; i++)
             {
-                rhythm[i] = Rhythm(0, reverb, distortion, chorus, hpflpf,reversePhase,compressor, 27 + i);
+                rhythm[i] = Rhythm(i, reverb, distortion, chorus, hpflpf,reversePhase,compressor, 27 + i);
             }
             
             adpcma = ADPCMA(0, reverb, distortion, chorus, hpflpf, reversePhase, compressor, 33);
@@ -237,12 +237,12 @@ class OPNA2 /*: public OPNABase*/
                 amtable_opna[c] = v & ~3;
             }
 
-            SetVolumeFM(0);
-            SetVolumePSG(0);
-            SetVolumeADPCM(0);
-            SetVolumeRhythmTotal(0);
+            SetVolumeFM(24);
+            SetVolumePSG(24);
+            SetVolumeADPCM(24);
+            SetVolumeRhythmTotal(24);
             for (int i = 0; i < 6; i++)
-                SetVolumeRhythm(0, 0);
+                SetVolumeRhythm(i, 24);
             SetChannelMask(0);
 
             return true;
@@ -635,7 +635,7 @@ class OPNA2 /*: public OPNABase*/
         //	音量設定
         void SetVolumeFM(int db)
         {
-            db = my_min(db, 20);
+            db = my_min(db, 100);
             if (db > -192)
             {
                 fm6[0].fmvolume = (int)(16384.0 * pow(10.0, db / 40.0));
@@ -658,7 +658,7 @@ class OPNA2 /*: public OPNABase*/
 
         void SetVolumeADPCM(int db)
         {
-            db = my_min(db, 20);
+            db = my_min(db, 100);
             if (db > -192)
             {
                 adpcmb[0].adpcmvol = (int)(65536.0 * pow(10.0, db / 40.0));
@@ -709,13 +709,13 @@ class OPNA2 /*: public OPNABase*/
         //
         void SetVolumeRhythmTotal(int db)
         {
-            db = my_min(db, 20);
+            db = my_min(db, 100);
             rhythmtvol = -(db * 2 / 3);
         }
 
         void SetVolumeRhythm(int index, int db)
         {
-            db = my_min(db, 20);
+            db = my_min(db, 100);
             rhythm[index].volume = -(db * 2 / 3);
         }
 
