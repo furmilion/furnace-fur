@@ -251,6 +251,8 @@ void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
   if (chan[ch].insChanged) 
   {
     chan[ch].state=ins->fm;
+    chan[ch].state_ym2609fm=ins->ym2609.ym2609fm;
+
     chan[ch].opMask=
       (chan[ch].state.op[0].enable?1:0)|
       (chan[ch].state.op[2].enable?2:0)|
