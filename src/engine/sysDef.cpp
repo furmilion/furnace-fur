@@ -27,20 +27,20 @@ DivSysDef* DivEngine::sysDefs[DIV_MAX_CHIP_DEFS];
 DivSystem DivEngine::sysFileMapFur[DIV_MAX_CHIP_DEFS];
 DivSystem DivEngine::sysFileMapDMF[DIV_MAX_CHIP_DEFS];
 
-DivSystem DivEngine::systemFromFileFur(unsigned char val) {
+DivSystem DivEngine::systemFromFileFur(unsigned short val) {
   return sysFileMapFur[val];
 }
 
-unsigned char DivEngine::systemToFileFur(DivSystem val) {
+unsigned short DivEngine::systemToFileFur(DivSystem val) {
   if (sysDefs[val]==NULL) return 0;
   return sysDefs[val]->id;
 }
 
-DivSystem DivEngine::systemFromFileDMF(unsigned char val) {
+DivSystem DivEngine::systemFromFileDMF(unsigned short val) {
   return sysFileMapDMF[val];
 }
 
-unsigned char DivEngine::systemToFileDMF(DivSystem val) {
+unsigned short DivEngine::systemToFileDMF(DivSystem val) {
   if (sysDefs[val]==NULL) return 0;
   return sysDefs[val]->id_DMF;
 }
@@ -844,6 +844,44 @@ void DivEngine::registerSystems() {
   for (int i=0; i<16; i++) SID3PostEffectHandlerMap.emplace(0x20+i,SID3FineCutoffHandler2);
   for (int i=0; i<16; i++) SID3PostEffectHandlerMap.emplace(0x30+i,SID3FineCutoffHandler3);
   for (int i=0; i<16; i++) SID3PostEffectHandlerMap.emplace(0x40+i,SID3FineCutoffHandler4);
+
+  EffectHandlerMap YM2609EffectHandlerMap={
+    {0x11, {DIV_CMD_FM_FB, _("11xx: Set feedback (0 to 7)")}},
+    {0x12, {DIV_CMD_FM_TL, _("12xx: Set level of operator 1 (0 highest, 7F lowest)"), constVal<0>, effectVal}},
+    {0x13, {DIV_CMD_FM_TL, _("13xx: Set level of operator 2 (0 highest, 7F lowest)"), constVal<1>, effectVal}},
+    {0x14, {DIV_CMD_FM_TL, _("14xx: Set level of operator 3 (0 highest, 7F lowest)"), constVal<2>, effectVal}},
+    {0x15, {DIV_CMD_FM_TL, _("15xx: Set level of operator 4 (0 highest, 7F lowest)"), constVal<3>, effectVal}},
+    {0x16, {DIV_CMD_FM_MULT, _("16xy: Set operator multiplier (x: operator from 1 to 4; y: multiplier)"), effectOpValNoZero<4>, effectValAnd<15>}},
+    {0x19, {DIV_CMD_FM_AR, _("19xx: Set attack of all operators (0 to 1F)"), constVal<-1>, effectValAnd<31>}},
+    {0x1a, {DIV_CMD_FM_AR, _("1Axx: Set attack of operator 1 (0 to 1F)"), constVal<0>, effectValAnd<31>}},
+    {0x1b, {DIV_CMD_FM_AR, _("1Bxx: Set attack of operator 2 (0 to 1F)"), constVal<1>, effectValAnd<31>}},
+    {0x1c, {DIV_CMD_FM_AR, _("1Cxx: Set attack of operator 3 (0 to 1F)"), constVal<2>, effectValAnd<31>}},
+    {0x1d, {DIV_CMD_FM_AR, _("1Dxx: Set attack of operator 4 (0 to 1F)"), constVal<3>, effectValAnd<31>}},
+    {0x50, {DIV_CMD_FM_AM, _("50xy: Set AM (x: operator from 1 to 4 (0 for all ops); y: AM)"), effectOpVal<4>, effectValAnd<1>}},
+    {0x51, {DIV_CMD_FM_SL, _("51xy: Set sustain level (x: operator from 1 to 4 (0 for all ops); y: sustain)"), effectOpVal<4>, effectValAnd<15>}},
+    {0x52, {DIV_CMD_FM_RR, _("52xy: Set release (x: operator from 1 to 4 (0 for all ops); y: release)"), effectOpVal<4>, effectValAnd<15>}},
+    {0x53, {DIV_CMD_FM_DT, _("53xy: Set detune (x: operator from 1 to 4 (0 for all ops); y: detune where 3 is center)"), effectOpVal<4>, effectValAnd<7>}},
+    {0x54, {DIV_CMD_FM_RS, _("54xy: Set envelope scale (x: operator from 1 to 4 (0 for all ops); y: scale from 0 to 3)"), effectOpVal<4>, effectValAnd<3>}},
+    {0x56, {DIV_CMD_FM_DR, _("56xx: Set decay of all operators (0 to 1F)"), constVal<-1>, effectValAnd<31>}},
+    {0x57, {DIV_CMD_FM_DR, _("57xx: Set decay of operator 1 (0 to 1F)"), constVal<0>, effectValAnd<31>}},
+    {0x58, {DIV_CMD_FM_DR, _("58xx: Set decay of operator 2 (0 to 1F)"), constVal<1>, effectValAnd<31>}},
+    {0x59, {DIV_CMD_FM_DR, _("59xx: Set decay of operator 3 (0 to 1F)"), constVal<2>, effectValAnd<31>}},
+    {0x5a, {DIV_CMD_FM_DR, _("5Axx: Set decay of operator 4 (0 to 1F)"), constVal<3>, effectValAnd<31>}},
+    {0x5b, {DIV_CMD_FM_D2R, _("5Bxx: Set decay 2 of all operators (0 to 1F)"), constVal<-1>, effectValAnd<31>}},
+    {0x5c, {DIV_CMD_FM_D2R, _("5Cxx: Set decay 2 of operator 1 (0 to 1F)"), constVal<0>, effectValAnd<31>}},
+    {0x5d, {DIV_CMD_FM_D2R, _("5Dxx: Set decay 2 of operator 2 (0 to 1F)"), constVal<1>, effectValAnd<31>}},
+    {0x5e, {DIV_CMD_FM_D2R, _("5Exx: Set decay 2 of operator 3 (0 to 1F)"), constVal<2>, effectValAnd<31>}},
+    {0x5f, {DIV_CMD_FM_D2R, _("5Fxx: Set decay 2 of operator 4 (0 to 1F)"), constVal<3>, effectValAnd<31>}},
+    {0x60, {DIV_CMD_FM_OPMASK, _("60xx: Set operator mask (bits 0-3)")}},
+    {0x61, {DIV_CMD_FM_ALG, _("61xx: Set algorithm (0 to 7)")}},
+    {0x62, {DIV_CMD_FM_FMS, _("62xx: Set LFO FM depth (0 to 7)")}},
+    {0x63, {DIV_CMD_FM_AMS, _("63xx: Set LFO AM depth (0 to 3)")}},
+  };
+
+  EffectHandlerMap YM2609ExtChEffectHandlerMap(YM2609EffectHandlerMap);
+  YM2609ExtChEffectHandlerMap.insert({
+    {0x18, {DIV_CMD_FM_EXTCH, _("18xx: Toggle extended channel 3/9 mode")}},
+  });
 
   // SysDefs
 
@@ -2734,6 +2772,168 @@ void DivEngine::registerSystems() {
     }),
     {},
     c64PostEffectHandlerMap
+  );
+
+  sysDefs[DIV_SYSTEM_YM2609]=new DivSysDef(
+    _("YM2609"), NULL, 0x100, 0, 39, 39, 39,
+    true, false, 0, false, (1U<<DIV_SAMPLE_DEPTH_ADPCM_A)|(1U<<DIV_SAMPLE_DEPTH_ADPCM_B), 1024, 8192,
+    _("a fictional sound chip, basically an improved and extended version of Yamaha YM2608. supports DSP effects, custom waves for FM operators and much more."),
+    DivChanDefFunc({
+      DivChanDef(_("FM 1")     , "F1", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 2")     , "F2", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 3")     , "F3", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 4")     , "F4", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 5")     , "F5", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 6")     , "F6", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 7")     , "F7", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 8")     , "F8", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 9")     , "F9", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 10")    , "F10",DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 11")    , "F11",DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 12")    , "F12",DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("PSG 1")    , "S1", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 2")    , "S2", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 3")    , "S3", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 4")    , "S1", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 5")    , "S2", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 6")    , "S3", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 7")    , "S1", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 8")    , "S2", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 9")    , "S3", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 10")   , "S10",DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 11")   , "S11",DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 12")   , "S12",DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("Kick")     , "BD", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("Snare")    , "SD", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("Top")      , "TP", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("HiHat")    , "HH", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("Tom")      , "TM", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("Rim")      , "RM", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("ADPCM-A 1"), "PA1",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 2"), "PA2",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 3"), "PA3",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 4"), "PA4",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 5"), "PA5",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 6"), "PA6",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-B 1"), "PB1",DIV_CH_PCM  , DIV_INS_ADPCMB, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-B 2"), "PB2",DIV_CH_PCM  , DIV_INS_ADPCMB, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-B 3"), "PB3",DIV_CH_PCM  , DIV_INS_ADPCMB, DIV_INS_AMIGA),
+    }),
+    {},
+    YM2609EffectHandlerMap
+  );
+
+  sysDefs[DIV_SYSTEM_YM2609_EXT]=new DivSysDef(
+    _("YM2609 Extended Channels 3 and 9"), NULL, 0x101, 0, 45, 45, 45,
+    true, false, 0, false, (1U<<DIV_SAMPLE_DEPTH_ADPCM_A)|(1U<<DIV_SAMPLE_DEPTH_ADPCM_B), 1024, 8192,
+    _("a fictional sound chip, basically an improved and extended version of Yamaha YM2608. supports DSP effects, custom waves for FM operators and much more.\nthis one is in Extended Channel mode, which turns the third and ninth FM channels each into four operators with independent notes/frequencies."),
+    DivChanDefFunc({
+      DivChanDef(_("FM 1")     , "F1", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 2")     , "F2", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 3 OP1") , "3O1",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 3 OP2") , "3O2",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 3 OP3") , "3O3",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 3 OP4") , "3O4",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 4")     , "F4", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 5")     , "F5", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 6")     , "F6", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 7")     , "F7", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 8")     , "F8", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 9 OP1") , "9O1",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 9 OP2") , "9O2",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 9 OP3") , "9O3",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 9 OP4") , "9O4",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 10")    , "F10",DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 11")    , "F11",DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 12")    , "F12",DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("PSG 1")    , "S1", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 2")    , "S2", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 3")    , "S3", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 4")    , "S1", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 5")    , "S2", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 6")    , "S3", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 7")    , "S1", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 8")    , "S2", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 9")    , "S3", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 10")   , "S10",DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 11")   , "S11",DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 12")   , "S12",DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("Kick")     , "BD", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("Snare")    , "SD", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("Top")      , "TP", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("HiHat")    , "HH", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("Tom")      , "TM", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("Rim")      , "RM", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("ADPCM-A 1"), "PA1",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 2"), "PA2",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 3"), "PA3",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 4"), "PA4",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 5"), "PA5",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 6"), "PA6",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-B 1"), "PB1",DIV_CH_PCM  , DIV_INS_ADPCMB, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-B 2"), "PB2",DIV_CH_PCM  , DIV_INS_ADPCMB, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-B 3"), "PB3",DIV_CH_PCM  , DIV_INS_ADPCMB, DIV_INS_AMIGA),
+    }),
+    YM2609EffectHandlerMap,
+    YM2609ExtChEffectHandlerMap
+  );
+
+  sysDefs[DIV_SYSTEM_YM2609_CSM]=new DivSysDef(
+    _("YM2609 CSM"), NULL, 0x102, 0, 47, 47, 47,
+    true, false, 0, false, (1U<<DIV_SAMPLE_DEPTH_ADPCM_A)|(1U<<DIV_SAMPLE_DEPTH_ADPCM_B), 1024, 8192,
+    _("a fictional sound chip, basically an improved and extended version of Yamaha YM2608. supports DSP effects, custom waves for FM operators and much more.\nthis one is in Extended Channel mode, which turns the third and ninth FM channels each into four operators with independent notes/frequencies.\n"
+    "this one includes CSM mode control for special effects on FM Channels 3 and 9."),
+    DivChanDefFunc({
+      DivChanDef(_("FM 1")       , "F1", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 2")       , "F2", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 3 OP1")   , "3O1",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 3 OP2")   , "3O2",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 3 OP3")   , "3O3",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 3 OP4")   , "3O4",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("CSM Timer1") , "CT1",DIV_CH_NOISE, DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 4")       , "F4", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 5")       , "F5", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 6")       , "F6", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 7")       , "F7", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 8")       , "F8", DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 9 OP1")   , "9O1",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 9 OP2")   , "9O2",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 9 OP3")   , "9O3",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 9 OP4")   , "9O4",DIV_CH_OP   , DIV_INS_YM2609_FM),
+      DivChanDef(_("CSM Timer2") , "CT2",DIV_CH_NOISE, DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 10")      , "F10",DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 11")      , "F11",DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("FM 12")      , "F12",DIV_CH_FM   , DIV_INS_YM2609_FM),
+      DivChanDef(_("PSG 1")      , "S1", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 2")      , "S2", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 3")      , "S3", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 4")      , "S1", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 5")      , "S2", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 6")      , "S3", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 7")      , "S1", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 8")      , "S2", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 9")      , "S3", DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 10")     , "S10",DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 11")     , "S11",DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("PSG 12")     , "S12",DIV_CH_PULSE, DIV_INS_AY),
+      DivChanDef(_("Kick")       , "BD", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("Snare")      , "SD", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("Top")        , "TP", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("HiHat")      , "HH", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("Tom")        , "TM", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("Rim")        , "RM", DIV_CH_NOISE, DIV_INS_ADPCMA),
+      DivChanDef(_("ADPCM-A 1")  , "PA1",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 2")  , "PA2",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 3")  , "PA3",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 4")  , "PA4",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 5")  , "PA5",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-A 6")  , "PA6",DIV_CH_PCM  , DIV_INS_ADPCMA, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-B 1")  , "PB1",DIV_CH_PCM  , DIV_INS_ADPCMB, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-B 2")  , "PB2",DIV_CH_PCM  , DIV_INS_ADPCMB, DIV_INS_AMIGA),
+      DivChanDef(_("ADPCM-B 3")  , "PB3",DIV_CH_PCM  , DIV_INS_ADPCMB, DIV_INS_AMIGA),
+    }),
+    YM2609EffectHandlerMap,
+    YM2609ExtChEffectHandlerMap
   );
 
   sysDefs[DIV_SYSTEM_DUMMY]=new DivSysDef(

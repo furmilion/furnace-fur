@@ -21,6 +21,7 @@
 #include "engine.h"
 #include "instrument.h"
 #include "../ta-log.h"
+#include "wavetable.h"
 
 inline bool effectOnlyAltersOutput(unsigned char effect) {
   switch (effect) {
@@ -307,7 +308,7 @@ void DivWaveSynth::init(DivInstrument* which, int w, int h, bool insChanged) {
   width=w;
   height=h;
   if (width<0) width=0;
-  if (width>256) width=256;
+  if (width>DIV_WAVETABLE_MAX_WIDTH) width=DIV_WAVETABLE_MAX_WIDTH;
   if (e==NULL) return;
   if (which==NULL) {
     if (state.enabled) activeChangedB=true;

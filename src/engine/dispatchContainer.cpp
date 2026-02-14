@@ -94,6 +94,7 @@
 #include "platform/sid2.h"
 #include "platform/sid3.h"
 #include "platform/multipcm.h"
+#include "platform/ym2609.h"
 #include "platform/dummy.h"
 #include "../ta-log.h"
 #include "song.h"
@@ -787,6 +788,14 @@ void DivDispatchContainer::init(DivSystem sys, DivEngine* eng, int chanCount, do
       break;
     case DIV_SYSTEM_MULTIPCM:
       dispatch=new DivPlatformMultiPCM;
+      break;
+    case DIV_SYSTEM_YM2609:
+      dispatch=new DivPlatformYM2609;
+      /*if (isRender) {
+        ((DivPlatformYM2610B*)dispatch)->setCombo(eng->getConfInt("opnbCoreRender",1));
+      } else {
+        ((DivPlatformYM2610B*)dispatch)->setCombo(eng->getConfInt("opnbCore",1));
+      }*/
       break;
     case DIV_SYSTEM_DUMMY:
       dispatch=new DivPlatformDummy;

@@ -3506,6 +3506,21 @@ void FurnaceGUI::initSystemPresets() {
         CH(DIV_SYSTEM_OPL4_DRUMS, 1.0f, 0, "")
       }
     );
+  ENTRY(
+    _("YM2609"), {
+      CH(DIV_SYSTEM_YM2609, 1.0f, 0, "")
+    }
+  );
+    SUB_ENTRY(
+      _("YM2609 (extended FM channels 3 and 9)"), {
+        CH(DIV_SYSTEM_YM2609_EXT, 1.0f, 0, "")
+      }
+    );
+    SUB_ENTRY(
+      _("YM2609 (CSM)"), {
+        CH(DIV_SYSTEM_YM2609_CSM, 1.0f, 0, "")
+      }
+    );
   CATEGORY_END;
 
   CATEGORY_BEGIN(_("Square"),_("these chips generate square/pulse tones only (but may include noise)."));

@@ -888,7 +888,12 @@ void FurnaceGUI::doAction(int what) {
           waveSizeList.push_back(FurnaceGUIWaveSizeEntry(64,sysDef->waveHeight,sysDef->name));
           waveSizeList.push_back(FurnaceGUIWaveSizeEntry(128,sysDef->waveHeight,sysDef->name));
         } else {
-          waveSizeList.push_back(FurnaceGUIWaveSizeEntry(sysDef->waveWidth,sysDef->waveHeight,sysDef->name));
+          waveSizeList.push_back(FurnaceGUIWaveSizeEntry(sysDef->waveWidth, sysDef->waveHeight, sysDef->name));
+
+          if (e->song.system[i] == DIV_SYSTEM_YM2609 || e->song.system[i] == DIV_SYSTEM_YM2609_EXT || e->song.system[i] == DIV_SYSTEM_YM2609_CSM)
+          {
+            waveSizeList.push_back(FurnaceGUIWaveSizeEntry(64, 256, sysDef->name)); //PSG custom wave
+          }
         }
       }
 
@@ -1775,8 +1780,8 @@ void FurnaceGUI::doAction(int what) {
       SAMPLE_OP_BEGIN;
       if (end-start<1) {
         showError(_("select at least one sample!"));
-      } else if (end-start>256) {
-        showError(_("maximum size is 256 samples!"));
+      } else if (end-start>DIV_WAVETABLE_MAX_WIDTH) {
+        showError(fmt::sprintf(_("maximum size is %d samples!"), DIV_WAVETABLE_MAX_WIDTH));
       } else {
         curWave=e->addWave();
         if (curWave==-1) {
@@ -1784,7 +1789,7 @@ void FurnaceGUI::doAction(int what) {
         } else {
           DivWavetable* wave=e->song.wave[curWave];
           wave->min=0;
-          wave->max=255;
+          wave->max=DIV_WAVETABLE_MAX_HEIGHT;
           wave->len=end-start;
           for (unsigned int i=start; i<end; i++) {
             wave->data[i-start]=(((unsigned short)sample->data16[i]&0xff00)>>8)^0x80;

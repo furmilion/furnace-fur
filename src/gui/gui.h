@@ -384,6 +384,7 @@ enum FurnaceGUIColors {
   GUI_COLOR_INSTR_SUPERVISION,
   GUI_COLOR_INSTR_UPD1771C,
   GUI_COLOR_INSTR_SID3,
+  GUI_COLOR_INSTR_YM2609_FM,
   GUI_COLOR_INSTR_UNKNOWN,
 
   GUI_COLOR_CHANNEL_BG,
@@ -2951,6 +2952,7 @@ class FurnaceGUI {
 
   void drawSSGEnv(unsigned char type, const ImVec2& size);
   void drawWaveform(unsigned char type, bool opz, const ImVec2& size);
+  void drawYM2609CustomFMWaveform(DivInstrumentYM2609FM::Operator& op_ym2609, const ImVec2& size);
   void drawWaveformSID3(unsigned char type, const ImVec2& size);
   void drawAlgorithm(unsigned char alg, FurnaceGUIFMAlgs algType, const ImVec2& size);
   void drawESFMAlgorithm(DivInstrumentESFM& esfm, const ImVec2& size);
@@ -3072,6 +3074,7 @@ class FurnaceGUI {
   void drawInsList(bool asChild=false);
   void drawInsEdit();
   void drawInsSID3(DivInstrument* ins);
+  void drawInsYM2609FM(DivInstrument* ins);
   void drawWaveList(bool asChild=false);
   void drawWaveEdit();
   void drawSampleList(bool asChild=false);

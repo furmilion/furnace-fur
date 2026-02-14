@@ -673,10 +673,10 @@ class DivEngine {
     int dispatchCmd(DivCommand c);
 
     // get system IDs
-    static DivSystem systemFromFileFur(unsigned char val);
-    static unsigned char systemToFileFur(DivSystem val);
-    static DivSystem systemFromFileDMF(unsigned char val);
-    static unsigned char systemToFileDMF(DivSystem val);
+    static DivSystem systemFromFileFur(unsigned short val);
+    static unsigned short systemToFileFur(DivSystem val);
+    static DivSystem systemFromFileDMF(unsigned short val);
+    static unsigned short systemToFileDMF(DivSystem val);
 
     // convert old flags
     static void convertOldFlags(unsigned int oldFlags, DivConfig& newFlags, DivSystem sys);

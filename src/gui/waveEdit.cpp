@@ -148,11 +148,11 @@ const float multFactors[17]={
 };
 
 void FurnaceGUI::doGenerateWave() {
-  float finalResult[256];
+  float finalResult[DIV_WAVETABLE_MAX_WIDTH];
   if (curWave<0 || curWave>=(int)e->song.wave.size()) return;
 
   DivWavetable* wave=e->song.wave[curWave];
-  memset(finalResult,0,sizeof(float)*256);
+  memset(finalResult,0,sizeof(float)*DIV_WAVETABLE_MAX_WIDTH);
 
   if (wave->len<2) return;
 
@@ -293,7 +293,7 @@ void FurnaceGUI::drawWaveEdit() {
     nextWindow=GUI_WINDOW_NOTHING;
   }
   if (!waveEditOpen) return;
-  float wavePreview[257];
+  float wavePreview[1025];
   if (mobileUI) {
     patWindowPos=(portrait?ImVec2(0.0f,(mobileMenuPos*-0.65*canvasH)):ImVec2((0.16*canvasH)+0.5*canvasW*mobileMenuPos,0.0f));
     patWindowSize=(portrait?ImVec2(canvasW,canvasH-(0.16*canvasW)-(pianoOpen?(0.4*canvasW):0.0f)):ImVec2(canvasW-(0.16*canvasH),canvasH-(pianoOpen?(0.3*canvasH):0.0f)));
@@ -398,12 +398,12 @@ void FurnaceGUI::drawWaveEdit() {
         ImGui::TableNextColumn();
         ImGui::Text(_("Width"));
         if (ImGui::IsItemHovered()) {
-          ImGui::SetTooltip(_("use a width of:\n- any on Amiga/N163\n- 32 on Game Boy, PC Engine, SCC, Konami Bubble System, Namco WSG, Virtual Boy and WonderSwan\n- 64 on FDS\n- 128 on X1-010\n- 256 on SID3\nany other widths will be scaled during playback."));
+          ImGui::SetTooltip(_("use a width of:\n- any on Amiga/N163\n- 32 on Game Boy, PC Engine, SCC, Konami Bubble System, Namco WSG, Virtual Boy and WonderSwan\n- 64 on FDS and YM2609 custom PSG waves\n- 128 on X1-010\n- 256 on SID3\n- 1024 on YM2609 FM operator waves\nany other widths will be scaled during playback."));
         }
         ImGui::SameLine();
         ImGui::SetNextItemWidth(96.0f*dpiScale);
         if (ImGui::InputInt("##_WTW",&wave->len,1,16)) {
-          if (wave->len>256) wave->len=256;
+          if (wave->len>DIV_WAVETABLE_MAX_WIDTH) wave->len=DIV_WAVETABLE_MAX_WIDTH;
           if (wave->len<1) wave->len=1;
           e->notifyWaveChange(curWave);
           if (wavePreviewOn) e->previewWave(curWave,wavePreviewNote);
@@ -412,13 +412,13 @@ void FurnaceGUI::drawWaveEdit() {
         ImGui::SameLine();
         ImGui::Text(_("Height"));
         if (ImGui::IsItemHovered()) {
-          ImGui::SetTooltip(_("use a height of:\n- 16 for Game Boy, WonderSwan, Namco WSG, Konami Bubble System, X1-010 Envelope shape and N163\n- 32 for PC Engine\n- 64 for FDS and Virtual Boy\n- 256 for X1-010, SCC and SID3\nany other heights will be scaled during playback."));
+          ImGui::SetTooltip(_("use a height of:\n- 16 for Game Boy, WonderSwan, Namco WSG, Konami Bubble System, X1-010 Envelope shape and N163\n- 32 for PC Engine\n- 64 for FDS and Virtual Boy\n- 256 for X1-010, SCC, SID3 and YM2609 custom PSG waves\n- 8192 for YM2609 custom FM operator waves\nany other heights will be scaled during playback."));
         }
         ImGui::SameLine();
         ImGui::SetNextItemWidth(96.0f*dpiScale);
         int realMax=wave->max+1;
         if (ImGui::InputInt("##_WTH",&realMax,1,16)) {
-          if (realMax>256) realMax=256;
+          if (realMax>DIV_WAVETABLE_MAX_HEIGHT) realMax=DIV_WAVETABLE_MAX_HEIGHT;
           if (realMax<2) realMax=2;
           wave->max=realMax-1;
           e->notifyWaveChange(curWave);
@@ -782,7 +782,7 @@ void FurnaceGUI::drawWaveEdit() {
                   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
                   if (ImGui::InputInt("##WGScaleX",&waveGenScaleX,1,16)) {
                     if (waveGenScaleX<2) waveGenScaleX=2;
-                    if (waveGenScaleX>256) waveGenScaleX=256;
+                    if (waveGenScaleX>DIV_WAVETABLE_MAX_WIDTH) waveGenScaleX=DIV_WAVETABLE_MAX_WIDTH;
                   }
                   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
                   if (CWSliderInt("##WGInterpolation",&waveInterpolation,0,3,_(waveInterpolations[waveInterpolation]))) {
@@ -792,11 +792,11 @@ void FurnaceGUI::drawWaveEdit() {
                   ImGui::TableNextColumn();
                   if (ImGui::Button(_("Scale X"))) {
                     if (waveGenScaleX>0 && wave->len!=waveGenScaleX) e->lockEngine([this,wave]() {
-                      int origData[256];
+                      int origData[DIV_WAVETABLE_MAX_WIDTH];
                       // Copy original wave to temp buffer
-                      // If longer than 256 samples, return
-                      if (wave->len>256) {
-                        showError(_("wavetable longer than 256 samples!"));
+                      // If longer than DIV_WAVETABLE_MAX_WIDTH samples, return
+                      if (wave->len>DIV_WAVETABLE_MAX_WIDTH) {
+                        showError(fmt::sprintf(_("wavetable longer than %d samples!"), DIV_WAVETABLE_MAX_WIDTH));
                         return;
                       }
                       memcpy(origData,wave->data,wave->len*sizeof(int));
@@ -858,7 +858,7 @@ void FurnaceGUI::drawWaveEdit() {
                   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
                   if (ImGui::InputInt("##WGScaleY",&waveGenScaleY,1,16)) {
                     if (waveGenScaleY<2) waveGenScaleY=2;
-                    if (waveGenScaleY>256) waveGenScaleY=256;
+                    if (waveGenScaleY>DIV_WAVETABLE_MAX_HEIGHT) waveGenScaleY=DIV_WAVETABLE_MAX_HEIGHT;
                   }
                   ImGui::TableNextColumn();
                   if (ImGui::Button(_("Scale Y"))) {
@@ -882,7 +882,7 @@ void FurnaceGUI::drawWaveEdit() {
                   ImGui::TableNextColumn();
                   if (ImGui::Button(_("Offset X"))) {
                     if (waveGenOffsetX!=0 && wave->len>0) e->lockEngine([this,wave]() {
-                      int origData[256];
+                      int origData[DIV_WAVETABLE_MAX_WIDTH];
                       memcpy(origData,wave->data,wave->len*sizeof(int));
                       int realOff=-waveGenOffsetX;
                       while (realOff<0) realOff+=wave->len;
@@ -923,7 +923,7 @@ void FurnaceGUI::drawWaveEdit() {
                   ImGui::TableNextColumn();
                   if (ImGui::Button(_("Smooth"))) {
                     if (waveGenSmooth>0) e->lockEngine([this,wave]() {
-                      int origData[256];
+                      int origData[DIV_WAVETABLE_MAX_WIDTH];
                       memcpy(origData,wave->data,wave->len*sizeof(int));
                       for (int i=0; i<wave->len; i++) { 
                         int dataSum=0;
@@ -1015,7 +1015,7 @@ void FurnaceGUI::drawWaveEdit() {
                 ImGui::SameLine();
                 if (ImGui::Button(_("Reverse"),buttonSizeHalf)) {
                   e->lockEngine([this,wave]() {
-                    int origData[256];
+                    int origData[DIV_WAVETABLE_MAX_WIDTH];
                     memcpy(origData,wave->data,wave->len*sizeof(int));
 
                     for (int i=0; i<wave->len; i++) {
@@ -1027,7 +1027,7 @@ void FurnaceGUI::drawWaveEdit() {
                 }
 
                 if (ImGui::Button(_("Half"),buttonSizeHalf)) {
-                  int origData[256];
+                  int origData[DIV_WAVETABLE_MAX_WIDTH];
                   memcpy(origData,wave->data,wave->len*sizeof(int));
 
                   for (int i=0; i<wave->len; i++) {
@@ -1038,7 +1038,7 @@ void FurnaceGUI::drawWaveEdit() {
                 }
                 ImGui::SameLine();
                 if (ImGui::Button(_("Double"),buttonSizeHalf)) {
-                  int origData[256];
+                  int origData[DIV_WAVETABLE_MAX_WIDTH];
                   memcpy(origData,wave->data,wave->len*sizeof(int));
 
                   for (int i=0; i<wave->len; i++) {
@@ -1097,7 +1097,7 @@ void FurnaceGUI::drawWaveEdit() {
       ImGui::SameLine();
       ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x); // wavetable text input size found here
       if (ImGui::InputText("##MMLWave",&mmlStringW)) {
-        int actualData[256];
+        int actualData[DIV_WAVETABLE_MAX_WIDTH];
         decodeMMLStrW(mmlStringW,actualData,wave->len,(waveSigned && !waveHex)?(-((wave->max+1)/2)):0,(waveSigned && !waveHex)?(wave->max/2):wave->max,waveHex);
         MARK_MODIFIED;
         if (waveSigned && !waveHex) {
@@ -1108,8 +1108,8 @@ void FurnaceGUI::drawWaveEdit() {
         memcpy(wave->data,actualData,wave->len*sizeof(int));
       }
       if (!ImGui::IsItemActive()) {
-        int actualData[256];
-        memcpy(actualData,wave->data,256*sizeof(int));
+        int actualData[DIV_WAVETABLE_MAX_WIDTH];
+        memcpy(actualData,wave->data,DIV_WAVETABLE_MAX_WIDTH*sizeof(int));
         if (waveSigned && !waveHex) {
           for (int i=0; i<wave->len; i++) {
             actualData[i]-=(wave->max+1)/2;

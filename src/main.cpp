@@ -372,6 +372,7 @@ TAParamResult pVersion(String) {
   printf("- SID2 emulator by LTVA (GPLv2, modification of reSID emulator)\n");
   printf("- SID3 emulator by LTVA (MIT)\n");
   printf("- openMSX YMF278 emulator (modified version) by the openMSX developers (GPLv2)\n");
+  printf("- YM2609 emulator by kuma4649 with tweaks for Furnace and C# to C++ conversion by LTVA (GPLv3)");
 #ifdef HAVE_ASIO
   printf("\nASIO is a registered trademark of Steinberg Media Technologies GmbH.\n");
 #endif

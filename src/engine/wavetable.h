@@ -22,9 +22,12 @@
 #include "safeWriter.h"
 #include "dataErrors.h"
 
+#define DIV_WAVETABLE_MAX_WIDTH 1024
+#define DIV_WAVETABLE_MAX_HEIGHT 8192
+
 struct DivWavetable {
   int len, min, max;
-  int data[256];
+  int data[DIV_WAVETABLE_MAX_WIDTH];
 
   /**
    * save the wavetable to a SafeWriter.
@@ -64,7 +67,7 @@ struct DivWavetable {
     len(32),
     min(0),
     max(31) {
-    for (int i=0; i<256; i++) {
+    for (int i=0; i<DIV_WAVETABLE_MAX_WIDTH; i++) {
       data[i]=i;
     }
   }

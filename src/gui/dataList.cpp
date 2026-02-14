@@ -1363,7 +1363,7 @@ template<typename func_waveItemData> void FurnaceGUI::waveListHorizontalGroup(fl
 }
 
 void FurnaceGUI::actualWaveList() {
-  float wavePreview[257];
+  float wavePreview[DIV_WAVETABLE_MAX_WIDTH + 1];
 
   if (waveListDir || (settings.unifiedDataView && insListDir)) {
     ImGui::TableNextRow();

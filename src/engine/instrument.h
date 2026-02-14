@@ -100,6 +100,7 @@ enum DivInstrumentType: unsigned short {
   DIV_INS_SUPERVISION=64,
   DIV_INS_UPD1771C=65,
   DIV_INS_SID3=66,
+  DIV_INS_YM2609_FM=67,
   DIV_INS_MAX,
   DIV_INS_NULL
 };
@@ -1028,6 +1029,42 @@ struct DivInstrumentSID3 {
     }
 };
 
+struct DivInstrumentYM2609FM {
+  
+  bool alg_construct_switch;
+
+  bool operator==(const DivInstrumentYM2609FM& other);
+  bool operator!=(const DivInstrumentYM2609FM& other) {
+    return !(*this==other);
+  }
+
+  struct Operator {
+    unsigned char alg_link;
+    bool phase_reset;
+    bool custom_wave;
+    unsigned short custom_wave_index;
+    unsigned char feedback;
+
+    bool operator==(const Operator& other);
+    bool operator!=(const Operator& other) {
+      return !(*this==other);
+    }
+    Operator():
+      alg_link(0),
+      phase_reset(false),
+      custom_wave(false),
+      custom_wave_index(0),
+      feedback(0) {}
+  } op[4];
+
+  DivInstrumentYM2609FM():
+    alg_construct_switch(0) {}
+};
+
+struct DivInstrumentYM2609 {
+  DivInstrumentYM2609FM ym2609fm;
+};
+
 struct DivInstrumentPOD {
   DivInstrumentType type;
   DivInstrumentFM fm;
@@ -1047,6 +1084,7 @@ struct DivInstrumentPOD {
   DivInstrumentPowerNoise powernoise;
   DivInstrumentSID2 sid2;
   DivInstrumentSID3 sid3;
+  DivInstrumentYM2609 ym2609;
 
   DivInstrumentPOD() :
     type(DIV_INS_FM) {
@@ -1162,6 +1200,7 @@ struct DivInstrument: DivInstrumentPOD {
   void writeFeaturePN(SafeWriter* w);
   void writeFeatureS2(SafeWriter* w);
   void writeFeatureS3(SafeWriter* w);
+  void writeFeature9F(SafeWriter* w);
 
   void readFeatureNA(SafeReader& reader, short version);
   void readFeatureFM(SafeReader& reader, short version);
@@ -1188,6 +1227,7 @@ struct DivInstrument: DivInstrumentPOD {
   void readFeaturePN(SafeReader& reader, short version);
   void readFeatureS2(SafeReader& reader, short version);
   void readFeatureS3(SafeReader& reader, short version);
+  void readFeature9F(SafeReader& reader, short version);
 
   DivDataErrors readInsDataOld(SafeReader& reader, short version);
   DivDataErrors readInsDataNew(SafeReader& reader, short version, bool fui, DivSong* song);
