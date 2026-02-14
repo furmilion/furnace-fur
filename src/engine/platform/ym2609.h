@@ -55,8 +55,8 @@ class DivPlatformYM2609: public DivDispatch {
     Channel():
       SharedChannel<signed short>(0xff),
       opMask(15),
-      panLeft(0x3),
-      panRight(0x3),
+      panLeft(0), //0 = max vol, 3 = min vol
+      panRight(0), //0 = max vol, 3 = min vol
       pan(3),
       gate(false),
       opMaskChanged(false),

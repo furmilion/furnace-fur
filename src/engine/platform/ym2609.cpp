@@ -181,6 +181,43 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
       chan[i].freqChanged=true;
     }
+    if (chan[i].std.panL.had) 
+    {
+      if(i < 12)
+      {
+        if(chan[i].std.panL.val == 0)
+        {
+          chan[i].pan &= ~(1 << 1);
+        }
+        else
+        {
+          chan[i].pan |= (1 << 1);
+          chan[i].panLeft = (3 - ((chan[i].std.panL.val - 1) & 3));
+        }
+
+        chan[i].freqChanged = true; //to write left soft pan
+
+        rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
+      }
+    }
+    if (chan[i].std.panR.had) 
+    {
+      if(i < 12)
+      {
+        if(chan[i].std.panR.val == 0)
+        {
+          chan[i].pan &= ~(1 << 0);
+        }
+        else
+        {
+          chan[i].pan |= (1 << 0);
+          chan[i].panRight = (3 - ((chan[i].std.panR.val - 1) & 3));
+        }
+
+        rWrite(chanOffs[i]+ADDR_FB_ALG,(chan[i].state.alg&7)|(chan[i].state.fb<<3)|((chan[i].panRight&3)<<6));
+        rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
+      }
+    }
   }
 
   for (int i=0; i<12; i++) {
@@ -303,6 +340,7 @@ void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
   if (chan[ch].insChanged) {
     rWrite(chanOffs[ch]+ADDR_FB_ALG,(chan[ch].state.alg&7)|(chan[ch].state.fb<<3)|((chan[ch].panRight&3)<<6));
     rWrite(chanOffs[ch]+ADDR_LRAF,(isMuted[ch]?0:(chan[ch].pan<<6))|(chan[ch].state.fms&7)|((chan[ch].state.ams&3)<<4)|(chan[ch].state_ym2609fm.alg_construct_switch<<3));
+    chan[ch].freqChanged = true; //to write left soft pan
   }
 }
 
@@ -505,7 +543,10 @@ float DivPlatformYM2609::getPostAmp() {
 void DivPlatformYM2609::reset() {
   while (!writes.empty()) writes.pop();
   for (int i=0; i<YM2609_NUM_CHANNELS; i++) {
-    
+    chan[i]=DivPlatformYM2609::Channel();
+    chan[i].std.setEngine(parent);
+    chan[i].vol=0x7f;
+    chan[i].outVol=0x7f;
   }
 
   //ym2609->Init(YM2609_CLOCK, YM2609_CLOCK);

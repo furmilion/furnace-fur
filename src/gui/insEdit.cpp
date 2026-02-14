@@ -7091,7 +7091,7 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
                 }
                 else
                 {
-                  drawWaveform(0,ins->type==DIV_INS_OPZ,ImVec2(waveWidth,waveHeight / 2)); //always sine
+                  drawWaveform(0,true,ImVec2(waveWidth,waveHeight / 2)); //always sine
                 }
                 bool custom_wave = op_ym2609.custom_wave;
                 if (ImGui::Checkbox(_("CW##CustomWaveOn"),&custom_wave)) { PARAMETER
@@ -7155,13 +7155,17 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
             ImGui::Separator();
             
             ImGui::BeginDisabled(!ins->ym2609.ym2609fm.alg_construct_switch);
-            bool linkOn=op_ym2609.alg_link & (1 << opOrder[i]);
-            if (ImGui::Checkbox(fmt::sprintf(i == 0 ? _("OUT") : _("O"), opOrder[i]).c_str(), &linkOn)) { PARAMETER
-              op_ym2609.alg_link &= ~(1 << opOrder[i]);
-              op_ym2609.alg_link |= (linkOn ? (1 << opOrder[i]) : 0);
-            }
+            bool linkOn=op_ym2609.alg_link & (1 << i);
+            //if(i != 0) //TODO: wtf happens?
+            //{
+              if (ImGui::Checkbox(fmt::sprintf(i == 0 ? _("SELF") : _("S")).c_str(), &linkOn)) { PARAMETER
+                op_ym2609.alg_link &= ~(1 << i);
+                op_ym2609.alg_link |= (linkOn ? (1 << i) : 0);
+              }
+            //}
+            
             if (ImGui::IsItemHovered()) {
-              ImGui::SetTooltip(_("Enable operator's sound output"));
+              ImGui::SetTooltip(_("Enable operator's self-modulation (not related to op's feedback)"));
             }
             ImGui::EndDisabled();
             
@@ -7182,12 +7186,12 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
 
             for(int j = 0; j < 4; j++)
             {
-              if(j != opOrder[i])
+              if(j != i)
               {
-                bool linkOn=op_ym2609.alg_link & (1 << opOrder[j]);
-                if (ImGui::Checkbox(fmt::sprintf("O%d", opOrder[j]+1).c_str(), &linkOn)) { PARAMETER
-                  op_ym2609.alg_link &= ~(1 << opOrder[j]);
-                  op_ym2609.alg_link |= (linkOn ? (1 << opOrder[j]) : 0);
+                bool linkOn=op_ym2609.alg_link & (1 << j);
+                if (ImGui::Checkbox(fmt::sprintf("O%d", j+1).c_str(), &linkOn)) { PARAMETER
+                  op_ym2609.alg_link &= ~(1 << j);
+                  op_ym2609.alg_link |= (linkOn ? (1 << j) : 0);
                 }
                 if (ImGui::IsItemHovered()) {
                   ImGui::SetTooltip(fmt::sprintf(_("Modulate this operator by operator %d output"), j + 1).c_str());
@@ -9437,6 +9441,12 @@ void FurnaceGUI::drawInsEdit() {
                 macroList.push_back(FurnaceGUIMacroDesc(_("Sample Mode"),&ins->std.opMacros[1].arMacro,0,1,32,uiColors[GUI_COLOR_MACRO_NOISE],false,NULL,NULL,true));
               }
               break;
+            case DIV_INS_YM2609_FM:
+              macroList.push_back(FurnaceGUIMacroDesc(_("Volume"),&ins->std.volMacro,0,127,160,uiColors[GUI_COLOR_MACRO_VOLUME]));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Arpeggio"),&ins->std.arpMacro,-120,120,160,uiColors[GUI_COLOR_MACRO_PITCH],true,NULL,macroHoverNote,false,NULL,true,ins->std.arpMacro.val));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Pitch"),&ins->std.pitchMacro,-2048,2047,160,uiColors[GUI_COLOR_MACRO_PITCH],true,macroRelativeMode));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Panning (left)"),&ins->std.panLMacro,0,4,64,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Panning (right)"),&ins->std.panRMacro,0,4,64,uiColors[GUI_COLOR_MACRO_OTHER]));
             case DIV_INS_MAX:
             case DIV_INS_NULL:
               break;

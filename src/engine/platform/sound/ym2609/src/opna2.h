@@ -237,12 +237,12 @@ class OPNA2 /*: public OPNABase*/
                 amtable_opna[c] = v & ~3;
             }
 
-            SetVolumeFM(40);
-            SetVolumePSG(40);
-            SetVolumeADPCM(40);
-            SetVolumeRhythmTotal(40);
+            SetVolumeFM(-12);
+            SetVolumePSG(-12);
+            SetVolumeADPCM(-12);
+            SetVolumeRhythmTotal(-12);
             for (int i = 0; i < 6; i++)
-                SetVolumeRhythm(i, 40);
+                SetVolumeRhythm(i, -12);
             SetChannelMask(0);
 
             return true;
