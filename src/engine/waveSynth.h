@@ -30,13 +30,13 @@ class DivWaveSynth {
   DivInstrumentWaveSynth state;
   int pos, stage, divCounter, width, height, subDivCounter;
   bool first, activeChangedB, stageDir;
-  unsigned char wave1[256];
-  unsigned char wave2[256];
+  unsigned short wave1[DIV_WAVETABLE_MAX_WIDTH];
+  unsigned short wave2[DIV_WAVETABLE_MAX_WIDTH];
   public:
     /**
      * the output.
      */
-    int output[256];
+    int output[DIV_WAVETABLE_MAX_WIDTH];
     /**
      * check whether the "active" status has changed.
      * @return truth.
@@ -83,9 +83,9 @@ class DivWaveSynth {
       first(false),
       activeChangedB(false),
       stageDir(false) {
-      memset(wave1,0,256);
-      memset(wave2,0,256);
-      memset(output,0,sizeof(int)*256);
+      memset(wave1,0,DIV_WAVETABLE_MAX_WIDTH);
+      memset(wave2,0,DIV_WAVETABLE_MAX_WIDTH);
+      memset(output,0,sizeof(int)*DIV_WAVETABLE_MAX_WIDTH);
     }
 };
 

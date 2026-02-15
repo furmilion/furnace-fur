@@ -383,6 +383,53 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
 
         chan[c.chan].macroInit(ins);
 
+        int reg_shift = (c.chan) > 5 ? 0x200 : 0;
+        double log2 = log(2.0);
+
+        /*void waveReset(int waveCh, int wavetype)
+        {
+            double log2 = log(2.0);
+            for (int i = 0; i < FM_OPSINENTS / 2; i++)
+            {
+                double r = (i * 2 + 1) * FM_PI / FM_OPSINENTS;
+                double q = -256 * log(sin(r)) / log2;
+                uint32_t s = (uint32_t)((int)(floor(q + 0.5)) + 1);
+                (*sinetable_opna)[waveCh][wavetype][i] = s * 2;
+                (*sinetable_opna)[waveCh][wavetype][FM_OPSINENTS / 2 + i] = s * 2 + 1;
+            }
+        }*/
+
+        for(int i = 0; i < 4; i++)
+        {
+          if(ins->ym2609.ym2609fm.op[i].custom_wave)
+          {
+            chan[c.chan].op_ym2609[i].ws.changeWave1(ins->ym2609.ym2609fm.op[i].custom_wave, true);
+
+            //set wave channel and wave type
+            immWrite(reg_shift+0x2B,((c.chan&0xf) << 4)|(i&3));
+
+            for(int j = 0; j < 1024; j++)
+            {
+              uint16_t val = chan[c.chan].op_ym2609[i].ws.output[j & 1023];
+              uint16_t val_abs = val > 4095 ? val : (((int)val - 4096) * -1 + 4096);
+              double qqq = -256 * log(((float)val_abs / 4096.0f - 1.0f)) / log2;
+              uint32_t sssss = (uint32_t)((int)(floor(qqq + 0.5)) + 1);
+
+              uint16_t final = val > 4095 ? sssss * 2 : (sssss * 2 + 1);
+
+              if(val == 4096) final = 0x1800; //otherwise spikes to max or min amp on this value...
+
+              immWrite(reg_shift+0x2C, final & 0xff);
+              immWrite(reg_shift+0x2C,(final >> 8) & 0x1F);
+            }
+          }
+          else
+          {
+            //reset to sine wave
+            rWrite(reg_shift+0x2B,((c.chan&0xf) << 4)|(i&3)|0b100);
+          }
+        }
+
         if (!chan[c.chan].std.vol.will) {
           chan[c.chan].outVol=chan[c.chan].vol;
         }
@@ -567,6 +614,12 @@ void DivPlatformYM2609::reset() {
     chan[i].std.setEngine(parent);
     chan[i].vol=0x7f;
     chan[i].outVol=0x7f;
+
+    for(int j = 0; j < 4; j++)
+    {
+      chan[i].op_ym2609[j].ws.setEngine(parent);
+      chan[i].op_ym2609[j].ws.init(NULL,1024,8191,false);
+    }
   }
 
   //ym2609->Init(YM2609_CLOCK, YM2609_CLOCK);

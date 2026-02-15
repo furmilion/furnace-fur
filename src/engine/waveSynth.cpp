@@ -297,9 +297,9 @@ void DivWaveSynth::changeWave2(int num) {
 
 void DivWaveSynth::setEngine(DivEngine* engine, int waveFloor) {
   e=engine;
-  memset(wave1,waveFloor,256);
-  memset(wave2,waveFloor,256);
-  for (int i=0; i<256; i++) {
+  memset(wave1,waveFloor,DIV_WAVETABLE_MAX_WIDTH);
+  memset(wave2,waveFloor,DIV_WAVETABLE_MAX_WIDTH);
+  for (int i=0; i<DIV_WAVETABLE_MAX_WIDTH; i++) {
     output[i]=waveFloor;
   }
 }
