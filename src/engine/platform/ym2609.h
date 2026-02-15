@@ -43,6 +43,7 @@ class DivPlatformYM2609: public DivDispatch {
     struct Operator_YM2609 
     {
       unsigned char wave_type; //0-3, WT L + WT H
+      DivWaveSynth ws;
 
       bool operator==(const Operator_YM2609& other);
       bool operator!=(const Operator_YM2609& other) {
@@ -55,13 +56,19 @@ class DivPlatformYM2609: public DivDispatch {
     Channel():
       SharedChannel<signed short>(0xff),
       opMask(15),
-      panLeft(0), //0 = max vol, 3 = min vol
-      panRight(0), //0 = max vol, 3 = min vol
+      panLeft(0), //0 = max vol, 3(FM/ADPCM-B) 7(PSG) = min vol
+      panRight(0), //0 = max vol, 3(FM/ADPCM-B) 7(PSG) = min vol
       pan(3),
       gate(false),
       opMaskChanged(false),
       ac_switch(false),
-      portaPauseFreq(0) {}
+      portaPauseFreq(0) 
+      {
+        for(int i = 0; i < 4; i++)
+        {
+          op_ym2609[i].wave_type = i;
+        }
+      }
   };
   Channel chan[YM2609_NUM_CHANNELS];
   DivDispatchOscBuffer* oscBuf[YM2609_NUM_CHANNELS];
