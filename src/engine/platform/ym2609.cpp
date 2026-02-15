@@ -403,7 +403,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
         {
           if(ins->ym2609.ym2609fm.op[i].custom_wave)
           {
-            chan[c.chan].op_ym2609[i].ws.changeWave1(ins->ym2609.ym2609fm.op[i].custom_wave, true);
+            chan[c.chan].op_ym2609[i].ws.changeWave1(ins->ym2609.ym2609fm.op[i].custom_wave_index, true);
 
             //set wave channel and wave type
             immWrite(reg_shift+0x2B,((c.chan&0xf) << 4)|(i&3));
