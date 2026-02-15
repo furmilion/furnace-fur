@@ -161,8 +161,28 @@ void DivPlatformYM2609::tick(bool sysTick)
 
     if (chan[i].std.vol.had) 
     {
-      //chan[i].outVol=VOL_SCALE_LINEAR(chan[i].vol&255,MIN(255,chan[i].std.vol.val),255);
-      //rWrite(13 + i * SID3_REGISTERS_PER_CHANNEL, chan[i].outVol);
+      int inVol=chan[i].std.vol.val;
+
+      chan[i].outVol=VOL_SCALE_LOG_BROKEN(chan[i].vol,MIN(127,inVol),127);
+      if (i<12)
+      {
+        for (int j=0; j<4; j++) {
+          unsigned short baseAddr=chanOffs[i]|opOffs[j];
+          DivInstrumentFM::Operator& op=chan[i].state.op[j];
+          if (isMuted[i] || !op.enable) {
+            //rWrite(baseAddr+ADDR_TL,127);
+            rWrite(baseAddr+ADDR_TL,127|(((chan[i].op_ym2609[j].wave_type >> 1) & 1) << 7));
+          } else {
+            if (KVS(i,j)) {
+              //rWrite(baseAddr+ADDR_TL,127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[i].outVol&0x7f,127));
+              rWrite(baseAddr+ADDR_TL,(127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[i].outVol&0x7f,127))|(((chan[i].op_ym2609[j].wave_type >> 1) & 1) << 7));
+            } else {
+              //rWrite(baseAddr+ADDR_TL,op.tl);
+              rWrite(baseAddr+ADDR_TL,op.tl|(((chan[i].op_ym2609[j].wave_type >> 1) & 1) << 7));
+            }
+          }
+        }
+      } 
     }
     if (NEW_ARP_STRAT) {
       chan[i].handleArp();
