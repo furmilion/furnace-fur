@@ -469,14 +469,28 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       }
       break;
     case DIV_CMD_VOLUME:
-      if (chan[c.chan].vol!=c.value) {
-        chan[c.chan].vol=c.value;
-        if (!chan[c.chan].std.vol.has) {
-          //chan[c.chan].outVol=c.value;
-          //chan[c.chan].vol=chan[c.chan].outVol;
-          //rWrite(SID3_REGISTER_ADSR_VOL + c.chan * SID3_REGISTERS_PER_CHANNEL, chan[c.chan].vol);
+      chan[c.chan].vol=c.value;
+      if (!chan[c.chan].std.vol.has) {
+        chan[c.chan].outVol=c.value;
+      }
+      if (c.chan < 12)
+      {
+        for (int i=0; i<4; i++) 
+        {
+          unsigned short baseAddr=chanOffs[c.chan]|opOffs[i];
+          DivInstrumentFM::Operator& op=chan[c.chan].state.op[i];
+          if (isMuted[c.chan] || !op.enable) {
+            rWrite(baseAddr+ADDR_TL,127);
+          } else {
+            if (KVS(c.chan,i)) {
+              rWrite(baseAddr+ADDR_TL,127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[c.chan].outVol&0x7f,127));
+            } else {
+              rWrite(baseAddr+ADDR_TL,op.tl);
+            }
+          }
         }
       }
+      
       break;
     case DIV_CMD_GET_VOLUME:
       if (chan[c.chan].std.vol.has) {
@@ -508,7 +522,11 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       chan[c.chan].inPorta=c.value;
       break;
     case DIV_CMD_GET_VOLMAX:
-      return 0xff; //TODO: do properly
+      if (c.chan>(11+12+6+6)) return 255; //adpcm-b
+      if (c.chan>(11+12+6)) return 31; //adpcm-a
+      if (c.chan>(11+12)) return 31; //rhythm
+      if (c.chan>11) return 15; //psg
+      return 127; //fm
       break;
     case DIV_CMD_WAVE:
       
