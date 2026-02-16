@@ -503,13 +503,41 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       chan[c.chan].freqChanged=true;
       break;
     case DIV_CMD_NOTE_PORTA: {
+      if (parent->song.compatFlags.linearPitch) {
+        int destFreq=NOTE_FREQUENCY(c.value2+chan[c.chan].sampleNoteDelta);
+        bool return2=false;
+        if (destFreq>chan[c.chan].baseFreq) {
+          chan[c.chan].baseFreq+=c.value;
+          if (chan[c.chan].baseFreq>=destFreq) {
+            chan[c.chan].baseFreq=destFreq;
+            return2=true;
+          }
+        } else {
+          chan[c.chan].baseFreq-=c.value;
+          if (chan[c.chan].baseFreq<=destFreq) {
+            chan[c.chan].baseFreq=destFreq;
+            return2=true;
+          }
+        }
+        chan[c.chan].freqChanged=true;
+        if (return2) {
+          chan[c.chan].inPorta=false;
+          return 2;
+        }
+        break;
+      }
       PLEASE_HELP_ME(chan[c.chan],chan[c.chan].state.block);
       break;
     }
     case DIV_CMD_LEGATO:
-      chan[c.chan].baseFreq=NOTE_FREQUENCY(c.value+((HACKY_LEGATO_MESS)?(chan[c.chan].std.arp.val):(0)));
-      chan[c.chan].freqChanged=true;
+      if (chan[c.chan].insChanged) {
+        DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
+        commitState(c.chan,ins);
+        chan[c.chan].insChanged=false;
+      }
+      chan[c.chan].baseFreq=NOTE_FNUM_BLOCK(c.value,11,chan[c.chan].state.block);
       chan[c.chan].note=c.value;
+      chan[c.chan].freqChanged=true;
       break;
     case DIV_CMD_PRE_PORTA:
       if (chan[c.chan].active && c.value2) {
