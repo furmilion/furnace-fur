@@ -354,10 +354,10 @@ class PSG2 : public PSG
                             sample = 0;
                             for (int j = 0; j < (1 << oversampling); j++)
                             {
-                                noise = (int)(noisetable[((uint32_t)ncountDbl >> (int)((noiseshift + oversampling + 6)) & (noisetablesize - 1))]
-                                    >> (int)((uint32_t)ncountDbl >> (noiseshift + oversampling + 1)));
+                                noise = (int)(noisetable[(ncount >> (noiseshift + oversampling + 6)) & (noisetablesize - 1)]
+                                    >> (int)(ncount >> (noiseshift + oversampling + 1)));
 
-                                ncountDbl += ((double)nperiod / ((reg[6] & 0x20) != 0 ? ncountDiv : 1.0));
+                                ncount += (uint32_t)(nperiod / ((reg[6] & 0x20) != 0 ? ncountDiv : 1.0));
 
                                 for (int k = 0; k < 3; k++)
                                 {
