@@ -358,7 +358,7 @@ Additional WAVE form related parameter (per-operator, 4 bits)
 // - WAVE_SAMPLE: PCM sample playback as FM operator waveform
 //     Uses channel pcmrst register as base address for 1024-sample waveform
 //     Phase (0-1023) indexes into sample region, looping naturally
-typedef enum : uint8_t
+typedef enum
 {
     SGU_WAVE_SINE = 0,
     SGU_WAVE_TRIANGLE = 1,
@@ -371,7 +371,7 @@ typedef enum : uint8_t
 } sgu_waveform_t;
 
 // WPAR[1:0] selects 6-bit LFSR tap configuration for PERIODIC_NOISE
-typedef enum : uint8_t
+typedef enum
 {
     SGU_LFSR_TAP34 = 0,   // taps 3,4 (XOR) - simple periodic
     SGU_LFSR_TAP23 = 1,   // taps 2,3 (XOR) - simple periodic
@@ -380,7 +380,7 @@ typedef enum : uint8_t
 } sgu_lfsr_t;
 
 // Envelope states
-enum envelope_state : uint8_t
+enum envelope_state
 {
     SGU_EG_ATTACK = 0,
     SGU_EG_DECAY = 1,

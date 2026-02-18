@@ -44,7 +44,7 @@
 //  values provided
 //-------------------------------------------------
 
-static inline int32_t clamp(int32_t value, int32_t minval, int32_t maxval)
+int32_t clamp(int32_t value, int32_t minval, int32_t maxval)
 {
     if (value < minval)
         return minval;
@@ -53,7 +53,7 @@ static inline int32_t clamp(int32_t value, int32_t minval, int32_t maxval)
     return value;
 }
 
-static inline uint32_t sgu_clz32(uint32_t value)
+uint32_t sgu_clz32(uint32_t value)
 {
 #if defined(_MSC_VER)
     unsigned long index;
@@ -79,7 +79,7 @@ static inline uint32_t sgu_clz32(uint32_t value)
 //  Uses piecewise linear approximation (no division, no float).
 //  Knee at ±24576, 4:1 compression ratio above knee, max at ±32767.
 //-------------------------------------------------
-static inline int32_t svf_saturate(int32_t x)
+int32_t svf_saturate(int32_t x)
 {
     if (x > 24576)
         return 24576 + ((x - 24576) >> 2); // Compress above knee
@@ -99,19 +99,19 @@ static const uint32_t EG_QUIET = 0x380;
 //  value, starting at bit 'start' for a length of
 //  'length' bits
 //-------------------------------------------------
-static inline uint32_t bitfield(uint32_t value, int start, int length /*= 1*/)
+uint32_t bitfield(uint32_t value, int start, int length /*= 1*/)
 {
     return (value >> start) & ((1 << length) - 1);
 }
 
 // return a bitfield extracted from a byte
-static inline uint32_t byte(uint8_t data[], uint32_t offset, uint32_t start, uint32_t count, uint32_t extra_offset /*= 0*/)
+uint32_t byte(uint8_t data[], uint32_t offset, uint32_t start, uint32_t count, uint32_t extra_offset /*= 0*/)
 {
     return bitfield(data[offset + extra_offset], start, count);
 }
 
 // return a bitfield extracted from a pair of bytes, MSBs listed first
-static inline uint32_t word(uint8_t data[], uint32_t offset1, uint32_t start1, uint32_t count1, uint32_t offset2, uint32_t start2, uint32_t count2, uint32_t extra_offset /*= 0*/)
+uint32_t word(uint8_t data[], uint32_t offset1, uint32_t start1, uint32_t count1, uint32_t offset2, uint32_t start2, uint32_t count2, uint32_t extra_offset /*= 0*/)
 {
     return (byte(data, offset1, start1, count1, extra_offset) << count2)
            | byte(data, offset2, start2, count2, extra_offset);
@@ -124,7 +124,7 @@ static inline uint32_t word(uint8_t data[], uint32_t offset1, uint32_t start1, u
 //  here are for 6dB/octave, in 0.75dB units
 //  (matching total level LSB)
 //-------------------------------------------------
-static inline uint32_t opl_key_scale_atten(uint32_t block, uint32_t fnum_4msb)
+uint32_t opl_key_scale_atten(uint32_t block, uint32_t fnum_4msb)
 {
     // this table uses the top 4 bits of FNUM and are the maximal values
     // (for when block == 7). Values for other blocks can be computed by
@@ -142,7 +142,7 @@ static inline uint32_t opl_key_scale_atten(uint32_t block, uint32_t fnum_4msb)
 //  but the equations are rather complicated, so
 //  we'll keep the simplicity of the table
 //-------------------------------------------------
-static inline int32_t detune_adjustment(uint32_t detune, uint32_t keycode)
+int32_t detune_adjustment(uint32_t detune, uint32_t keycode)
 {
     // Detune uses following encoding:
     //   0 = -3 (strongest negative)
@@ -170,7 +170,7 @@ static inline int32_t detune_adjustment(uint32_t detune, uint32_t keycode)
 }
 
 // Cheap 0..31 keycode from freq16 for detune table
-static inline uint32_t keycode_from_freq16_32(uint16_t freq16)
+uint32_t keycode_from_freq16_32(uint16_t freq16)
 {
     if (freq16 < 0x0100)
         return 0;
@@ -182,7 +182,7 @@ static inline uint32_t keycode_from_freq16_32(uint16_t freq16)
 
 // SGU uses SID semantics with Fclk = 1,000,000
 // with sample rate 48,000.
-static inline uint32_t sgu_phase_step_freq16(uint16_t freq16, int32_t lfo_raw_pm)
+uint32_t sgu_phase_step_freq16(uint16_t freq16, int32_t lfo_raw_pm)
 {
     // shift=10 => depth=1 gives ~±13.5 cents peak on the max PM step
     const int32_t delta = ((int32_t)freq16 * lfo_raw_pm) >> 10;
@@ -207,7 +207,7 @@ static inline uint32_t sgu_phase_step_freq16(uint16_t freq16, int32_t lfo_raw_pm
 //  compute_eg_sustain - compute the sustain level
 //  shifted up to envelope values
 //-------------------------------------------------
-static inline uint32_t compute_eg_sustain(uint8_t op_data[])
+uint32_t compute_eg_sustain(uint8_t op_data[])
 {
     // 4-bit sustain level, but 15 means 31 so effectively 5 bits
     uint32_t eg_sustain = SGU_OP3_SL(op_data[3]);
@@ -220,7 +220,7 @@ static inline uint32_t compute_eg_sustain(uint8_t op_data[])
 //  compute_multiplier - compute the x.1 multiplier value
 //  from the raw 4-bit multiple register value
 //-------------------------------------------------
-static inline uint32_t compute_multiplier(uint32_t mul)
+uint32_t compute_multiplier(uint32_t mul)
 {
     // multiplier value, as an x.1 value (0 means 0.5)
     // replace the low bit with a table lookup to give 0,1,2,3,4,5,6,7,8,9,10,10,12,12,15,15
@@ -235,7 +235,7 @@ static inline uint32_t compute_multiplier(uint32_t mul)
 //-------------------------------------------------
 //  compute_phase_step - compute the phase step
 //-------------------------------------------------
-static inline uint32_t sgu_compute_phase_step(uint32_t freq16, uint32_t multiplier, int32_t lfo_raw_pm, uint8_t detune3)
+uint32_t sgu_compute_phase_step(uint32_t freq16, uint32_t multiplier, int32_t lfo_raw_pm, uint8_t detune3)
 {
     uint32_t phase_step = sgu_phase_step_freq16((uint16_t)freq16, lfo_raw_pm);
 
@@ -263,7 +263,7 @@ static inline uint32_t sgu_compute_phase_step(uint32_t freq16, uint32_t multipli
 
 // helper to apply KSR to the raw ADSR rate, ignoring ksr if the
 // raw value is 0, and clamping to 63
-static inline uint32_t effective_rate(uint32_t rawrate, uint32_t ksr)
+uint32_t effective_rate(uint32_t rawrate, uint32_t ksr)
 {
     return (rawrate == 0) ? 0 : minval(rawrate + ksr, 63);
 }
@@ -275,7 +275,7 @@ static inline uint32_t effective_rate(uint32_t rawrate, uint32_t ksr)
 //  for this step (or for the attack case, the
 //  fractional scale factor to decrease by)
 //-------------------------------------------------
-static inline uint32_t attenuation_increment(uint32_t rate, uint32_t index)
+uint32_t attenuation_increment(uint32_t rate, uint32_t index)
 {
     static uint32_t const s_increment_table[64] = {
         0x00000000, 0x00000000, 0x10101010, 0x10101010, // 0-3    (0x00-0x03)
@@ -299,7 +299,7 @@ static inline uint32_t attenuation_increment(uint32_t rate, uint32_t index)
 }
 
 // Extract block (octave 0-7) and top 4 fractional bits from freq16 for KSL calculation
-static inline void freq16_to_ksl_params(uint16_t freq16, uint32_t *block, uint32_t *fnum_4msb)
+void freq16_to_ksl_params(uint16_t freq16, uint32_t *block, uint32_t *fnum_4msb)
 {
     if (freq16 < 0x0100)
     {
@@ -316,7 +316,7 @@ static inline void freq16_to_ksl_params(uint16_t freq16, uint32_t *block, uint32
 //  compute_eg_rate - compute the envelope rate
 //  for the given envelope state, including KSR
 //-------------------------------------------------
-static inline uint8_t compute_eg_rate(uint8_t op_data[], uint16_t ch_freq, enum envelope_state state)
+uint8_t compute_eg_rate(uint8_t op_data[], uint16_t ch_freq, enum envelope_state state)
 {
     // OPM-style 5-bit keycode (block + top 2 frac bits)
     uint32_t keycode = keycode_from_freq16_32(ch_freq);
@@ -351,7 +351,7 @@ static inline uint8_t compute_eg_rate(uint8_t op_data[], uint16_t ch_freq, enum 
 //  clock_lfo - clock the global LFO for AM and PM
 //  Called once per sample (global state)
 //-------------------------------------------------
-static inline int32_t clock_lfo(uint16_t *lfo_am_counter, uint16_t *lfo_pm_counter, uint8_t *lfo_am)
+int32_t clock_lfo(uint16_t *lfo_am_counter, uint16_t *lfo_pm_counter, uint8_t *lfo_am)
 {
     // OPL has two fixed-frequency LFOs, one for AM, one for PM
 
@@ -383,7 +383,7 @@ static inline int32_t clock_lfo(uint16_t *lfo_am_counter, uint16_t *lfo_pm_count
 //  when a keyon happens or when an SSG-EG cycle
 //  is complete and restarts
 //-------------------------------------------------
-static inline void start_attack(struct sgu_ch_state *self, uint8_t op, uint8_t op_data[], uint16_t ch_freq)
+void start_attack(struct sgu_ch_state *self, uint8_t op, uint8_t op_data[], uint16_t ch_freq)
 {
     // don't change anything if already in attack state
     if (self->envelope_state[op] == SGU_EG_ATTACK)
@@ -399,7 +399,7 @@ static inline void start_attack(struct sgu_ch_state *self, uint8_t op, uint8_t o
 //  start_release - start the release phase;
 //  called when a keyoff happens
 //-------------------------------------------------
-static inline void start_release(struct sgu_ch_state *self, uint8_t op)
+void start_release(struct sgu_ch_state *self, uint8_t op)
 {
     // don't change anything if already in release state
     if (self->envelope_state[op] >= SGU_EG_RELEASE)
@@ -407,7 +407,7 @@ static inline void start_release(struct sgu_ch_state *self, uint8_t op)
     self->envelope_state[op] = SGU_EG_RELEASE;
 }
 
-static inline void phase_reset(struct sgu_ch_state *self, uint8_t ch, uint8_t op)
+void phase_reset(struct sgu_ch_state *self, uint8_t ch, uint8_t op)
 {
     self->phase[op] = 0;
     self->prev_phase[op] = 0;
@@ -438,7 +438,7 @@ static void fm_channel_reset(struct sgu_ch_state *self, uint8_t ch)
 //-------------------------------------------------
 //  keyonoff - signal key on/off to our operators
 //-------------------------------------------------
-static inline void fm_channel_keyonoff(struct sgu_ch_state *self, bool on)
+void fm_channel_keyonoff(struct sgu_ch_state *self, bool on)
 {
     for (uint8_t opnum = 0; opnum < SGU_OP_PER_CH; opnum++)
     {
@@ -450,7 +450,7 @@ static inline void fm_channel_keyonoff(struct sgu_ch_state *self, bool on)
 //  clock_envelope - clock the envelope state
 //  according to the given count
 //-------------------------------------------------
-static inline void clock_envelope(struct sgu_ch_state *self, uint8_t op, uint8_t op_data[], uint16_t ch_freq, uint32_t env_counter)
+void clock_envelope(struct sgu_ch_state *self, uint8_t op, uint8_t op_data[], uint16_t ch_freq, uint32_t env_counter)
 {
     // handle attack->decay transitions
     if (self->envelope_state[op] == SGU_EG_ATTACK && self->envelope_attenuation[op] == 0)
@@ -507,7 +507,7 @@ static inline void clock_envelope(struct sgu_ch_state *self, uint8_t op, uint8_t
 //  OPN version of the logic has been verified
 //  against the Nuked phase generator
 //-------------------------------------------------
-static inline void clock_phase(struct sgu_ch_state *self, uint8_t op, uint8_t op_data[], uint16_t ch_freq, int32_t lfo_raw_pm)
+void clock_phase(struct sgu_ch_state *self, uint8_t op, uint8_t op_data[], uint16_t ch_freq, int32_t lfo_raw_pm)
 {
     uint32_t phase_step;
     const uint8_t base = SGU_OP0_MUL(op_data[0]);
@@ -536,7 +536,7 @@ static inline void clock_phase(struct sgu_ch_state *self, uint8_t op, uint8_t op
 //  logarithmic attenuation value, return a 13-bit
 //  linear volume
 //-------------------------------------------------
-static inline uint32_t attenuation_to_volume(uint32_t input)
+uint32_t attenuation_to_volume(uint32_t input)
 {
     // the values here are 10-bit mantissas with an implied leading bit
     // this matches the internal format of the OPN chip, extracted from the die
