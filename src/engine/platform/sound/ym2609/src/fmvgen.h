@@ -1122,10 +1122,6 @@ class fmvgen /*: public fmgen*/
                 static uint32_t rate_table[16];
                 static uint32_t multable[4][16];
 
-                void SSGShiftPhase(int mode)
-                {
-                }
-
                 int FBCalc(int fb)
                 {
                     return -1;
