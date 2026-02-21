@@ -428,6 +428,10 @@ const char* fmOperatorBits[5]={
   "op1", "op2", "op3", "op4", NULL
 };
 
+const char* algConstrBits[2]={
+  _N("Algorithm Construction Switch"), NULL
+};
+
 const char* c64ShapeBits[5]={
   _N("triangle"),
   _N("saw"),
@@ -7277,6 +7281,22 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
       ImGui::PopStyleVar();
     }
     ImGui::EndDisabled();
+    ImGui::EndTabItem();
+  }
+
+  std::vector<FurnaceGUIMacroDesc> macroList;
+
+  if (ImGui::BeginTabItem(_("FM Macros"))) 
+  {
+    macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_ALG),&ins->std.algMacro,0,7,96,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("AC"),&ins->std.ex1Macro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true,NULL));
+    macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_FB),&ins->std.fbMacro,0,7,96,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_FMS),&ins->std.fmsMacro,0,7,96,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_AMS),&ins->std.amsMacro,0,3,48,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("LFO Speed"),&ins->std.ex3Macro,0,8,96,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("OpMask"),&ins->std.ex4Macro,0,4,128,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true,fmOperatorBits));
+
+    drawMacros(macroList,macroEditStateFM,ins);
     ImGui::EndTabItem();
   }
 }

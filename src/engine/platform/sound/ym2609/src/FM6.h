@@ -329,6 +329,8 @@ class FM6
             }
         }
 
+        uint32_t* lfotable;
+
     protected:
         uint8_t csmch;
         uint32_t fnum[6];
@@ -344,7 +346,6 @@ class FM6
         uint32_t lfocount;
         uint32_t lfodcount;
         uint8_t regtc;
-        uint32_t lfotable[8];
 
         void SetParameter(fmvgen::Channel4* ch, uint32_t addr, uint32_t data, int c)
         {
@@ -652,6 +653,11 @@ class FM6
             chip.SetPML((uint32_t)(pmtable_opna[(lfocount >> (FM_LFOCBITS + 1)) & 0xff]));
             chip.SetAML((uint32_t)(amtable_opna[(lfocount >> (FM_LFOCBITS + 1)) & 0xff]));
             lfocount += lfodcount;
+
+            for(int i = 0; i < 6; i++)
+            {
+                ch[i].SetChip(chip);
+            }
         }
     private:
         reverb* reverb;

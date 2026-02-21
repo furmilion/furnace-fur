@@ -153,6 +153,8 @@ class DivPlatformYM2609: public DivDispatch {
 
   unsigned char regPool[YM2609_NUM_REGISTERS];
 
+  uint8_t lfoValue[2];
+
   bool isMuted[YM2609_NUM_CHANNELS];
 
   int** output_buf;

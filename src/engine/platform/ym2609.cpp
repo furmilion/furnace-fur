@@ -247,6 +247,55 @@ void DivPlatformYM2609::tick(bool sysTick)
         rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
       }
     }
+    if (chan[i].std.alg.had) {
+      chan[i].state.alg=chan[i].std.alg.val;
+      rWrite(chanOffs[i]+ADDR_FB_ALG,(chan[i].state.alg&7)|(chan[i].state.fb<<3)|((chan[i].panRight&3)<<6));
+      if (!parent->song.compatFlags.algMacroBehavior) for (int j=0; j<4; j++) {
+        unsigned short baseAddr=chanOffs[i]|opOffs[j];
+        DivInstrumentFM::Operator& op=chan[i].state.op[j];
+        if (isMuted[i] || !op.enable) {
+          rWrite(baseAddr+ADDR_TL,127);
+        } else {
+          if (KVS(i,j)) {
+            rWrite(baseAddr+ADDR_TL,127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[i].outVol&0x7f,127));
+          } else {
+            rWrite(baseAddr+ADDR_TL,op.tl);
+          }
+        }
+      }
+    }
+    if (chan[i].std.fb.had) {
+      chan[i].state.fb=chan[i].std.fb.val;
+      rWrite(chanOffs[i]+ADDR_FB_ALG,(chan[i].state.alg&7)|(chan[i].state.fb<<3)|((chan[i].panRight&3)<<6));
+    }
+    if (chan[i].std.fms.had) {
+      chan[i].state.fms=chan[i].std.fms.val;
+      rWrite(chanOffs[i]+ADDR_LRAF,((chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
+    }
+    if (chan[i].std.ams.had) {
+      chan[i].state.ams=chan[i].std.ams.val;
+      rWrite(chanOffs[i]+ADDR_LRAF,((chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
+    }
+    if (chan[i].std.ex1.had) {
+      chan[i].state_ym2609fm.alg_construct_switch=chan[i].std.ex1.val&1;
+      rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
+    }
+    if (chan[i].std.ex3.had) {
+      if(i < 6)
+      {
+        lfoValue[0]=(chan[i].std.ex3.val>7)?0:(8|(chan[i].std.ex3.val&7));
+        rWrite(0x22,lfoValue[0]);
+      }
+      else if(i < 12)
+      {
+        lfoValue[1]=(chan[i].std.ex3.val>7)?0:(8|(chan[i].std.ex3.val&7));
+        rWrite(0x222,lfoValue[1]);
+      }
+    }
+    if (chan[i].std.ex4.had && chan[i].active) {
+      chan[i].opMask=chan[i].std.ex4.val&15;
+      chan[i].opMaskChanged=true;
+    }
   }
 
   for (int i=0; i<12; i++) {
@@ -550,6 +599,12 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       if (!chan[c.chan].inPorta && c.value && !parent->song.compatFlags.brokenPortaArp && chan[c.chan].std.arp.will && !NEW_ARP_STRAT) chan[c.chan].baseFreq=NOTE_FREQUENCY(chan[c.chan].note);
       chan[c.chan].inPorta=c.value;
       break;
+    case DIV_CMD_FM_LFO: {
+      if (c.chan>=12) break;
+      lfoValue[c.chan > 5 ? 1 : 0]=(c.value&7)|((c.value>>4)<<3);
+      rWrite(c.chan > 5 ? 0x200 : 0 + 0x22,lfoValue[c.chan > 5 ? 1 : 0]);
+      break;
+    }
     case DIV_CMD_GET_VOLMAX:
       if (c.chan>(11+12+6+6)) return 255; //adpcm-b
       if (c.chan>(11+12+6)) return 31; //adpcm-a
@@ -588,6 +643,9 @@ void DivPlatformYM2609::forceIns() {
       chan[i].freqChanged=true;
     }
   }
+
+  immWrite(0x22,lfoValue[0]);
+  immWrite(0x222,lfoValue[1]);
 }
 
 void DivPlatformYM2609::notifyInsChange(int ins) {
@@ -676,6 +734,13 @@ void DivPlatformYM2609::reset() {
 
   //sid3_reset(sid3);
   memset(regPool,0,YM2609_NUM_REGISTERS);
+
+  lfoValue[0]=8;
+  lfoValue[1]=8;
+
+  // LFO
+  immWrite(0x22,lfoValue[0]);
+  immWrite(0x222,lfoValue[1]);
 }
 
 int DivPlatformYM2609::getOutputCount() {

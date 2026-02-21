@@ -22,7 +22,8 @@ enum OpType : int
 
 class Chip
 {
-    private:
+    public:
+    //private:
         uint32_t ratio_;
         uint32_t aml_;
         uint32_t pml_;
@@ -47,7 +48,7 @@ class Chip
             }
         }
     
-    public:
+    //public:
         OpType optype_;
 
         // ---------------------------------------------------------------------------
@@ -473,7 +474,7 @@ class fmvgen /*: public fmgen*/
                                 break;
                         }
                         // LFO
-                        ams_ = amtable[(int)type_][amon_ ? (ms_ >> 4) & 3 : 0];
+                        ams_ = amtable[(int)type_][amon_ ? ((ms_ >> 4) & 3) : 0];
                         EGUpdate();
 
                         dbgopout_ = 0;
@@ -737,6 +738,7 @@ class fmvgen /*: public fmgen*/
                 {
                     uint32_t ret = pg_count_;
                     pg_count_ += (uint32_t)(pg_diff_ + ((pg_diff_lfo_ * chip_.GetPMV()) >> 5));// & -(1 << (2+IS2EC_SHIFT)));
+
                     dbgpgout_ = (int)ret;
                     return ret /* + pmv * pg_diff_;*/;
                 }
@@ -887,7 +889,7 @@ class fmvgen /*: public fmgen*/
                 {
                     //if (keyon_)
                     //{
-                    if(eg_phase_ == EGPhase::release) return;
+                    //if(eg_phase_ == EGPhase::release) return;
                     if ((ssg_type_ & (1 << 3)) && ssg_inverted)
                     {
                         eg_level_ = (0x200 - eg_level_) & 0x3ff;
@@ -1392,6 +1394,11 @@ class fmvgen /*: public fmgen*/
             int CalcL()
             {
                 chip_.SetPMV(pms[chip_.GetPML()]);
+
+                for(int i = 0; i < 4; i++)
+                {
+                    op[i].chip_.pmv_ = chip_.pmv_;
+                }
 
                 int r = 0;
                 if (!ac)
