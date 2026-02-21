@@ -109,6 +109,14 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
     oscBuf[i]->begin(len);
   }
 
+  while (!writes.empty()) 
+  {
+    QueuedWrite w=writes.front();
+    ym2609->SetReg(w.addr, w.val);
+    regPool[w.addr % YM2609_NUM_REGISTERS]=w.val;
+    writes.pop();
+  }
+
   for(size_t samp = 0; samp < len; samp++)
   {
     output_buf[0][0] = 0;
@@ -121,7 +129,7 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
       logD("ch0 op0 eg stage %d acc (level) %d eg_out_ %d tl_out_ %d", (int)ym2609->fm6[0].ch[0].op[0].eg_phase_, (int)ym2609->fm6[0].ch[0].op[0].eg_level_, (int)ym2609->fm6[0].ch[0].op[0].eg_out_, (int)ym2609->fm6[0].ch[0].op[0].tl_out_);
     }*/
 
-    if (!writes.empty()) 
+    /*if (!writes.empty()) 
     {
       for(int i = 0; i < clocks_per_sample; i++)
       {
@@ -132,7 +140,7 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
 
         if(writes.empty()) break;
       }
-    }
+    }*/
 
     buf[0][samp] = output_buf[0][0];
     buf[1][samp] = output_buf[1][0];
