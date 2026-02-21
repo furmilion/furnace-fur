@@ -296,6 +296,79 @@ void DivPlatformYM2609::tick(bool sysTick)
       chan[i].opMask=chan[i].std.ex4.val&15;
       chan[i].opMaskChanged=true;
     }
+    for (int j=0; j<4; j++) {
+      unsigned short baseAddr=chanOffs[i]|opOffs[j];
+      DivInstrumentFM::Operator& op=chan[i].state.op[j];
+      DivInstrumentYM2609FM::Operator& op_ym2609=chan[i].state_ym2609fm.op[j];
+      DivMacroInt::IntOp& m=chan[i].std.op[j];
+      if (m.am.had) {
+        op.am=m.am.val;
+        rWrite(baseAddr+ADDR_AM_DR,(op.dr&31)|(op.am<<7)|(op.dt2<<5));
+      }
+      if (m.ar.had) {
+        op.ar=m.ar.val;
+        rWrite(baseAddr+ADDR_RS_AR,(op.ar&31)|(op.rs<<6));
+      }
+      if (m.dr.had) {
+        op.dr=m.dr.val;
+        rWrite(baseAddr+ADDR_AM_DR,(op.dr&31)|(op.am<<7)|(op.dt2<<5));
+      }
+      if (m.mult.had) {
+        op.mult=m.mult.val;
+        rWrite(baseAddr+ADDR_MULT_DT,(op.mult&15)|(dtTable[op.dt&7]<<4)|((chan[i].op_ym2609[j].wave_type & 1) << 7));
+      }
+      if (m.rr.had) {
+        op.rr=m.rr.val;
+        rWrite(baseAddr+ADDR_SL_RR,(op.rr&15)|(op.sl<<4));
+      }
+      if (m.sl.had) {
+        op.sl=m.sl.val;
+        rWrite(baseAddr+ADDR_SL_RR,(op.rr&15)|(op.sl<<4));
+      }
+      if (m.tl.had) {
+        op.tl=m.tl.val;
+        if (isMuted[i] || !op.enable) {
+          rWrite(baseAddr+ADDR_TL,127|(((chan[i].op_ym2609[j].wave_type >> 1) & 1) << 7));
+        } else {
+          if (KVS(i,j)) {
+            rWrite(baseAddr+ADDR_TL,(127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[i].outVol&0x7f,127))|(((chan[i].op_ym2609[j].wave_type >> 1) & 1) << 7));
+          } else {
+            rWrite(baseAddr+ADDR_TL,op.tl|(((chan[i].op_ym2609[j].wave_type >> 1) & 1) << 7));
+          }
+        }
+      }
+      if (m.rs.had) {
+        op.rs=m.rs.val;
+        rWrite(baseAddr+ADDR_RS_AR,(op.ar&31)|(op.rs<<6));
+      }
+      if (m.dt.had) {
+        op.dt=m.dt.val;
+        rWrite(baseAddr+ADDR_MULT_DT,(op.mult&15)|(dtTable[op.dt&7]<<4)|((chan[i].op_ym2609[j].wave_type & 1) << 7));
+      }
+      if (m.d2r.had) {
+        op.d2r=m.d2r.val;
+        rWrite(baseAddr+ADDR_DT2_D2R,(op.d2r&31)|(op_ym2609.feedback<<5));
+      }
+      if (m.dt2.had) {
+        op.dt2=m.dt2.val;
+        rWrite(baseAddr+ADDR_AM_DR,(op.dr&31)|(op.am<<7)|(op.dt2<<5));
+      }
+      if (m.ssg.had) {
+        op.ssgEnv=m.ssg.val;
+        rWrite(baseAddr+ADDR_SSG,(op.ssgEnv&15)|(op_ym2609.alg_link<<4));
+      }
+      if (m.dam.had) {
+        op_ym2609.alg_link=m.dam.val;
+        rWrite(baseAddr+ADDR_SSG,(op.ssgEnv&15)|(op_ym2609.alg_link<<4));
+      }
+      if(j != 0)
+      {
+        if (m.dvb.had) {
+          op_ym2609.feedback=m.dvb.val;
+          rWrite(baseAddr+ADDR_DT2_D2R,(op.d2r&31)|(op_ym2609.feedback<<5));
+        }
+      }
+    }
   }
 
   for (int i=0; i<12; i++) {
