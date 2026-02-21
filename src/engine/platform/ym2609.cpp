@@ -86,7 +86,7 @@
 #define KVS(x,y) ((chan[x].state.op[y].kvs==2 && isOutput[chan[x].state.alg][y]) || chan[x].state.op[y].kvs==1)
 
 #define rWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
-#define immWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
+#define immWrite(a,v) ym2609->SetReg(a, v); regPool[a % YM2609_NUM_REGISTERS]=v;
 //#define rWrite(a,v) ym2609->SetReg(a, v);
 //#define immWrite(a,v) if (!skipRegisterWrites) {writes.push_back(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
 //#define immWrite(a,v) ym2609->SetReg(a, v); regPool[a % YM2609_NUM_REGISTERS]=v;
@@ -374,7 +374,7 @@ void DivPlatformYM2609::tick(bool sysTick)
   for (int i=0; i<12; i++) {
     //if (i==2 && extMode) continue;
     if (chan[i].keyOff) {
-      immWrite(((i > 5) ? 0x228 : 0x28),0x00|konOffs[i % 6]);
+      rWrite(((i > 5) ? 0x228 : 0x28),0x00|konOffs[i % 6]);
       chan[i].keyOff=false;
     }
   }
@@ -399,18 +399,18 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
       if (chan[i].freq>0x3fff) chan[i].freq=0x3fff;
       //if (i<6) {
-        immWrite(chanOffs[i]+ADDR_FREQH,((chan[i].freq>>8)&0x3f)|((chan[i].panLeft&3)<<6));
-        immWrite(chanOffs[i]+ADDR_FREQ,chan[i].freq&0xff);
+        rWrite(chanOffs[i]+ADDR_FREQH,((chan[i].freq>>8)&0x3f)|((chan[i].panLeft&3)<<6));
+        rWrite(chanOffs[i]+ADDR_FREQ,chan[i].freq&0xff);
       //}
       chan[i].freqChanged=false;
     }
     if ((chan[i].keyOn || chan[i].opMaskChanged)) {
       if (i<6) {
-        immWrite(0x28,(chan[i].opMask<<4)|konOffs[i]);
+        rWrite(0x28,(chan[i].opMask<<4)|konOffs[i]);
       }
       else
       {
-        immWrite(0x228,(chan[i].opMask<<4)|konOffs[i-6]);
+        rWrite(0x228,(chan[i].opMask<<4)|konOffs[i-6]);
       }
       chan[i].opMaskChanged=false;
       chan[i].keyOn=false;
@@ -714,8 +714,8 @@ void DivPlatformYM2609::forceIns() {
     }
   }
 
-  immWrite(0x22,lfoValue[0]);
-  immWrite(0x222,lfoValue[1]);
+  rWrite(0x22,lfoValue[0]);
+  rWrite(0x222,lfoValue[1]);
 }
 
 void DivPlatformYM2609::notifyInsChange(int ins) {
