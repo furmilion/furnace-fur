@@ -292,7 +292,7 @@ void DivPlatformYM2609::tick(bool sysTick)
         rWrite(0x222,lfoValue[1]);
       }
     }
-    if (chan[i].std.ex4.had && chan[i].active) {
+    if (chan[i].std.ex4.had) {
       chan[i].opMask=chan[i].std.ex4.val&15;
       chan[i].opMaskChanged=true;
     }
@@ -308,42 +308,39 @@ void DivPlatformYM2609::tick(bool sysTick)
     
   for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
   {
-    if (chan[i].freqChanged || chan[i].keyOn || chan[i].keyOff) 
-    {
-      if (chan[i].freqChanged) {
-        if (parent->song.compatFlags.linearPitch) {
-          chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE,11,chan[i].state.block);
-        } else {
-          int fNum=parent->calcFreq(chan[i].baseFreq&0x7ff,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE,11);
-          int block=(chan[i].baseFreq&0xf800)>>11;
-          if (fNum<0) fNum=0;
-          if (fNum>2047) {
-            while (block<7) {
-              fNum>>=1;
-              block++;
-            }
-            if (fNum>2047) fNum=2047;
+    if (chan[i].freqChanged) {
+      if (parent->song.compatFlags.linearPitch) {
+        chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE,11,chan[i].state.block);
+      } else {
+        int fNum=parent->calcFreq(chan[i].baseFreq&0x7ff,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,false,2,chan[i].pitch2,chipClock,CHIP_FREQBASE,11);
+        int block=(chan[i].baseFreq&0xf800)>>11;
+        if (fNum<0) fNum=0;
+        if (fNum>2047) {
+          while (block<7) {
+            fNum>>=1;
+            block++;
           }
-          chan[i].freq=(block<<11)|fNum;
+          if (fNum>2047) fNum=2047;
         }
-        if (chan[i].freq>0x3fff) chan[i].freq=0x3fff;
-        //if (i<6) {
-          immWrite(chanOffs[i]+ADDR_FREQH,((chan[i].freq>>8)&0x3f)|((chan[i].panLeft&3)<<6));
-          immWrite(chanOffs[i]+ADDR_FREQ,chan[i].freq&0xff);
-        //}
-        chan[i].freqChanged=false;
+        chan[i].freq=(block<<11)|fNum;
       }
-      if ((chan[i].keyOn || chan[i].opMaskChanged)) {
-        if (i<6) {
-          immWrite(0x28,(chan[i].opMask<<4)|konOffs[i]);
-        }
-        else
-        {
-          immWrite(0x228,(chan[i].opMask<<4)|konOffs[i-6]);
-        }
-        chan[i].opMaskChanged=false;
-        chan[i].keyOn=false;
+      if (chan[i].freq>0x3fff) chan[i].freq=0x3fff;
+      //if (i<6) {
+        immWrite(chanOffs[i]+ADDR_FREQH,((chan[i].freq>>8)&0x3f)|((chan[i].panLeft&3)<<6));
+        immWrite(chanOffs[i]+ADDR_FREQ,chan[i].freq&0xff);
+      //}
+      chan[i].freqChanged=false;
+    }
+    if ((chan[i].keyOn || chan[i].opMaskChanged)) {
+      if (i<6) {
+        immWrite(0x28,(chan[i].opMask<<4)|konOffs[i]);
       }
+      else
+      {
+        immWrite(0x228,(chan[i].opMask<<4)|konOffs[i-6]);
+      }
+      chan[i].opMaskChanged=false;
+      chan[i].keyOn=false;
     }
   }
 
