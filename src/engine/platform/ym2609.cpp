@@ -376,37 +376,22 @@ void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
 int DivPlatformYM2609::dispatch(DivCommand c) {
   if (c.chan>YM2609_NUM_CHANNELS - 1) return 0;
 
-  //bool updEnv = false;
-  //DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
-  //int filter = 0;
-
   switch (c.cmd) {
     case DIV_CMD_NOTE_ON: {
       if(c.chan < 12) //FM
       {
         DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
 
-        chan[c.chan].insChanged=true;
+        chan[c.chan].macroInit(ins);
+        if (!chan[c.chan].std.vol.will) {
+          chan[c.chan].outVol=chan[c.chan].vol;
+        }
+
         commitState(c.chan,ins);
         chan[c.chan].insChanged=false;
 
-        chan[c.chan].macroInit(ins);
-
         int reg_shift = (c.chan) > 5 ? 0x200 : 0;
         double log2 = log(2.0);
-
-        /*void waveReset(int waveCh, int wavetype)
-        {
-            double log2 = log(2.0);
-            for (int i = 0; i < FM_OPSINENTS / 2; i++)
-            {
-                double r = (i * 2 + 1) * FM_PI / FM_OPSINENTS;
-                double q = -256 * log(sin(r)) / log2;
-                uint32_t s = (uint32_t)((int)(floor(q + 0.5)) + 1);
-                (*sinetable_opna)[waveCh][wavetype][i] = s * 2;
-                (*sinetable_opna)[waveCh][wavetype][FM_OPSINENTS / 2 + i] = s * 2 + 1;
-            }
-        }*/
 
         for(int i = 0; i < 4; i++)
         {
@@ -602,7 +587,6 @@ void DivPlatformYM2609::forceIns() {
       chan[i].keyOn=true;
       chan[i].freqChanged=true;
     }
-    //updateFilter(i);
   }
 }
 

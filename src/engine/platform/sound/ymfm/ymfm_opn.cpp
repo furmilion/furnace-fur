@@ -2376,6 +2376,11 @@ void ym2612::write(uint32_t offset, uint8_t data)
 	}
 }
 
+void ym2612::set_ymf276(bool ymf276)
+{
+	this->ymf276 = ymf276;
+}
+
 
 //-------------------------------------------------
 //  generate - generate one sample of sound
@@ -2383,39 +2388,79 @@ void ym2612::write(uint32_t offset, uint8_t data)
 
 void ym2612::generate(output_data *output, uint32_t numsamples)
 {
-	for (uint32_t samp = 0; samp < numsamples; samp++, output++)
+	if(this->ymf276) //16-bit external DAC (assumed ideal)
 	{
-		// clock the system
-		m_fm.clock(fm_engine::ALL_CHANNELS);
-
-		// sum individual channels to apply DAC discontinuity on each
-		output->clear();
-		output_data temp;
-
-		// first do FM-only channels; OPN2 is 9-bit with intermediate clipping
-		int const last_fm_channel = m_dac_enable ? 5 : 6;
-		for (int chan = 0; chan < last_fm_channel; chan++)
+		for (uint32_t samp = 0; samp < numsamples; samp++, output++)
 		{
-			m_fm.output(temp.clear(), 5, 256, 1 << chan);
-			output->data[0] += dac_discontinuity(temp.data[0]);
-			output->data[1] += dac_discontinuity(temp.data[1]);
-		}
+			// clock the system
+			m_fm.clock(fm_engine::ALL_CHANNELS);
 
-		// add in DAC
-		if (m_dac_enable)
+			// sum individual channels to apply DAC discontinuity on each
+			output->clear();
+			output_data temp;
+
+			// first do FM-only channels; OPN2 is 9-bit with intermediate clipping
+			int const last_fm_channel = m_dac_enable ? 5 : 6;
+			for (int chan = 0; chan < last_fm_channel; chan++)
+			{
+				m_fm.output(temp.clear(), 0, 256 * 32, 1 << chan);
+				output->data[0] += temp.data[0];
+				output->data[1] += temp.data[1];
+			}
+
+			// add in DAC
+			if (m_dac_enable)
+			{
+				// DAC enabled: start with DAC value then add the first 5 channels only
+				int32_t dacval = dac_discontinuity(int16_t(m_dac_data << 7) >> 7);
+				output->data[0] += m_fm.regs().ch_output_0(0x102) ? dacval * 32 : 0;
+				output->data[1] += m_fm.regs().ch_output_1(0x102) ? dacval * 32 : 0;
+			}
+
+			// output is technically multiplexed rather than mixed, but that requires
+			// a better sound mixer than we usually have, so just average over the six
+			// channels; also apply a 64/65 factor to account for the discontinuity
+			// adjustment above
+			output->data[0] = (output->data[0] * 128) * 2 / (6 * 65);
+			output->data[1] = (output->data[1] * 128) * 2 / (6 * 65);
+		}
+	}
+	else
+	{
+		for (uint32_t samp = 0; samp < numsamples; samp++, output++)
 		{
-			// DAC enabled: start with DAC value then add the first 5 channels only
-			int32_t dacval = dac_discontinuity(int16_t(m_dac_data << 7) >> 7);
-			output->data[0] += m_fm.regs().ch_output_0(0x102) ? dacval : dac_discontinuity(0);
-			output->data[1] += m_fm.regs().ch_output_1(0x102) ? dacval : dac_discontinuity(0);
-		}
+			// clock the system
+			m_fm.clock(fm_engine::ALL_CHANNELS);
 
-		// output is technically multiplexed rather than mixed, but that requires
-		// a better sound mixer than we usually have, so just average over the six
-		// channels; also apply a 64/65 factor to account for the discontinuity
-		// adjustment above
-		output->data[0] = (output->data[0] * 128) * 64 / (6 * 65);
-		output->data[1] = (output->data[1] * 128) * 64 / (6 * 65);
+			// sum individual channels to apply DAC discontinuity on each
+			output->clear();
+			output_data temp;
+
+			// first do FM-only channels; OPN2 is 9-bit with intermediate clipping
+			int const last_fm_channel = m_dac_enable ? 5 : 6;
+			for (int chan = 0; chan < last_fm_channel; chan++)
+			{
+				m_fm.output(temp.clear(), 5, 256, 1 << chan);
+				output->data[0] += dac_discontinuity(temp.data[0]);
+				output->data[1] += dac_discontinuity(temp.data[1]);
+			}
+
+			// add in DAC
+			if (m_dac_enable)
+			{
+				// DAC enabled: start with DAC value then add the first 5 channels only
+				int32_t dacval = dac_discontinuity(int16_t(m_dac_data << 7) >> 7);
+				output->data[0] += m_fm.regs().ch_output_0(0x102) ? dacval : dac_discontinuity(0);
+				output->data[1] += m_fm.regs().ch_output_1(0x102) ? dacval : dac_discontinuity(0);
+			}
+
+			// output is technically multiplexed rather than mixed, but that requires
+			// a better sound mixer than we usually have, so just average over the six
+			// channels; also apply a 64/65 factor to account for the discontinuity
+			// adjustment above
+			output->data[0] = (output->data[0] * 128) * 64 / (6 * 65);
+			output->data[1] = (output->data[1] * 128) * 64 / (6 * 65);
+		}
 	}
 }
 
