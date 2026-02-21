@@ -86,9 +86,10 @@
 #define KVS(x,y) ((chan[x].state.op[y].kvs==2 && isOutput[chan[x].state.alg][y]) || chan[x].state.op[y].kvs==1)
 
 #define rWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
+#define immWrite(a,v) if (!skipRegisterWrites) {writes.push(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
 //#define rWrite(a,v) ym2609->SetReg(a, v);
 //#define immWrite(a,v) if (!skipRegisterWrites) {writes.push_back(QueuedWrite(a,v)); if (dumpWrites) {addWrite(a,v);} }
-#define immWrite(a,v) ym2609->SetReg(a, v); regPool[a % YM2609_NUM_REGISTERS]=v;
+//#define immWrite(a,v) ym2609->SetReg(a, v); regPool[a % YM2609_NUM_REGISTERS]=v;
 
 //TODO: replace with custom clock
 
