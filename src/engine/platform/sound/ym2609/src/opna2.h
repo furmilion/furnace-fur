@@ -452,6 +452,9 @@ class OPNA2 /*: public OPNABase*/
                 {
                     lfotable[i] = (ratio << (2 + FM_LFOCBITS - FM_RATIOBITS)) / table2[i];
                 }
+
+                fm6[0].lfotable = &lfotable[0];
+                fm6[1].lfotable = &lfotable[0];
             }
         }
 

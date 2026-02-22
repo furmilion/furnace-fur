@@ -754,6 +754,8 @@ public:
 	// reset
 	void reset();
 
+	void set_ymf276(bool ymf276);
+
 	// save/restore
 	void save_restore(ymfm_saved_state &state);
 
@@ -791,6 +793,7 @@ protected:
 	uint16_t m_dac_data;             // 9-bit DAC data
 	uint8_t m_dac_enable;            // DAC enabled?
 	fm_engine m_fm;                  // core FM engine
+	bool ymf276;                     // 16-bit external DAC
 };
 
 

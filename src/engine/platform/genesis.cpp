@@ -246,6 +246,8 @@ void DivPlatformGenesis::acquire_ymfm(short** buf, size_t len) {
 
   ymfm::ym2612::fm_engine* fme=fm_ymfm->debug_engine();
 
+  int bitshift = chipType == 2 ? 0 : 5;
+
   for (int i=0; i<7; i++) {
     oscBuf[i]->begin(len);
   }
@@ -297,7 +299,7 @@ void DivPlatformGenesis::acquire_ymfm(short** buf, size_t len) {
       flushFirst=false;
     }
     
-    if (chipType==1) {
+    if (chipType==1 || chipType == 2) {
       fm_ymfm->generate(&out_ymfm);
     } else {
       ((ymfm::ym3438*)fm_ymfm)->generate(&out_ymfm);
@@ -308,7 +310,7 @@ void DivPlatformGenesis::acquire_ymfm(short** buf, size_t len) {
     //OPN2_Write(&fm,0,0);
 
     for (int i=0; i<6; i++) {
-      int chOut=(fme->debug_channel(i)->debug_output(0)+fme->debug_channel(i)->debug_output(1))<<5;
+      int chOut=(fme->debug_channel(i)->debug_output(0)+fme->debug_channel(i)->debug_output(1))<<bitshift;
       if (chOut<-32768) chOut=-32768;
       if (chOut>32767) chOut=32767;
       if (i==5) {
@@ -1886,6 +1888,10 @@ void DivPlatformGenesis::setFlags(const DivConfig& flags) {
     if (fm_ymfm!=NULL) delete fm_ymfm;
     if (chipType==1) {
       fm_ymfm=new ymfm::ym2612(iface);
+      fm_ymfm->set_ymf276(false);
+    } else if (chipType==2) {
+      fm_ymfm=new ymfm::ym2612(iface);
+      fm_ymfm->set_ymf276(true);
     } else {
       fm_ymfm=new ymfm::ym3438(iface);
     }

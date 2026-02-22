@@ -428,6 +428,10 @@ const char* fmOperatorBits[5]={
   "op1", "op2", "op3", "op4", NULL
 };
 
+const char* algConstrBits[2]={
+  _N("Algorithm Construction Switch"), NULL
+};
+
 const char* c64ShapeBits[5]={
   _N("triangle"),
   _N("saw"),
@@ -458,6 +462,13 @@ const char* sid3FilterMatrixBits[5]={
   _N("From filter 3"),
   _N("From filter 4"),
   NULL
+};
+
+const char* YM2609FMAlgLinkBits[4][5]={
+  { _N("Self"), _N("O2"), _N("O3"), _N("O4"), NULL },
+  { _N("O1"), _N("Self"), _N("O3"), _N("O4"), NULL },
+  { _N("O1"), _N("O2"), _N("Self"), _N("O4"), NULL },
+  { _N("O1"), _N("O2"), _N("O3"), _N("Self"), NULL },
 };
 
 const char* ayEnvBits[4]={
@@ -7279,6 +7290,60 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
     ImGui::EndDisabled();
     ImGui::EndTabItem();
   }
+
+  std::vector<FurnaceGUIMacroDesc> macroList;
+
+  if (ImGui::BeginTabItem(_("FM Macros"))) 
+  {
+    char label[100];
+    snprintf(label, 100, "%s %s", _("OP1"), FM_NAME(FM_FB));
+
+    macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_ALG),&ins->std.algMacro,0,7,96,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("AC"),&ins->std.ex1Macro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true,NULL));
+    macroList.push_back(FurnaceGUIMacroDesc(label,&ins->std.fbMacro,0,7,96,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_FMS),&ins->std.fmsMacro,0,7,96,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_AMS),&ins->std.amsMacro,0,3,48,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("LFO Speed"),&ins->std.ex3Macro,0,8,96,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("OpMask"),&ins->std.ex4Macro,0,4,64,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true,fmOperatorBits));
+
+    drawMacros(macroList,macroEditStateFM,ins);
+    ImGui::EndTabItem();
+  }
+
+  macroList.clear();
+
+  for(int i = 0; i < 4; i++)
+  {
+    int ordi=orderedOps[i];
+
+    if (ImGui::BeginTabItem(fmt::sprintf(_("OP%d Macros"),i+1).c_str())) 
+    {
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_TL),&ins->std.opMacros[ordi].tlMacro,0,127,128,uiColors[GUI_COLOR_MACRO_VOLUME]));
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_AR),&ins->std.opMacros[ordi].arMacro,0,31,64,uiColors[GUI_COLOR_MACRO_ENVELOPE]));
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_DR),&ins->std.opMacros[ordi].drMacro,0,31,64,uiColors[GUI_COLOR_MACRO_ENVELOPE]));
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_D2R),&ins->std.opMacros[ordi].d2rMacro,0,31,64,uiColors[GUI_COLOR_MACRO_ENVELOPE]));
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_RR),&ins->std.opMacros[ordi].rrMacro,0,15,64,uiColors[GUI_COLOR_MACRO_ENVELOPE]));
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_SL),&ins->std.opMacros[ordi].slMacro,0,15,64,uiColors[GUI_COLOR_MACRO_ENVELOPE]));
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_RS),&ins->std.opMacros[ordi].rsMacro,0,3,32,uiColors[GUI_COLOR_MACRO_OTHER]));
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_MULT),&ins->std.opMacros[ordi].multMacro,0,15,64,uiColors[GUI_COLOR_MACRO_OTHER]));
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_DT),&ins->std.opMacros[ordi].dtMacro,0,7,64,uiColors[GUI_COLOR_MACRO_PITCH]));
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_DT2),&ins->std.opMacros[ordi].dt2Macro,0,3,32,uiColors[GUI_COLOR_MACRO_PITCH]));
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_AM),&ins->std.opMacros[ordi].amMacro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true));
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_SSG),&ins->std.opMacros[ordi].ssgMacro,0,4,64,uiColors[GUI_COLOR_MACRO_ENVELOPE],false,NULL,NULL,true,ssgEnvBits));
+      
+      macroList.push_back(FurnaceGUIMacroDesc(_("ALG LINK"),&ins->std.opMacros[ordi].damMacro,0,4,64,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true,YM2609FMAlgLinkBits[i]));
+
+      if(i != 0)
+      {
+        macroList.push_back(FurnaceGUIMacroDesc(_("OP FB"),&ins->std.opMacros[ordi].dvbMacro,0,7,64,uiColors[GUI_COLOR_MACRO_OTHER]));
+      }
+
+      drawMacros(macroList,macroEditStateOP[ordi],ins);
+      ImGui::EndTabItem();
+    }
+  }
+
+  macroList.clear();
 }
 
 void FurnaceGUI::drawInsEdit() {

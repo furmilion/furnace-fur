@@ -22,7 +22,8 @@ enum OpType : int
 
 class Chip
 {
-    private:
+    public:
+    //private:
         uint32_t ratio_;
         uint32_t aml_;
         uint32_t pml_;
@@ -47,7 +48,7 @@ class Chip
             }
         }
     
-    public:
+    //public:
         OpType optype_;
 
         // ---------------------------------------------------------------------------
@@ -306,41 +307,6 @@ class fmvgen /*: public fmgen*/
                 {   0, 0, 0, 0, 0, 0, 0, 0},{  0, 0 ,0, 0, 0, 0, 0, 0},
                 };
 
-                static constexpr const int ssgenvtable[8][2][3][2] = {
-                     {
-                        {  { 1,  1 }, {  1,  1 }, {  1,  1 } },      // 08 
-                        {  { 0,  1 }, {  1,  1 }, {  1,  1 } },      // 08 56~
-                    },
-                     {
-                        {  { 0,  1 }, {  2,  0 }, {  2,  0 } },      // 09
-                        {  { 0,  1 }, {  2,  0 }, {  2,  0 } },      // 09
-                    },
-                     {
-                        {  { 1, -1 }, {  0,  1 }, {  1, -1 } },      // 10
-                        {  { 0,  1 }, {  1, -1 }, {  0,  1 } },      // 10 60~
-                    },
-                     {
-                        {  { 1, -1 }, {  0,  0 }, {  0,  0 } },      // 11
-                        {  { 0,  1 }, {  0,  0 }, {  0,  0 } },      // 11 60~
-                    },
-                     {
-                        {  { 2, -1 }, {  2, -1 }, {  2, -1 } },      // 12
-                        {  { 1, -1 }, {  2, -1 }, {  2, -1 } },      // 12 56~
-                    },
-                     {
-                        {  { 1, -1 }, {  0,  0 }, {  0,  0 } },      // 13
-                        {  { 1, -1 }, {  0,  0 }, {  0,  0 } },      // 13
-                    },
-                     {
-                        {  { 0,  1 }, {  1, -1 }, {  0,  1 } },      // 14
-                        {  { 1, -1 }, {  0,  1 }, {  1, -1 } },      // 14 60~
-                    },
-                     {
-                        {  { 0,  1 }, {  2,  0 }, {  2,  0 } },      // 15
-                        {  { 1, -1 }, {  2,  0 }, {  2,  0 } },      // 15 60~
-                    }
-                };
-
                 // ---------------------------------------------------------------------------
                 //	Operator
                 //
@@ -383,6 +349,7 @@ class fmvgen /*: public fmgen*/
                     keyon_ = false;
                     //tl_out_ = false;
                     tl_out_ = 0;
+                    ssg_inverted = false;
                     ssg_type_ = 0;
 
                     // PG Part
@@ -396,15 +363,19 @@ class fmvgen /*: public fmgen*/
                     //	Reset();
                 }
 
+                inline uint32_t bitfield(uint32_t value, int start, int length = 1)
+                {
+                    return (value >> start) & ((1 << length) - 1);
+                }
+
                 //	初期化
                 void Reset()
                 {
                     // EG part
                     tl_ = tl_latch_ = 127;
-                    ShiftPhase(EGPhase::off);
+                    ShiftPhase(EGPhase::off, false);
                     eg_count_ = 0;
                     eg_curve_count_ = 0;
-                    ssg_phase_ = 0;
 
                     // PG part
                     pg_count_ = 0;
@@ -502,20 +473,8 @@ class fmvgen /*: public fmgen*/
                                 SetEGRate(my_min(63, rr_ + key_scale_rate_));
                                 break;
                         }
-
-                        // SSG-EG
-                        if (ssg_type_ != 0 && (eg_phase_ != EGPhase::release))
-                        {
-                            int m = ar_ >= ((ssg_type_ == 8 || ssg_type_ == 12) ? 56 : 60) ? 1 : 0;
-
-                            //assert(0 <= ssg_phase_ && ssg_phase_ <= 2);
-                            const int* table = ssgenvtable[ssg_type_ & 7][m][ssg_phase_];
-
-                            ssg_offset_ = table[0] * 0x200;
-                            ssg_vector_ = table[1];
-                        }
                         // LFO
-                        ams_ = amtable[(int)type_][amon_ ? (ms_ >> 4) & 3 : 0];
+                        ams_ = amtable[(int)type_][amon_ ? ((ms_ >> 4) & 3) : 0];
                         EGUpdate();
 
                         dbgopout_ = 0;
@@ -523,26 +482,19 @@ class fmvgen /*: public fmgen*/
                 }
 
                 //	envelop の eg_phase_ 変更
-                void ShiftPhase(EGPhase nextphase)
+                void ShiftPhase(EGPhase nextphase, bool is_restart)
                 {
                     switch (nextphase)
                     {
                         case EGPhase::attack:        // Attack Phase
                             tl_ = tl_latch_;
-                            if (ssg_type_ != 0)
-                            {
-                                ssg_phase_ = ssg_phase_ + 1;
-                                if (ssg_phase_ > 2)
-                                    ssg_phase_ = 1;
-
-                                int m = ar_ >= ((ssg_type_ == 8 || ssg_type_ == 12) ? 56 : 60) ? 1 : 0;
-
-                                //assert(0 <= ssg_phase_ && ssg_phase_ <= 2);
-                                const int* table = ssgenvtable[ssg_type_ & 7][m][ssg_phase_];
-
-                                ssg_offset_ = table[0] * 0x200;
-                                ssg_vector_ = table[1];
-                            }
+                            //if (ssg_type_ & (1 << 3))
+                            //{
+                                if(!is_restart) 
+                                {
+                                    ssg_inverted = ((ssg_type_ & (1 << 3)) >> 3) & bitfield(ssg_type_, 2); //(1 << 3) = SSG-EG enable
+                                }
+                            //}
                             if ((ar_ + key_scale_rate_) < 62)
                             {
                                 SetEGRate(ar_ != 0 ? my_min(63, ar_ + key_scale_rate_) : 0);
@@ -553,7 +505,7 @@ class fmvgen /*: public fmgen*/
                             if (sl_ != 0)
                             {
                                 eg_level_ = 0;
-                                eg_level_on_next_phase_ = (int)(ssg_type_ != 0 ? my_min(sl_ * 8, 0x200) : sl_ * 8);
+                                eg_level_on_next_phase_ = sl_ * 8;
 
                                 SetEGRate(dr_ != 0 ? my_min(63, dr_ + key_scale_rate_) : 0);
                                 eg_phase_ = EGPhase::decay;
@@ -561,7 +513,8 @@ class fmvgen /*: public fmgen*/
                             }
 
                             eg_level_ = (int)(sl_ * 8);
-                            eg_level_on_next_phase_ = ssg_type_ != 0 ? 0x200 : 0x400;
+                            //eg_level_on_next_phase_ = ssg_type_ != 0 ? 0x200 : 0x400;
+                            eg_level_on_next_phase_ = 0x400;
 
                             SetEGRate(sr_ != 0 ? my_min(63, sr_ + key_scale_rate_) : 0);
                             eg_phase_ = EGPhase::sustain;
@@ -570,7 +523,7 @@ class fmvgen /*: public fmgen*/
                             if (sl_ != 0)
                             {
                                 eg_level_ = 0;
-                                eg_level_on_next_phase_ = (int)(ssg_type_ != 0 ? my_min(sl_ * 8, 0x200) : sl_ * 8);
+                                eg_level_on_next_phase_ = sl_ * 8;
 
                                 SetEGRate(dr_ != 0 ? my_min(63, dr_ + key_scale_rate_) : 0);
                                 eg_phase_ = EGPhase::decay;
@@ -578,26 +531,20 @@ class fmvgen /*: public fmgen*/
                             }
 
                             eg_level_ = (int)(sl_ * 8);
-                            eg_level_on_next_phase_ = ssg_type_ != 0 ? 0x200 : 0x400;
+                            eg_level_on_next_phase_ = 0x400;
 
                             SetEGRate(sr_ != 0 ? my_min(63, sr_ + key_scale_rate_) : 0);
                             eg_phase_ = EGPhase::sustain;
                             break;
                         case EGPhase::sustain:       // Sustain Phase
                             eg_level_ = (int)(sl_ * 8);
-                            eg_level_on_next_phase_ = ssg_type_ != 0 ? 0x200 : 0x400;
+                            eg_level_on_next_phase_ = 0x400;
 
                             SetEGRate(sr_ != 0 ? my_min(63, sr_ + key_scale_rate_) : 0);
                             eg_phase_ = EGPhase::sustain;
                             break;
 
                         case EGPhase::release:       // Release Phase
-                            if (ssg_type_ != 0)
-                            {
-                                eg_level_ = eg_level_ * ssg_vector_ + ssg_offset_;
-                                ssg_vector_ = 1;
-                                ssg_offset_ = 0;
-                            }
                             if (eg_phase_ == EGPhase::attack || (eg_level_ < FM_EG_BOTTOM)) //0x400/* && eg_phase_ != off*/))
                             {
                                 eg_level_on_next_phase_ = 0x400;
@@ -653,13 +600,13 @@ class fmvgen /*: public fmgen*/
 
                 void EGUpdate()
                 {
-                    if (ssg_type_ == 0)
+                    if (ssg_inverted)
                     {
-                        eg_out_ = my_min(tl_out_ + eg_level_, 0x3ff) << (1 + 2);
+                        eg_out_ = my_min(tl_out_ + ((0x200 - (uint32_t)eg_level_) & 0x3ff), 0x3ff) << (1 + 2);
                     }
                     else
                     {
-                        eg_out_ = my_min(tl_out_ + eg_level_ * ssg_vector_ + ssg_offset_, 0x3ff) << (1 + 2);
+                        eg_out_ = my_min(tl_out_ + eg_level_, 0x3ff) << (1 + 2);
                     }
                 }
 
@@ -681,45 +628,95 @@ class fmvgen /*: public fmgen*/
                         {
                             eg_level_ -= 1 + (eg_level_ >> c);
                             if (eg_level_ <= 0)
-                                ShiftPhase(EGPhase::decay);
+                                ShiftPhase(EGPhase::decay, false);
                         }
                         EGUpdate();
                     }
                     else
                     {
-                        if (ssg_type_ == 0)
+                        if (!(ssg_type_ & (1 << 3)))
                         {
                             eg_level_ += decaytable1[eg_rate_][eg_curve_count_ & 7];
-                            if (eg_level_ >= eg_level_on_next_phase_)
-                                ShiftPhase((EGPhase)(eg_phase_ + 1));
-                            EGUpdate();
                         }
-                        else
+                        else if(eg_level_ < 0x200)
                         {
                             eg_level_ += 4 * decaytable1[eg_rate_][eg_curve_count_ & 7];
-                            if (eg_level_ >= eg_level_on_next_phase_)
-                            {
-                                EGUpdate();
-                                switch (eg_phase_)
-                                {
-                                    case EGPhase::decay:
-                                        ShiftPhase(EGPhase::sustain);
-                                        break;
-                                    case EGPhase::sustain:
-                                        ShiftPhase(EGPhase::attack);
-                                        break;
-                                    case EGPhase::release:
-                                        ShiftPhase(EGPhase::off);
-                                        break;
-                                }
-                            }
                         }
+
+                        if (eg_level_ >= eg_level_on_next_phase_)
+                            ShiftPhase((EGPhase)(eg_phase_ + 1), false);
+                        EGUpdate();
                     }
                     eg_curve_count_++;
                 }
 
+                //switch (eg_phase_)
+                        //{
+                            //case EGPhase::attack:
+
+                void clock_ssg_eg_state()
+                {
+                    //SSG-EG
+                    if(!(ssg_type_ & (1 << 3))) return;
+
+                    // work only happens once the attenuation crosses above 0x200
+                    if (eg_level_ < 0x200)
+                        return;
+
+                    // 8 SSG-EG modes:
+                    //    000: repeat normally
+                    //    001: run once, hold low
+                    //    010: repeat, alternating between inverted/non-inverted
+                    //    011: run once, hold high
+                    //    100: inverted repeat normally
+                    //    101: inverted run once, hold low
+                    //    110: inverted repeat, alternating between inverted/non-inverted
+                    //    111: inverted run once, hold high
+                    uint32_t mode = ssg_type_ & 7;
+
+                    // hold modes (1/3/5/7)
+                    if (mode & (1 << 0))
+                    {
+                        // set the inverted flag to the end state (0 for modes 1/7, 1 for modes 3/5)
+                        ssg_inverted = bitfield(mode, 2) ^ bitfield(mode, 1);
+
+                        // if holding, force the attenuation to the expected value once we're
+                        // past the attack phase
+                        if (eg_phase_ != EGPhase::attack)
+                            eg_level_ = ssg_inverted ? 0x200 : 0x3ff;
+                    }
+
+                    // continuous modes (0/2/4/6)
+                    else
+                    {
+                        // toggle invert in alternating mode (even in attack state)
+                        ssg_inverted ^= bitfield(mode, 1);
+
+                        // restart attack if in decay/sustain states
+                        if (eg_phase_ == EGPhase::decay || eg_phase_ == EGPhase::sustain)
+                            ShiftPhase(EGPhase::attack, true);
+
+                        // phase is reset to 0 in modes 0/4
+                        if (bitfield(mode, 1) == 0)
+                            pg_count_ = 0;
+                    }
+
+                    // in all modes, once we hit release state, attenuation is forced to maximum
+                    if (eg_phase_ == EGPhase::release)
+                        eg_level_ = 0x3ff;
+                }
+
                 void EGStep()
                 {
+                    if(ssg_type_ & (1 << 3))
+                    {
+                        clock_ssg_eg_state();
+                    }
+                    else
+                    {
+                        ssg_inverted = false;
+                    }
+
                     eg_count_ -= eg_count_diff_;
 
                     // EG の変化は全スロットで同期しているという噂もある
@@ -741,6 +738,7 @@ class fmvgen /*: public fmgen*/
                 {
                     uint32_t ret = pg_count_;
                     pg_count_ += (uint32_t)(pg_diff_ + ((pg_diff_lfo_ * chip_.GetPMV()) >> 5));// & -(1 << (2+IS2EC_SHIFT)));
+
                     dbgpgout_ = (int)ret;
                     return ret /* + pmv * pg_diff_;*/;
                 }
@@ -862,9 +860,9 @@ class fmvgen /*: public fmgen*/
                     {
                         //位相リセットスイッチ有効
 
-                        ShiftPhase(EGPhase::off);
-                        ssg_phase_ = -1;
-                        ShiftPhase(EGPhase::attack);
+                        ShiftPhase(EGPhase::off, false);
+                        //ssg_phase_ = -1;
+                        ShiftPhase(EGPhase::attack, false);
                         EGUpdate();
                         in2_ = out_ = out2_ = 0;
 
@@ -877,8 +875,7 @@ class fmvgen /*: public fmgen*/
 
                     if (eg_phase_ == EGPhase::off || eg_phase_ == EGPhase::release)
                     {
-                        ssg_phase_ = -1;
-                        ShiftPhase(EGPhase::attack);
+                        ShiftPhase(EGPhase::attack, false);
                         EGUpdate();
                         in2_ = out_ = out2_ = 0;
 
@@ -892,8 +889,14 @@ class fmvgen /*: public fmgen*/
                 {
                     //if (keyon_)
                     //{
+                    //if(eg_phase_ == EGPhase::release) return;
+                    if ((ssg_type_ & (1 << 3)) && ssg_inverted)
+                    {
+                        eg_level_ = (0x200 - eg_level_) & 0x3ff;
+                        ssg_inverted = false;
+                    }
                         keyon_ = false;
-                        ShiftPhase(EGPhase::release);
+                        ShiftPhase(EGPhase::release, false);
                     //}
                 }
 
@@ -986,10 +989,7 @@ class fmvgen /*: public fmgen*/
                 //	SSG-type Envelop (0-15)
                 void SetSSGEC(uint32_t ssgec)
                 {
-                    if ((ssgec & 8) != 0)
-                        ssg_type_ = ssgec;
-                    else
-                        ssg_type_ = 0;
+                    ssg_type_ = ssgec;
                 }
 
                 void SetAMON(bool amon)
@@ -1075,9 +1075,7 @@ class fmvgen /*: public fmgen*/
                                             //		int		am_depth_;		// AM depth
                 int eg_rate_;
                 int eg_curve_count_;
-                int ssg_offset_;
-                int ssg_vector_;
-                int ssg_phase_;
+                uint8_t ssg_inverted;
 
                 static const int IS2EC_SHIFT = ((20 + FM_PGBITS) - 13);
 
@@ -1121,10 +1119,6 @@ class fmvgen /*: public fmgen*/
                 //	Tables ---------------------------------------------------------------
                 static uint32_t rate_table[16];
                 static uint32_t multable[4][16];
-
-                void SSGShiftPhase(int mode)
-                {
-                }
 
                 int FBCalc(int fb)
                 {
@@ -1400,6 +1394,11 @@ class fmvgen /*: public fmgen*/
             int CalcL()
             {
                 chip_.SetPMV(pms[chip_.GetPML()]);
+
+                for(int i = 0; i < 4; i++)
+                {
+                    op[i].chip_.pmv_ = chip_.pmv_;
+                }
 
                 int r = 0;
                 if (!ac)
