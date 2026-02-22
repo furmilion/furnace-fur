@@ -30,6 +30,8 @@ class FM6
         int wavecounter = 0;
         bool waveSetDic = false;
 
+        int ch_output[6][2];
+
         void Reset()
         {
             uint32_t i;
@@ -415,6 +417,12 @@ class FM6
             idest[4] = pan[4];
             idest[5] = pan[5];
 
+            for(int i = 0; i < 6; i++)
+            {
+                ch_output[i][0] = 0;
+                ch_output[i][1] = 0;
+            }
+
             int v;
             for (int dest = 0; dest < nsamples; dest++)
             {
@@ -463,6 +471,9 @@ class FM6
                 buf[1] = (int)((dest[0] & 0x1) * R * panR[0]) * reversePhase->FM[num][0][1];
                 buf[2] = (int)(buf[0] * reverb->SendLevel[efcStartCh + 0]);
                 buf[3] = (int)(buf[1] * reverb->SendLevel[efcStartCh + 0]);
+
+                ch_output[0][0] = buf[0];
+                ch_output[0][1] = buf[1];
             }
 
             if ((activech & 0x004) != 0)
@@ -480,6 +491,9 @@ class FM6
                 buf[1] += R;
                 buf[2] += (int)(L * reverb->SendLevel[efcStartCh + 1]);
                 buf[3] += (int)(R * reverb->SendLevel[efcStartCh + 1]);
+
+                ch_output[1][0] = L;
+                ch_output[1][1] = R;
             }
 
             if ((activech & 0x010) != 0)
@@ -497,6 +511,9 @@ class FM6
                 buf[1] += R;
                 buf[2] += (int)(L * reverb->SendLevel[efcStartCh + 2]);
                 buf[3] += (int)(R * reverb->SendLevel[efcStartCh + 2]);
+
+                ch_output[2][0] = L;
+                ch_output[2][1] = R;
             }
 
             if ((activech & 0x040) != 0)
@@ -514,6 +531,9 @@ class FM6
                 buf[1] += R;
                 buf[2] += (int)(L * reverb->SendLevel[efcStartCh + 3]);
                 buf[3] += (int)(R * reverb->SendLevel[efcStartCh + 3]);
+
+                ch_output[3][0] = L;
+                ch_output[3][1] = R;
             }
 
             if ((activech & 0x100) != 0)
@@ -531,6 +551,9 @@ class FM6
                 buf[1] += R;
                 buf[2] += (int)(L * reverb->SendLevel[efcStartCh + 4]);
                 buf[3] += (int)(R * reverb->SendLevel[efcStartCh + 4]);
+
+                ch_output[4][0] = L;
+                ch_output[4][1] = R;
             }
 
             if ((activech & 0x400) != 0)
@@ -548,6 +571,9 @@ class FM6
                 buf[1] += R;
                 buf[2] += (int)(L * reverb->SendLevel[efcStartCh + 5]);
                 buf[3] += (int)(R * reverb->SendLevel[efcStartCh + 5]);
+
+                ch_output[5][0] = L;
+                ch_output[5][1] = R;
             }
         }
 
@@ -566,6 +592,9 @@ class FM6
                 buf[1] = (int)((dest[0] & 0x1) * R * panR[0]) * reversePhase->FM[num][0][1];
                 buf[2] = (int)(buf[0] * reverb->SendLevel[efcStartCh + 0]);
                 buf[3] = (int)(buf[1] * reverb->SendLevel[efcStartCh + 0]);
+
+                ch_output[0][0] = buf[0];
+                ch_output[0][1] = buf[1];
             }
             if ((activech & 0x004) != 0)
             {
@@ -581,6 +610,9 @@ class FM6
                 buf[1] += R;
                 buf[2] += (int)(L * reverb->SendLevel[efcStartCh + 1]);
                 buf[3] += (int)(R * reverb->SendLevel[efcStartCh + 1]);
+
+                ch_output[1][0] = L;
+                ch_output[1][1] = R;
             }
             if ((activech & 0x010) != 0)
             {
@@ -596,6 +628,9 @@ class FM6
                 buf[1] += R;
                 buf[2] += (int)(L * reverb->SendLevel[efcStartCh + 2]);
                 buf[3] += (int)(R * reverb->SendLevel[efcStartCh + 2]);
+
+                ch_output[2][0] = L;
+                ch_output[2][1] = R;
             }
             if ((activech & 0x040) != 0)
             {
@@ -611,6 +646,9 @@ class FM6
                 buf[1] += R;
                 buf[2] += (int)(L * reverb->SendLevel[efcStartCh + 3]);
                 buf[3] += (int)(R * reverb->SendLevel[efcStartCh + 3]);
+
+                ch_output[3][0] = L;
+                ch_output[3][1] = R;
             }
             if ((activech & 0x100) != 0)
             {
@@ -626,6 +664,9 @@ class FM6
                 buf[1] += R;
                 buf[2] += (int)(L * reverb->SendLevel[efcStartCh + 4]);
                 buf[3] += (int)(R * reverb->SendLevel[efcStartCh + 4]);
+
+                ch_output[4][0] = L;
+                ch_output[4][1] = R;
             }
             if ((activech & 0x400) != 0)
             {
@@ -641,6 +682,9 @@ class FM6
                 buf[1] += R;
                 buf[2] += (int)(L * reverb->SendLevel[efcStartCh + 5]);
                 buf[3] += (int)(R * reverb->SendLevel[efcStartCh + 5]);
+
+                ch_output[5][0] = L;
+                ch_output[5][1] = R;
             }
         }
 

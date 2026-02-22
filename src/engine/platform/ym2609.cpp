@@ -125,6 +125,12 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
 
     ym2609->Mix(output_buf, 1);
 
+    for(int i = 0; i < 6; i++)
+    {
+      oscBuf[i]->putSample(samp,(ym2609->fm6[0].ch_output[i][0] + ym2609->fm6[0].ch_output[i][1]) / 2);
+      oscBuf[i+6]->putSample(samp,(ym2609->fm6[1].ch_output[i][0] + ym2609->fm6[1].ch_output[i][1]) / 2);
+    }
+
     /*if(ym2609->fm6[0].ch[0].op[0].eg_phase_ != fmvgen::Operator::EGPhase::off)
     {
       logD("ch0 op0 eg stage %d acc (level) %d eg_out_ %d tl_out_ %d", (int)ym2609->fm6[0].ch[0].op[0].eg_phase_, (int)ym2609->fm6[0].ch[0].op[0].eg_level_, (int)ym2609->fm6[0].ch[0].op[0].eg_out_, (int)ym2609->fm6[0].ch[0].op[0].tl_out_);
