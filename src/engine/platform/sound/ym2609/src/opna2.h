@@ -443,10 +443,10 @@ class OPNA2 /*: public OPNABase*/
                     fm6[1].ch[i].SetChip(fm6[1].chip);
                 }
 
-                psg2[0].SetClock((int)(clock / table[p][1]), (int)psgrate);
-                psg2[1].SetClock((int)(clock / table[p][1]), (int)psgrate);
-                psg2[2].SetClock((int)(clock / table[p][1]), (int)psgrate);
-                psg2[3].SetClock((int)(clock / table[p][1]), (int)psgrate);
+                psg2[0].SetClock((int)(clock / 8), (int)psgrate);
+                psg2[1].SetClock((int)(clock / 8), (int)psgrate);
+                psg2[2].SetClock((int)(clock / 8), (int)psgrate);
+                psg2[3].SetClock((int)(clock / 8), (int)psgrate);
 
                 for (int i = 0; i < 8; i++)
                 {

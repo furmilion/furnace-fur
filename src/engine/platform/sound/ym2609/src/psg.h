@@ -84,17 +84,11 @@ class PSG
             nperiodbase = (uint32_t)((1 << noiseshift) / 4.0 * clock / rate);
 
             // 各データの更新
-            int tmp;
-            tmp = ((reg[0] + reg[1] * 256) & 0xfff);
-            speriod[0] = (uint32_t)(tmp != 0 ? tperiodbase / tmp : tperiodbase);
-            tmp = ((reg[2] + reg[3] * 256) & 0xfff);
-            speriod[1] = (uint32_t)(tmp != 0 ? tperiodbase / tmp : tperiodbase);
-            tmp = ((reg[4] + reg[5] * 256) & 0xfff);
-            speriod[2] = (uint32_t)(tmp != 0 ? tperiodbase / tmp : tperiodbase);
-            tmp = reg[6] & 0x1f;
-            nperiod = (uint32_t)(tmp != 0 ? nperiodbase / tmp / 2 : nperiodbase / 2);
-            tmp = ((reg[11] + reg[12] * 256) & 0xffff);
-            eperiod = (uint32_t)(tmp != 0 ? eperiodbase / tmp : eperiodbase * 2);
+            speriod[0] = (uint32_t)(tperiodbase);
+            speriod[1] = (uint32_t)(tperiodbase);
+            speriod[2] = (uint32_t)(tperiodbase);
+            nperiod = (uint32_t)(nperiodbase / 2);
+            eperiod = (uint32_t)(eperiodbase * 2);
         }
 
         // ---------------------------------------------------------------------------
