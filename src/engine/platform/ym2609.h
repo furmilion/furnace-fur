@@ -53,6 +53,39 @@ class DivPlatformYM2609: public DivDispatch {
         wave_type(0) {}
     } op_ym2609[4];
 
+    struct PSGMode {
+      // bit 4: timer FX
+      // bit 3: DAC
+      // bit 2: envelope
+      // bit 1: noise
+      // bit 0: tone
+      unsigned char val;
+
+      unsigned char getTone() {
+        return (val&8)?0:(val&1);
+      }
+
+      unsigned char getNoise() {
+        return (val&8)?0:(val&2);
+      }
+
+      unsigned char getEnvelope() {
+        return (val&8)?0:(val&4);
+      }
+
+      unsigned char getTimerFX() {
+        return (val&8)?0:(val&16);
+      }
+
+      PSGMode(unsigned char v=1):
+        val(v) {}
+    };
+    PSGMode curPSGMode;
+    PSGMode nextPSGMode;
+
+    unsigned char autoEnvNum, autoEnvDen;
+    unsigned short fixedFreq;
+
     Channel():
       SharedChannel<signed short>(0xff),
       opMask(15),
@@ -68,8 +101,19 @@ class DivPlatformYM2609: public DivDispatch {
         {
           op_ym2609[i].wave_type = i;
         }
+        curPSGMode.val = 0;
+        nextPSGMode.val = 1;
+        autoEnvNum = 0;
+        autoEnvDen = 0;
+        fixedFreq = 0;
       }
   };
+
+  unsigned char ayEnvMode[4];
+  unsigned short ayEnvPeriod[4];
+  short ayEnvSlideLow[4];
+  short ayEnvSlide[4];
+
   Channel chan[YM2609_NUM_CHANNELS];
   DivDispatchOscBuffer* oscBuf[YM2609_NUM_CHANNELS];
   struct QueuedWrite {
@@ -82,6 +126,7 @@ class DivPlatformYM2609: public DivDispatch {
   //DivWaveSynth ws;
 
   int clocks_per_sample; //to make one reg write per clock cycle
+  unsigned int fmDivBase;
 
   const unsigned short ADDR_MULT_DT=0x30;
   const unsigned short ADDR_TL=0x40;
@@ -126,6 +171,8 @@ class DivPlatformYM2609: public DivDispatch {
   const unsigned char konOffs[6]={
     0, 1, 2, 4, 5, 6
   };
+
+  const unsigned short ssg_offsets[4] = { 0, 0x120, 0x200, 0x210 };
 
   double fmFreqBase;
 
