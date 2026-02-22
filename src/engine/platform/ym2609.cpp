@@ -521,7 +521,7 @@ void DivPlatformYM2609::tick(bool sysTick)
       int ssg_num = (i - 12) / 3;
       int chan_num = (i - 12) % 3;
       if (chan[i].freqChanged || chan[i].keyOn || chan[i].keyOff) {
-        chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,true,0,chan[i].pitch2,chipClock,CHIP_DIVIDER);
+        chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,true,0,chan[i].pitch2,chipClock,32);
 
         if (chan[i].freq<0) chan[i].freq=0;
         if (chan[i].freq>4095) chan[i].freq=4095;
