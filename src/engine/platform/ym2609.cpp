@@ -174,6 +174,8 @@ void DivPlatformYM2609::tick(bool sysTick)
       
     }
 
+    bool writePan = false;
+
     if (chan[i].std.vol.had) 
     {
       if (i<12)
@@ -232,8 +234,29 @@ void DivPlatformYM2609::tick(bool sysTick)
         }
 
         chan[i].freqChanged = true; //to write left soft pan
+        writePan = true;
 
-        rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
+        //rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
+      }
+      if(i >= 12 && i < 24)
+      {
+        //int ssg_num = (i - 12) / 3;
+        //int chan_num = (i - 12) % 3;
+
+        if(chan[i].std.panL.val == 0)
+        {
+          chan[i].pan &= ~(1 << 1);
+        }
+        else
+        {
+          chan[i].pan |= (1 << 1);
+          chan[i].panLeft = (7 - ((chan[i].std.panL.val - 1) & 7));
+        }
+
+        writePan = true;
+
+        //rWrite(ssg_offsets[ssg_num] + 0xf, chan[i].panRight | (chan[i].panLeft << 3) | (chan_num << 6));
+        //rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[i].vol&15)|((chan[i].curPSGMode.getEnvelope())<<2)|(chan[i].pan << 6));
       }
     }
     if (chan[i].std.panR.had) 
@@ -250,10 +273,51 @@ void DivPlatformYM2609::tick(bool sysTick)
           chan[i].panRight = (3 - ((chan[i].std.panR.val - 1) & 3));
         }
 
+        writePan = true;
+
+        //rWrite(chanOffs[i]+ADDR_FB_ALG,(chan[i].state.alg&7)|(chan[i].state.fb<<3)|((chan[i].panRight&3)<<6));
+        //rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
+      }
+      if(i >= 12 && i < 24)
+      {
+        //int ssg_num = (i - 12) / 3;
+        //int chan_num = (i - 12) % 3;
+
+        if(chan[i].std.panR.val == 0)
+        {
+          chan[i].pan &= ~(1 << 0);
+        }
+        else
+        {
+          chan[i].pan |= (1 << 0);
+          chan[i].panRight = (7 - ((chan[i].std.panR.val - 1) & 7));
+        }
+
+        writePan = true;
+
+        //rWrite(ssg_offsets[ssg_num] + 0xf, chan[i].panRight | (chan[i].panLeft << 3) | (chan_num << 6));
+        //rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[i].vol&15)|((chan[i].curPSGMode.getEnvelope())<<2)|(chan[i].pan << 6));
+      }
+    }
+
+    if(writePan)
+    {
+      if(i < 12)
+      {
         rWrite(chanOffs[i]+ADDR_FB_ALG,(chan[i].state.alg&7)|(chan[i].state.fb<<3)|((chan[i].panRight&3)<<6));
         rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
       }
+      if(i >= 12 && i < 24)
+      {
+        int ssg_num = (i - 12) / 3;
+        int chan_num = (i - 12) % 3;
+
+        rWrite(ssg_offsets[ssg_num] + 0xf, chan[i].panRight | (chan[i].panLeft << 3) | (chan_num << 6));
+        rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[i].vol&15)|((chan[i].curPSGMode.getEnvelope())<<2)|(chan[i].pan << 6));
+      }
+      writePan = false;
     }
+
     if (chan[i].std.alg.had) {
       if(i < 12)
       {
@@ -482,7 +546,7 @@ void DivPlatformYM2609::tick(bool sysTick)
           rWrite(ssg_offsets[ssg_num]+((chan_num)<<1),chan[i].fixedFreq&0xff);
           rWrite(ssg_offsets[ssg_num]+1+((chan_num)<<1),chan[i].fixedFreq>>8);
         } else {
-          rWrite(ssg_offsets[ssg_num]+(chan_num)<<1,chan[i].freq&0xff);
+          rWrite(ssg_offsets[ssg_num]+((chan_num)<<1),chan[i].freq&0xff);
           rWrite(ssg_offsets[ssg_num]+1+((chan_num)<<1),chan[i].freq>>8);
         }
         if (chan[i].keyOn) chan[i].keyOn=false;
@@ -665,12 +729,12 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
         }
 
         rWrite(ssg_offsets[ssg_num]+0x07,
-          ((chan[ssg_num*3+0].curPSGMode.getTone())|
-           ((chan[ssg_num*3+1].curPSGMode.getTone())<<1)|
-           ((chan[ssg_num*3+2].curPSGMode.getTone())<<2)|
-           ((chan[ssg_num*3+0].curPSGMode.getNoise())<<2)|
-           ((chan[ssg_num*3+1].curPSGMode.getNoise())<<3)|
-           ((chan[ssg_num*3+2].curPSGMode.getNoise())<<4)));
+          ~((chan[12+ssg_num*3+0].curPSGMode.getTone())|
+           ((chan[12+ssg_num*3+1].curPSGMode.getTone())<<1)|
+           ((chan[12+ssg_num*3+2].curPSGMode.getTone())<<2)|
+           ((chan[12+ssg_num*3+0].curPSGMode.getNoise())<<2)|
+           ((chan[12+ssg_num*3+1].curPSGMode.getNoise())<<3)|
+           ((chan[12+ssg_num*3+2].curPSGMode.getNoise())<<4)));
       }
       
       break;

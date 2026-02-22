@@ -169,6 +169,13 @@ class PSG2 : public PSG
             this->compressor = compressor;
             this->efcStartCh = efcStartCh;
             makeTblGetSample();
+
+            for (int i = 0; i < 3; i++)
+            {
+              panpot[i] = 3;
+              panpotLM[i] = 0;
+              panpotRM[i] = 0;
+            }
         }
 
         ~PSG2()
@@ -220,21 +227,21 @@ class PSG2 : public PSG
                 case 8:
                     olevel[0] = (uint32_t)((mask & 1) != 0 ? EmitTable[(data & 15) * 2 + 1] : 0);
                     panpot[0] = (uint8_t)(data >> 6);
-                    panpot[0] = (uint8_t)(panpot[0] == 0 ? 3 : panpot[0]);
+                    //panpot[0] = (uint8_t)(panpot[0] == 0 ? 3 : panpot[0]);
                     phaseReset[0] = (uint8_t)((data & 0x20) != 0 ? 1 : 0);
                     break;
 
                 case 9:
                     olevel[1] = (uint32_t)((mask & 2) != 0 ? EmitTable[(data & 15) * 2 + 1] : 0);
                     panpot[1] = (uint8_t)(data >> 6);
-                    panpot[1] = (uint8_t)(panpot[1] == 0 ? 3 : panpot[1]);
+                    //panpot[1] = (uint8_t)(panpot[1] == 0 ? 3 : panpot[1]);
                     phaseReset[1] = (uint8_t)((data & 0x20) != 0 ? 1 : 0);
                     break;
 
                 case 10:
                     olevel[2] = (uint32_t)((mask & 4) != 0 ? EmitTable[(data & 15) * 2 + 1] : 0);
                     panpot[2] = (uint8_t)(data >> 6);
-                    panpot[2] = (uint8_t)(panpot[2] == 0 ? 3 : panpot[2]);
+                    //panpot[2] = (uint8_t)(panpot[2] == 0 ? 3 : panpot[2]);
                     phaseReset[2] = (uint8_t)((data & 0x20) != 0 ? 1 : 0);
                     break;
 
