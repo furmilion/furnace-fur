@@ -1528,6 +1528,41 @@ void DivInstrument::writeFeatureS3(SafeWriter* w) {
 void DivInstrument::writeFeature9F(SafeWriter* w) {
   FEATURE_BEGIN("9F");
 
+  w->writeC(ym2609.ym2609fm.alg_construct_switch);
+
+  for(int i = 0; i < 4; i++)
+  {
+    DivInstrumentWaveSynth& op_ws = ym2609.ym2609fm.op[i].ws;
+
+    w->writeC(ym2609.ym2609fm.op[i].alg_link | ((ym2609.ym2609fm.op[i].feedback) << 4) | (ym2609.ym2609fm.op[i].phase_reset << 7));
+    w->writeC((ym2609.ym2609fm.op[i].custom_wave ? 1 : 0) | ((op_ws.enabled ? 1 : 0) << 1));
+
+    if(ym2609.ym2609fm.op[i].custom_wave)
+    {
+      w->writeS(ym2609.ym2609fm.op[i].custom_wave_index);
+
+      if(op_ws.enabled)
+      {
+        w->writeI(op_ws.wave1);
+        w->writeI(op_ws.wave2);
+        w->writeC(op_ws.rateDivider);
+        w->writeC(op_ws.effect);
+        w->writeC(op_ws.global);
+        w->writeC(op_ws.speed);
+        w->writeC(op_ws.param1);
+        w->writeC(op_ws.param2);
+        w->writeC(op_ws.param3);
+        w->writeC(op_ws.param4);
+      }
+    }
+  }
+
+  FEATURE_END;
+}
+
+void DivInstrument::writeFeature9D(SafeWriter* w) {
+  FEATURE_BEGIN("9D");
+
   
 
   FEATURE_END;
@@ -1580,7 +1615,8 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
   bool featurePN=false;
   bool featureS2=false;
   bool featureS3=false;
-  bool feature9F=false;
+  bool feature9F=false; //additional data for YM2609 FM
+  bool feature9D=false; //YM2609 DSP
 
   bool checkForWL=false;
 
@@ -1839,9 +1875,16 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
         break;
       case DIV_INS_YM2609_FM:
         featureFM=true;
-        feature9F=true; //additional data for YM2609 FM
+        feature9F=true;
+        feature9D=true;
         if (amiga.useSample) featureSL=true;
-        if (ws.enabled) featureWS=true;
+        //if (ws.enabled) featureWS=true;
+        //TODO: save FM ops ws data?
+        //TODO: if sample playback is implemented, save sample in fui?
+        //TODO: save custom waves' wavetables in fui?
+        break;
+      case DIV_INS_YM2609_SSG:
+        feature9D=true;
         break;
       case DIV_INS_MAX:
         break;
@@ -2063,6 +2106,9 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
   }
   if (feature9F) {
     writeFeature9F(w);
+  }
+  if (feature9D) {
+    writeFeature9D(w);
   }
 
   if (fui && (featureSL || featureWL)) {
@@ -3159,6 +3205,47 @@ void DivInstrument::readFeatureS3(SafeReader& reader, short version) {
 void DivInstrument::readFeature9F(SafeReader& reader, short version) {
   READ_FEAT_BEGIN;
 
+  ym2609.ym2609fm.alg_construct_switch = reader.readC();
+
+  for(int i = 0; i < 4; i++)
+  {
+    DivInstrumentWaveSynth& op_ws = ym2609.ym2609fm.op[i].ws;
+
+    unsigned char temp = reader.readC();
+    ym2609.ym2609fm.op[i].alg_link = temp & 0xf;
+    ym2609.ym2609fm.op[i].feedback = (temp >> 4) & 7;
+    ym2609.ym2609fm.op[i].phase_reset = temp >> 7;
+
+    temp = reader.readC();
+    ym2609.ym2609fm.op[i].custom_wave = temp & 1;
+    op_ws.enabled = temp & 2;
+
+    if(ym2609.ym2609fm.op[i].custom_wave)
+    {
+      ym2609.ym2609fm.op[i].custom_wave_index = reader.readS();
+
+      if(op_ws.enabled)
+      {
+        op_ws.wave1=reader.readI();
+        op_ws.wave2=reader.readI();
+        op_ws.rateDivider=reader.readC();
+        op_ws.effect=reader.readC();
+        op_ws.global=reader.readC();
+        op_ws.speed=reader.readC();
+        op_ws.param1=reader.readC();
+        op_ws.param2=reader.readC();
+        op_ws.param3=reader.readC();
+        op_ws.param4=reader.readC();
+      }
+    }
+  }
+
+  READ_FEAT_END;
+}
+
+void DivInstrument::readFeature9D(SafeReader& reader, short version) {
+  READ_FEAT_BEGIN;
+
   
 
   READ_FEAT_END;
@@ -3244,6 +3331,10 @@ DivDataErrors DivInstrument::readInsDataNew(SafeReader& reader, short version, b
       readFeatureS2(reader,version);
     } else if (memcmp(featCode,"S3",2)==0) { // SID3
       readFeatureS3(reader,version);
+    } else if (memcmp(featCode,"9F",2)==0) { // YM2609 FM additional data
+      readFeature9F(reader,version);
+    } else if (memcmp(featCode,"9D",2)==0) { // YM2609 DSP additional data
+      readFeature9D(reader,version);
     } else {
       if (song==NULL && (memcmp(featCode,"SL",2)==0 || (memcmp(featCode,"WL",2)==0) || (memcmp(featCode,"LS",2)==0) || (memcmp(featCode,"LW",2)==0))) {
         // nothing
