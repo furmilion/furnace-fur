@@ -79,6 +79,7 @@
 #define ICON_FUR_INS_UPD1771C u8"\ue163"
 #define ICON_FUR_INS_SID3 u8"\ue164"
 #define ICON_FUR_INS_YM2609_FM u8"\ue165"
+#define ICON_FUR_INS_YM2609_SSG u8"\ue166"
 
 // sample editor
 #define ICON_FUR_SAMPLE_APPLY_SILENCE u8"\ue136"
