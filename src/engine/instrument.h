@@ -1046,6 +1046,8 @@ struct DivInstrumentYM2609FM {
     unsigned short custom_wave_index;
     unsigned char feedback;
 
+    DivInstrumentWaveSynth ws;
+
     bool operator==(const Operator& other);
     bool operator!=(const Operator& other) {
       return !(*this==other);
@@ -1202,6 +1204,7 @@ struct DivInstrument: DivInstrumentPOD {
   void writeFeatureS2(SafeWriter* w);
   void writeFeatureS3(SafeWriter* w);
   void writeFeature9F(SafeWriter* w);
+  void writeFeature9D(SafeWriter* w);
 
   void readFeatureNA(SafeReader& reader, short version);
   void readFeatureFM(SafeReader& reader, short version);
@@ -1229,6 +1232,7 @@ struct DivInstrument: DivInstrumentPOD {
   void readFeatureS2(SafeReader& reader, short version);
   void readFeatureS3(SafeReader& reader, short version);
   void readFeature9F(SafeReader& reader, short version);
+  void readFeature9D(SafeReader& reader, short version);
 
   DivDataErrors readInsDataOld(SafeReader& reader, short version);
   DivDataErrors readInsDataNew(SafeReader& reader, short version, bool fui, DivSong* song);
