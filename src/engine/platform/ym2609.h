@@ -39,6 +39,7 @@ class DivPlatformYM2609: public DivDispatch {
     bool opMaskChanged;
     bool ac_switch;
     int portaPauseFreq;
+    unsigned char duty;
 
     struct Operator_YM2609 
     {
@@ -95,7 +96,8 @@ class DivPlatformYM2609: public DivDispatch {
       gate(false),
       opMaskChanged(false),
       ac_switch(false),
-      portaPauseFreq(0) 
+      portaPauseFreq(0),
+      duty(0)
       {
         for(int i = 0; i < 4; i++)
         {

@@ -434,7 +434,7 @@ void DivPlatformYM2609::tick(bool sysTick)
         chan[i].state_ym2609fm.alg_construct_switch=chan[i].std.ex1.val&1;
         rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
       }
-      if(i >= 12 && i < 24) // duty/wave type
+      if(i >= 12 && i < 24) // wavetable index
       {
         int ssg_num = (i - 12) / 3;
         int chan_num = (i - 12) % 3;
@@ -487,6 +487,23 @@ void DivPlatformYM2609::tick(bool sysTick)
         ayEnvPeriod[ssg_num]=chan[i].std.ex5.val;
         rWrite(ssg_offsets[ssg_num]+0x0b,ayEnvPeriod[ssg_num]);
         rWrite(ssg_offsets[ssg_num]+0x0c,ayEnvPeriod[ssg_num]>>8);
+      }
+    }
+    if (chan[i].std.ex6.had) {
+      if(i >= 12 && i < 24)
+      {
+        int ssg_num = (i - 12) / 3;
+        int chan_num = (i - 12) % 3;
+
+        if(chan[i].std.ex6.val == 10) //custom wavetable
+        {
+
+        }
+        else
+        {
+          chan[i].duty = chan[i].std.ex6.val;
+          chan[i].freqChanged = true;
+        }
       }
     }
     if(i < 12)
@@ -648,10 +665,10 @@ void DivPlatformYM2609::tick(bool sysTick)
         }
         if (chan[i].fixedFreq>0) {
           rWrite(ssg_offsets[ssg_num]+((chan_num)<<1),chan[i].fixedFreq&0xff);
-          rWrite(ssg_offsets[ssg_num]+1+((chan_num)<<1),chan[i].fixedFreq>>8);
+          rWrite(ssg_offsets[ssg_num]+1+((chan_num)<<1),(chan[i].fixedFreq>>8)|(chan[i].duty << 4));
         } else {
           rWrite(ssg_offsets[ssg_num]+((chan_num)<<1),chan[i].freq&0xff);
-          rWrite(ssg_offsets[ssg_num]+1+((chan_num)<<1),chan[i].freq>>8);
+          rWrite(ssg_offsets[ssg_num]+1+((chan_num)<<1),(chan[i].freq>>8)|(chan[i].duty << 4));
         }
         if (chan[i].keyOn) chan[i].keyOn=false;
         if (chan[i].keyOff) chan[i].keyOff=false;
@@ -1123,6 +1140,8 @@ void DivPlatformYM2609::reset() {
 
     chan[i].panLeft = 0;
     chan[i].panRight = 0;
+
+    chan[i].duty = 0;
 
     for(int j = 0; j < 4; j++)
     {

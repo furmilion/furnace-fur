@@ -45,7 +45,7 @@ class PSG2 : public PSG
             int n = ((int)(scount[k] >> (toneshift + oversampling - 3)) & chenable[k]);
             //のこぎり波
             int x = n < 7 ? n : (n - 16);
-            return (int)((lv * x) >> 2);
+            return (int)(((int)lv * x) / 4);
         }
 
         int GetSampleFromTriangle(int k, uint32_t lv)
@@ -55,7 +55,7 @@ class PSG2 : public PSG
             int n = ((int)(scount[k] >> (toneshift + oversampling - 3)) & chenable[k]);
             //三角波
             int x = n < 8 ? (n - 4) : (15 - 4 - n);
-            return (int)((lv * x) >> 1);
+            return (int)(((int)lv * x) / 2);
         }
 
         int GetSampleFromDuty(int k, uint32_t lv)
@@ -155,7 +155,7 @@ class PSG2 : public PSG
 
         PSG2()
         {
-            
+            MakeNoiseTable();
         }
 
         PSG2(int num, reverb* rever = NULL, distortion* distort = NULL, chorus* chor = NULL, HPFLPF* hpflpf = NULL, ReversePhase* reversePhase = NULL, Compressor* compressor = NULL, int efcStartCh = 0)
@@ -361,21 +361,19 @@ class PSG2 : public PSG
                             sample = 0;
                             for (int j = 0; j < (1 << oversampling); j++)
                             {
-                                noise = (int)(noisetable[(ncount >> (noiseshift + oversampling + 6)) & (noisetablesize - 1)]);
-
-                                ncount += (uint32_t)(nperiod / ((reg[6] & 0x20) != 0 ? ncountDiv : 1)) * 4;
+                                ncount += (uint32_t)(nperiod / ((reg[6] & 0x20) != 0 ? ncountDiv : 1));
+                                noise = noisetable[(ncount >> (noiseshift + oversampling - 1)) & (noisetablesize - 1)] ? 1 : 0;
 
                                 for (int k = 0; k < 3; k++)
                                 {
+                                    int n = noise ? olevel[k] : -1 * (int)olevel[k];
+
                                     sample = getSample(duty[k], k, olevel[k]);
-                                    int L = sample;
-                                    int R = sample;
 
                                     //ノイズ
-                                    nv = ((int)(scount[k] >> (toneshift + oversampling)) & (nenable[k] & noise)) - 1;
-                                    sample = (int)((olevel[k]) & nv);
-                                    L += sample;
-                                    R += sample;
+                                    sample = nenable[k] ? (int)(chenable[k] ? (sample > 0 ? (n) : -1 * (int)olevel[k]) : n) : sample;
+                                    int L = sample;
+                                    int R = sample;
 
                                     distort->Mix(efcStartCh + k, L, R);
                                     chor->Mix(efcStartCh + k, L, R);
@@ -436,22 +434,28 @@ class PSG2 : public PSG
                                     ecount |= (1 << (envshift + 5 + oversampling));
                                 ecount &= (1 << (envshift + 6 + oversampling)) - 1;
                             }
-                            noise = (int)(noisetable[((uint32_t)ncountDbl >> (int)((noiseshift + oversampling + 6)) & (noisetablesize - 1))]
-                                >> (int)((uint32_t)ncountDbl >> (noiseshift + oversampling + 1)));
-                            ncountDbl += (nperiod / ((reg[6] & 0x20) != 0 ? ncountDiv : 1.0));
+
+                            ncount += (uint32_t)(nperiod / ((reg[6] & 0x20) != 0 ? ncountDiv : 1));
+                            noise = noisetable[(ncount >> (noiseshift + oversampling - 1)) & (noisetablesize - 1)] ? 1 : 0;
 
                             for (int k = 0; k < 3; k++)
                             {
-                                uint32_t lv = (p[k] == 3 ? env : olevel[k]);
+                                uint32_t lv = (p[k] == 3 ? env * olevel[k] / EmitTable[(15) * 2 + 1] : olevel[k]);
+
+                                int n = noise ? lv : -1 * (int)lv;
+
                                 sample = getSample(duty[k], k, lv);
-                                int L = sample;
-                                int R = sample;
 
                                 //ノイズ
-                                nv = ((int)(scount[k] >> (toneshift + oversampling)) & 0 | (nenable[k] & noise)) - 1;
-                                sample = (int)((lv + nv) ^ nv);
-                                L += sample;
-                                R += sample;
+                                sample = nenable[k] ? (int)(chenable[k] ? (sample > 0 ? (n) : -1 * (int)lv) : n) : sample;
+
+                                if(!chenable[k] && !nenable[k])
+                                {
+                                    sample = lv;
+                                }
+
+                                int L = sample;
+                                int R = sample;
 
                                 distort->Mix(efcStartCh + k, L, R);
                                 chor->Mix(efcStartCh + k, L, R);
