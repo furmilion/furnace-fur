@@ -210,9 +210,9 @@ void DivPlatformYM2609::tick(bool sysTick)
         if (chan[i].outVol<0) chan[i].outVol=0;
 
         if (isMuted[i]) {
-          rWrite(0x08+chan_num,0|(chan[i].pan << 6));
+          rWrite(ssg_offsets[ssg_num]+0x08+chan_num,0|(chan[i].pan << 6));
         } else {
-          rWrite(0x08+chan_num,(chan[i].outVol&15)|((chan[i].nextPSGMode.getEnvelope())<<2)|(chan[i].pan << 6));
+          rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[i].outVol&15)|((chan[i].nextPSGMode.getEnvelope())<<2)|(chan[i].pan << 6));
         }
       }
     }
@@ -337,7 +337,7 @@ void DivPlatformYM2609::tick(bool sysTick)
       {
         int ssg_num = (i - 12) / 3;
 
-        rWrite(ssg_offsets[ssg_num]+0x06,31-chan[i].std.duty.val);
+        rWrite(ssg_offsets[ssg_num]+0x06,255-chan[i].std.duty.val);
       }
     }
 
@@ -353,9 +353,9 @@ void DivPlatformYM2609::tick(bool sysTick)
           chan[i].curPSGMode.val=chan[i].nextPSGMode.val;
         }
         if (isMuted[i]) {
-          rWrite(ssg_offsets[ssg_num]+0x08+i,0|(chan[i].pan << 6));
+          rWrite(ssg_offsets[ssg_num]+0x08+chan_num,0|(chan[i].pan << 6));
         } else {
-          rWrite(ssg_offsets[ssg_num]+0x08+i,(chan[i].outVol&15)|((chan[i].nextPSGMode.getEnvelope())<<2)|(chan[i].pan << 6));
+          rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[i].outVol&15)|((chan[i].nextPSGMode.getEnvelope())<<2)|(chan[i].pan << 6));
 
           rWrite(ssg_offsets[ssg_num]+0x07,
           ~((chan[12+ssg_num*3+0].curPSGMode.getTone())|
@@ -376,7 +376,7 @@ void DivPlatformYM2609::tick(bool sysTick)
 
         if(chan[i].std.phaseReset.val == 1)
         {
-          rWrite(ssg_offsets[ssg_num]+0x08+i,(chan[i].outVol&15)|((chan[i].nextPSGMode.getEnvelope())<<2)|(chan[i].pan << 6)|(1 << 5));
+          rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[i].outVol&15)|((chan[i].nextPSGMode.getEnvelope())<<2)|(chan[i].pan << 6)|(1 << 5));
         }
       }
     }
