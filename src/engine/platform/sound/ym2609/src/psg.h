@@ -42,7 +42,7 @@
 class PSG
 {
     public:
-        static const int noisetablesize = 1 << 11;   // ←メモリ使用量を減らしたいなら減らして
+        static const int noisetablesize = 1 << 17;   // ←メモリ使用量を減らしたいなら減らして
         static const int toneshift = 24;
         static const int envshift = 22;
         static const int noiseshift = 14;
@@ -98,15 +98,17 @@ class PSG
         {
             if (noisetable[0] == 0)
             {
-                int noise = 14321;
+                uint32_t noise = 14321;
+                int n = 0;
+
                 for (int i = 0; i < noisetablesize; i++)
                 {
-                    int n = 0;
-                    for (int j = 0; j < 32; j++)
-                    {
-                        n = n * 2 + (noise & 1);
+                    
+                    //for (int j = 0; j < 32; j++)
+                    //{
+                        n = (noise & 1);
                         noise = (noise >> 1) | (((noise << 14) ^ (noise << 16)) & 0x10000);
-                    }
+                    //}
                     noisetable[i] = (uint32_t)n;
                 }
             }
@@ -408,7 +410,7 @@ class PSG
 
         uint32_t enveloptable[16][64];
 
-        uint32_t noisetable[noisetablesize];
+        uint8_t noisetable[noisetablesize];
         int EmitTable[32] = { -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 };

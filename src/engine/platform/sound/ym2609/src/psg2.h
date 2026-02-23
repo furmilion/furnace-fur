@@ -83,7 +83,7 @@ class PSG2 : public PSG
         uint8_t chenable[3];
         uint8_t nenable[3];
         uint32_t p[3];
-        static constexpr const double ncountDiv = 32.0;
+        static constexpr const uint32_t ncountDiv = 32;
 
         void makeTblGetSample()
         {
@@ -228,21 +228,21 @@ class PSG2 : public PSG
                     olevel[0] = (uint32_t)((mask & 1) != 0 ? EmitTable[(data & 15) * 2 + 1] : 0);
                     panpot[0] = (uint8_t)(data >> 6);
                     //panpot[0] = (uint8_t)(panpot[0] == 0 ? 3 : panpot[0]);
-                    phaseReset[0] = (uint8_t)((data & 0x20) != 0 ? 1 : 0);
+                    if(data & 0x20) phaseReset[0] = 1;
                     break;
 
                 case 9:
                     olevel[1] = (uint32_t)((mask & 2) != 0 ? EmitTable[(data & 15) * 2 + 1] : 0);
                     panpot[1] = (uint8_t)(data >> 6);
                     //panpot[1] = (uint8_t)(panpot[1] == 0 ? 3 : panpot[1]);
-                    phaseReset[1] = (uint8_t)((data & 0x20) != 0 ? 1 : 0);
+                    if(data & 0x20) phaseReset[1] = 1;
                     break;
 
                 case 10:
                     olevel[2] = (uint32_t)((mask & 4) != 0 ? EmitTable[(data & 15) * 2 + 1] : 0);
                     panpot[2] = (uint8_t)(data >> 6);
                     //panpot[2] = (uint8_t)(panpot[2] == 0 ? 3 : panpot[2]);
-                    phaseReset[2] = (uint8_t)((data & 0x20) != 0 ? 1 : 0);
+                    if(data & 0x20) phaseReset[2] = 1;
                     break;
 
                 case 11:    // Envelop period
@@ -289,9 +289,9 @@ class PSG2 : public PSG
                 p[0] = ((mask & 1) != 0 && (reg[8] & 0x10) != 0) ? (uint32_t)3 : 0;
                 p[1] = ((mask & 2) != 0 && (reg[9] & 0x10) != 0) ? (uint32_t)3 : 1;
                 p[2] = ((mask & 4) != 0 && (reg[10] & 0x10) != 0) ? (uint32_t)3 : 2;
-                if (!phaseResetBefore[0] && phaseReset[0] != 0 && (r7 & 0x09) != 0) { scount[0] = 0; phaseResetBefore[0] = true; }
-                if (!phaseResetBefore[1] && phaseReset[1] != 0 && (r7 & 0x12) != 0) { scount[1] = 0; phaseResetBefore[1] = true; }
-                if (!phaseResetBefore[2] && phaseReset[2] != 0 && (r7 & 0x24) != 0) { scount[2] = 0; phaseResetBefore[2] = true; }
+                if (!phaseResetBefore[0] && phaseReset[0] != 0 && (r7 & 0x09) != 0) { scount[0] = 0; phaseReset[0] = false; }
+                if (!phaseResetBefore[1] && phaseReset[1] != 0 && (r7 & 0x12) != 0) { scount[1] = 0; phaseReset[1] = false; }
+                if (!phaseResetBefore[2] && phaseReset[2] != 0 && (r7 & 0x24) != 0) { scount[2] = 0; phaseReset[2] = false; }
 
                 int noise, sample, sampleL, sampleR, revSampleL, revSampleR;
                 uint32_t env;
@@ -361,10 +361,9 @@ class PSG2 : public PSG
                             sample = 0;
                             for (int j = 0; j < (1 << oversampling); j++)
                             {
-                                noise = (int)(noisetable[(ncount >> (noiseshift + oversampling + 6)) & (noisetablesize - 1)]
-                                    >> (int)(ncount >> (noiseshift + oversampling + 1)));
+                                noise = (int)(noisetable[(ncount >> (noiseshift + oversampling + 6)) & (noisetablesize - 1)]);
 
-                                ncount += (uint32_t)(nperiod / ((reg[6] & 0x20) != 0 ? ncountDiv : 1.0));
+                                ncount += (uint32_t)(nperiod / ((reg[6] & 0x20) != 0 ? ncountDiv : 1)) * 4;
 
                                 for (int k = 0; k < 3; k++)
                                 {
@@ -373,8 +372,8 @@ class PSG2 : public PSG
                                     int R = sample;
 
                                     //ノイズ
-                                    nv = ((int)(scount[k] >> (toneshift + oversampling)) & 0 | (nenable[k] & noise)) - 1;
-                                    sample = (int)((olevel[k] + nv) ^ nv);
+                                    nv = ((int)(scount[k] >> (toneshift + oversampling)) & (nenable[k] & noise)) - 1;
+                                    sample = (int)((olevel[k]) & nv);
                                     L += sample;
                                     R += sample;
 
