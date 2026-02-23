@@ -661,7 +661,16 @@ void DivPlatformYM2609::tick(bool sysTick)
         }
         if (chan[i].keyOff) {
           chan[i].curPSGMode.val=0;
+          //chan[i].vol=0;
           rWrite(ssg_offsets[ssg_num]+0x08+chan_num,0|(chan[i].pan << 6));
+
+          rWrite(ssg_offsets[ssg_num]+0x07,
+          ~((chan[12+ssg_num*3+0].curPSGMode.getTone())|
+           ((chan[12 + ssg_num*3+1].curPSGMode.getTone())<<1)|
+           ((chan[12 + ssg_num*3+2].curPSGMode.getTone())<<2)|
+           ((chan[12 + ssg_num*3+0].curPSGMode.getNoise())<<2)|
+           ((chan[12 + ssg_num*3+1].curPSGMode.getNoise())<<3)|
+           ((chan[12 + ssg_num*3+2].curPSGMode.getNoise())<<4)));
         }
         if (chan[i].fixedFreq>0) {
           rWrite(ssg_offsets[ssg_num]+((chan_num)<<1),chan[i].fixedFreq&0xff);

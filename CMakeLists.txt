@@ -755,6 +755,7 @@ src/engine/platform/sound/sid2/wave.cc
 src/engine/platform/sound/sid3.c
 
 src/engine/platform/sound/ym2609/src/eff/CMyFilter.cpp
+src/engine/platform/sound/ym2609/src/rhythm_samples.cpp
 
 src/engine/platform/oplAInterface.cpp
 src/engine/platform/ym2608Interface.cpp
