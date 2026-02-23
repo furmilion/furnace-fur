@@ -361,8 +361,8 @@ class PSG2 : public PSG
                             sample = 0;
                             for (int j = 0; j < (1 << oversampling); j++)
                             {
-                                ncount += (uint32_t)(nperiod / ((reg[6] & 0x20) != 0 ? ncountDiv : 1)) * 4;
-                                noise = noisetable[(ncount >> (noiseshift + oversampling + 6)) & (noisetablesize - 1)] ? 1 : 0;
+                                ncount += (uint32_t)(nperiod / ((reg[6] & 0x20) != 0 ? ncountDiv : 1));
+                                noise = noisetable[(ncount >> (noiseshift + oversampling - 1)) & (noisetablesize - 1)] ? 1 : 0;
 
                                 for (int k = 0; k < 3; k++)
                                 {
@@ -435,8 +435,8 @@ class PSG2 : public PSG
                                 ecount &= (1 << (envshift + 6 + oversampling)) - 1;
                             }
 
-                            ncount += (uint32_t)(nperiod / ((reg[6] & 0x20) != 0 ? ncountDiv : 1)) * 4;
-                            noise = noisetable[(ncount >> (noiseshift + oversampling + 6)) & (noisetablesize - 1)] ? 1 : 0;
+                            ncount += (uint32_t)(nperiod / ((reg[6] & 0x20) != 0 ? ncountDiv : 1));
+                            noise = noisetable[(ncount >> (noiseshift + oversampling - 1)) & (noisetablesize - 1)] ? 1 : 0;
 
                             for (int k = 0; k < 3; k++)
                             {

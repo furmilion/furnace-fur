@@ -81,7 +81,7 @@ class PSG
         {
             tperiodbase = (uint32_t)((1 << toneshift) / 4.0 * clock / rate);
             eperiodbase = (uint32_t)((1 << envshift) / 4.0 * clock / rate);
-            nperiodbase = (uint32_t)((1 << noiseshift) / 4.0 * clock / rate);
+            nperiodbase = (uint32_t)((1 << noiseshift) / 16.0 * clock / rate);
 
             // 各データの更新
             speriod[0] = (uint32_t)(tperiodbase);
