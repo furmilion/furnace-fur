@@ -338,6 +338,20 @@ const char* sid3SpecialWaveforms[]={
   _N("Clipped Saw")
 };
 
+const char* YM2609SSGdutywaves[]={
+  _N("Pulse, 50 percent duty"),
+  _N("Pulse, 43.75 percent duty"),
+  _N("Pulse, 37.5 percent duty"),
+  _N("Pulse, 31.25 percent duty"),
+  _N("Pulse, 25 percent duty"),
+  _N("Pulse, 18.75 percent duty"),
+  _N("Pulse, 12.5 percent duty"),
+  _N("Pulse, 6.25 percent duty"),
+  _N("Triangle"),
+  _N("Sawtooth"),
+  _N("Custom wavetable")
+};
+
 const bool opIsOutput[8][4]={
   {false,false,false,true},
   {false,false,false,true},
@@ -902,6 +916,12 @@ String macroSID3WaveMixMode(int id, float val, void* u) {
   if ((int)val<0 || (int)val>4) return "???";
 
   return fmt::sprintf("%d: %s",id,_(sid3WaveMixModes[(int)val]));
+}
+
+String macroYM2609SSGDuties(int id, float val, void* u) {
+  if ((int)val<0 || (int)val>=11) return "???";
+
+  return fmt::sprintf("%d: %s",id,_(YM2609SSGdutywaves[(int)val%11]));
 }
 
 void addAALine(ImDrawList* dl, const ImVec2& p1, const ImVec2& p2, const ImU32 color, float thickness=1.0f) {
@@ -9528,6 +9548,7 @@ void FurnaceGUI::drawInsEdit() {
               macroList.push_back(FurnaceGUIMacroDesc(_("Panning (left)"),&ins->std.panLMacro,0,8,64,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL));
               macroList.push_back(FurnaceGUIMacroDesc(_("Panning (right)"),&ins->std.panRMacro,0,8,64,uiColors[GUI_COLOR_MACRO_OTHER]));
               macroList.push_back(FurnaceGUIMacroDesc(_("Waveform"),&ins->std.waveMacro,0,3,48,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,NULL,true,ayShapeBits));
+              macroList.push_back(FurnaceGUIMacroDesc(_("Duty/Wave Type"),&ins->std.ex6Macro,0,10,64,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,macroYM2609SSGDuties,false,NULL,false,ins->std.ex6Macro.val));
               macroList.push_back(FurnaceGUIMacroDesc(_("Wavetable index"),&ins->std.ex1Macro,0,waveCount,160,uiColors[GUI_COLOR_MACRO_WAVE],false,NULL,NULL,false,NULL));
               macroList.push_back(FurnaceGUIMacroDesc(_("Phase Reset"),&ins->std.phaseResetMacro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true));
               macroList.push_back(FurnaceGUIMacroDesc(_("Noise Freq"),&ins->std.dutyMacro,0,31,160,uiColors[GUI_COLOR_MACRO_NOISE]));

@@ -94,23 +94,26 @@ class PSG
         // ---------------------------------------------------------------------------
         //	ノイズテーブルを作成する
         //
+        //m_noise_state ^= (bitfield(m_noise_state, 0) ^ bitfield(m_noise_state, 3)) << 17;
+		//m_noise_state >>= 1;
+        inline uint32_t bitfield(uint32_t value, int start, int length = 1)
+        {
+            return (value >> start) & ((1 << length) - 1);
+        }
+
         void MakeNoiseTable()
         {
-            if (noisetable[0] == 0)
-            {
-                uint32_t noise = 14321;
-                int n = 0;
+            uint32_t noise = 1;
 
-                for (int i = 0; i < noisetablesize; i++)
-                {
+            for (int i = 0; i < noisetablesize; i++)
+            {
                     
-                    //for (int j = 0; j < 32; j++)
-                    //{
-                        n = (noise & 1);
-                        noise = (noise >> 1) | (((noise << 14) ^ (noise << 16)) & 0x10000);
-                    //}
-                    noisetable[i] = (uint32_t)n;
-                }
+                //for (int j = 0; j < 32; j++)
+                //{
+                noise ^= (bitfield(noise, 0) ^ bitfield(noise, 3)) << 17;
+		            noise >>= 1;
+                //}
+                noisetable[i] = noise & 1;
             }
         }
 
