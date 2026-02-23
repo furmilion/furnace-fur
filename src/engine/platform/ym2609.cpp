@@ -337,7 +337,7 @@ void DivPlatformYM2609::tick(bool sysTick)
       {
         int ssg_num = (i - 12) / 3;
 
-        rWrite(ssg_offsets[ssg_num]+0x06,31-chan[i].std.duty.val);
+        rWrite(ssg_offsets[ssg_num]+0x06,255-chan[i].std.duty.val);
       }
     }
 
