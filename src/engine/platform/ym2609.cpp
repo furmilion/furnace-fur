@@ -870,16 +870,31 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       break;
     }
     case DIV_CMD_NOTE_OFF:
-      chan[c.chan].active=false;
-      chan[c.chan].keyOff=true;
-      chan[c.chan].keyOn=false;
-      //chan[c.chan].macroInit(NULL);
+      if(c.chan < 12)
+      {
+        chan[c.chan].active=false;
+        chan[c.chan].keyOff=true;
+        chan[c.chan].keyOn=false;
+      }
+      if(c.chan >= 12 && c.chan < 24) //SSG
+      {
+        chan[c.chan].active=false;
+        chan[c.chan].keyOff=true;
+        chan[c.chan].macroInit(NULL);
+      }
       break;
     case DIV_CMD_NOTE_OFF_ENV:
-      chan[c.chan].active=false;
-      chan[c.chan].keyOff=true;
-      chan[c.chan].keyOn=false;
-      chan[c.chan].std.release();
+      if(c.chan < 12)
+      { 
+        chan[c.chan].active=false;
+        chan[c.chan].keyOff=true;
+        chan[c.chan].keyOn=false;
+        chan[c.chan].std.release();
+      }
+      if(c.chan >= 12 && c.chan < 24) //SSG
+      {
+        chan[c.chan].std.release();
+      }
       break;
     case DIV_CMD_ENV_RELEASE:
       chan[c.chan].std.release();
