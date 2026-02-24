@@ -45,17 +45,17 @@ class PSG2 : public PSG
             int n = ((int)(scount[k] >> (toneshift + oversampling - 3)) & chenable[k]);
             //のこぎり波
             int x = n < 7 ? n : (n - 16);
-            return (int)(((int)lv * x) / 4);
+            return (int)(((int)lv * x) / 8);
         }
 
         int GetSampleFromTriangle(int k, uint32_t lv)
         {
             if (chenable[k] == 0) return 0;
 
-            int n = ((int)(scount[k] >> (toneshift + oversampling - 3)) & chenable[k]);
+            int n = ((int)(scount[k] >> (toneshift + oversampling - 4)) & (chenable[k] ? 0x1f : 0));
             //三角波
-            int x = n < 8 ? (n - 4) : (15 - 4 - n);
-            return (int)(((int)lv * x) / 2);
+            int x = n < 16 ? (n - 8) : (31 - 8 - n);
+            return (int)(((int)lv * x) / 8);
         }
 
         int GetSampleFromDuty(int k, uint32_t lv)
@@ -64,8 +64,8 @@ class PSG2 : public PSG
 
             int n = ((int)(scount[k] >> (toneshift + oversampling - 3)) & chenable[k]);
             //矩形波
-            int x = n > duty[k] ? 0 : -1;
-            return (int)((lv + x) ^ x);
+            int x = n > duty[k] ? 1 : -1;
+            return (int)(lv * x);
         }
 
         reverb* rever;
