@@ -152,6 +152,7 @@ class PSG2 : public PSG
         }
 
     public:
+        int chan_output[3][2];
 
         PSG2()
         {
@@ -327,6 +328,10 @@ class PSG2 : public PSG
                                     R = (panpot[k] & 1) != 0 ? (int)(R * panTable[panpotRM[k]]) : 0;
                                     L *= reversePhase->SSG[num][k][0];
                                     R *= reversePhase->SSG[num][k][1];
+
+                                    chan_output[k][0] = L;
+                                    chan_output[k][1] = R;
+                                    
                                     revSampleL += (int)(L * rever->SendLevel[efcStartCh + k] * 0.6);
                                     revSampleR += (int)(R * rever->SendLevel[efcStartCh + k] * 0.6);
                                     sampleL += L;
@@ -385,6 +390,10 @@ class PSG2 : public PSG
                                     R = (panpot[k] & 1) != 0 ? (int)(R * panTable[panpotRM[k]]) : 0;
                                     L *= reversePhase->SSG[num][k][0];
                                     R *= reversePhase->SSG[num][k][1];
+
+                                    chan_output[k][0] = L;
+                                    chan_output[k][1] = R;
+
                                     revSampleL += (int)(L * rever->SendLevel[efcStartCh + k] * 0.6);
                                     revSampleR += (int)(R * rever->SendLevel[efcStartCh + k] * 0.6);
                                     sampleL += L;
@@ -468,6 +477,10 @@ class PSG2 : public PSG
                                 R = (panpot[k] & 1) != 0 ? (int)(R * panTable[panpotRM[k]]) : 0;
                                 L *= reversePhase->SSG[num][k][0];
                                 R *= reversePhase->SSG[num][k][1];
+
+                                chan_output[k][0] = L;
+                                chan_output[k][1] = R;
+
                                 revSampleL += (int)(L * rever->SendLevel[efcStartCh + k] * 0.6);
                                 revSampleR += (int)(R * rever->SendLevel[efcStartCh + k] * 0.6);
                                 sampleL += L;
