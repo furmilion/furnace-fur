@@ -25,6 +25,9 @@
 
 #define PI 3.1415
 
+extern const int* _2608_samples[];
+extern uint32_t _2608_samples_sizes[];
+
 //	YM2609(OPNA2) ---------------------------------------------------
 class OPNA2 /*: public OPNABase*/
 {
@@ -76,9 +79,9 @@ class OPNA2 /*: public OPNABase*/
 
             for (int i = 0; i < 6; i++)
             {
-                rhythm[i].sample = NULL;
+                rhythm[i].sample = _2608_samples[i];
                 rhythm[i].pos = 0;
-                rhythm[i].size = 0;
+                rhythm[i].size = _2608_samples_sizes[i];
                 rhythm[i].volume = 0;
             }
             rhythmtvol = 0;
@@ -108,11 +111,11 @@ class OPNA2 /*: public OPNABase*/
         {
             //adpcmbuf = NULL;
 
-            for (int i = 0; i < 6; i++)
+            /*for (int i = 0; i < 6; i++)
             {
                 delete[] rhythm[i].sample;
                 rhythm[i].sample = NULL;
-            }
+            }*/
 
             for (int i = 0; i < 2; i++)
             {
@@ -144,7 +147,7 @@ class OPNA2 /*: public OPNABase*/
                 uint8_t pan;      // ぱん
                 int8_t level;     // おんりょう
                 int volume;     // おんりょうせってい
-                int* sample;      // さんぷる
+                const int* sample;      // さんぷる
                 uint32_t size;      // さいず
                 uint32_t pos;       // いち
                 uint32_t step;      // すてっぷち

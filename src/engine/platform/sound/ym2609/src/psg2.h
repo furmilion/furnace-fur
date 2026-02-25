@@ -27,45 +27,45 @@ class PSG2 : public PSG
         double ncountDbl;
 
     private:
-        int GetSampleFromUserDef(int k, uint32_t lv)
+        uint32_t GetSampleFromUserDef(int k, uint32_t lv)
         {
             if (chenable[k] == 0) return 0;
 
             //ユーザー定義
             uint32_t pos = (scount[k] >> (toneshift + oversampling - 3 - 2)) & 63;
-            int n = user[duty[k] - 10][pos];
-            int x = n - 128;
-            return (int)((lv * x) >> 7);
+            uint32_t n = user[duty[k] - 10][pos];
+            //int x = n - 128;
+            return ((lv * n) >> 7);
         }
 
-        int GetSampleFromSaw(int k, uint32_t lv)
+        uint32_t GetSampleFromSaw(int k, uint32_t lv)
         {
             if (chenable[k] == 0) return 0;
 
-            int n = ((int)(scount[k] >> (toneshift + oversampling - 3)) & chenable[k]);
+            uint32_t n = ((scount[k] >> (toneshift + oversampling - 3)) & chenable[k]);
             //のこぎり波
-            int x = n < 7 ? n : (n - 16);
-            return (int)(((int)lv * x) / 8);
+            //uint32_t x = n < 7 ? n : (16);
+            return ((lv * n) / 8);
         }
 
-        int GetSampleFromTriangle(int k, uint32_t lv)
+        uint32_t GetSampleFromTriangle(int k, uint32_t lv)
         {
             if (chenable[k] == 0) return 0;
 
-            int n = ((int)(scount[k] >> (toneshift + oversampling - 4)) & (chenable[k] ? 0x1f : 0));
+            uint32_t n = ((scount[k] >> (toneshift + oversampling - 4)) & (chenable[k] ? 0x1f : 0));
             //三角波
-            int x = n < 16 ? (n - 8) : (31 - 8 - n);
-            return (int)(((int)lv * x) / 8);
+            uint32_t x = n < 16 ? (n) : (31 - n);
+            return ((lv * x) / 8);
         }
 
-        int GetSampleFromDuty(int k, uint32_t lv)
+        uint32_t GetSampleFromDuty(int k, uint32_t lv)
         {
             if (chenable[k] == 0) return 0;
 
-            int n = ((int)(scount[k] >> (toneshift + oversampling - 3)) & chenable[k]);
+            uint32_t n = ((scount[k] >> (toneshift + oversampling - 3)) & chenable[k]);
             //矩形波
-            int x = n > duty[k] ? 1 : -1;
-            return (int)(lv * x);
+            uint32_t x = n > duty[k] ? 2 : 0;
+            return (lv * x);
         }
 
         reverb* rever;
@@ -107,7 +107,7 @@ class PSG2 : public PSG
             };*/
         }
 
-        int getSample(uint8_t duty, int k, uint32_t lv)
+        uint32_t getSample(uint8_t duty, int k, uint32_t lv)
         {
             switch(duty)
             {
@@ -152,6 +152,7 @@ class PSG2 : public PSG
         }
 
     public:
+        int chan_output[3][2];
 
         PSG2()
         {
@@ -293,7 +294,8 @@ class PSG2 : public PSG
                 if (!phaseResetBefore[1] && phaseReset[1] != 0 && (r7 & 0x12) != 0) { scount[1] = 0; phaseReset[1] = false; }
                 if (!phaseResetBefore[2] && phaseReset[2] != 0 && (r7 & 0x24) != 0) { scount[2] = 0; phaseReset[2] = false; }
 
-                int noise, sample, sampleL, sampleR, revSampleL, revSampleR;
+                int sample, sampleL, sampleR, revSampleL, revSampleR;
+                uint32_t noise;
                 uint32_t env;
                 int nv = 0;
 
@@ -316,8 +318,8 @@ class PSG2 : public PSG
                                 for (int k = 0; k < 3; k++)
                                 {
                                     sample = getSample(duty[k], k, olevel[k]);
-                                    int L = sample;
-                                    int R = sample;
+                                    int L = sample - olevel[k];
+                                    int R = sample - olevel[k];
                                     distort->Mix(efcStartCh + k, L, R);
                                     chor->Mix(efcStartCh + k, L, R);
                                     hpflpf->Mix(efcStartCh + k, L, R);
@@ -326,6 +328,10 @@ class PSG2 : public PSG
                                     R = (panpot[k] & 1) != 0 ? (int)(R * panTable[panpotRM[k]]) : 0;
                                     L *= reversePhase->SSG[num][k][0];
                                     R *= reversePhase->SSG[num][k][1];
+
+                                    chan_output[k][0] = L;
+                                    chan_output[k][1] = R;
+                                    
                                     revSampleL += (int)(L * rever->SendLevel[efcStartCh + k] * 0.6);
                                     revSampleR += (int)(R * rever->SendLevel[efcStartCh + k] * 0.6);
                                     sampleL += L;
@@ -366,12 +372,13 @@ class PSG2 : public PSG
 
                                 for (int k = 0; k < 3; k++)
                                 {
-                                    int n = noise ? olevel[k] : -1 * (int)olevel[k];
+                                    uint32_t n = noise ? 2 * olevel[k] : 0;
 
                                     sample = getSample(duty[k], k, olevel[k]);
 
                                     //ノイズ
-                                    sample = nenable[k] ? (int)(chenable[k] ? (sample > 0 ? (n) : -1 * (int)olevel[k]) : n) : sample;
+                                    sample = nenable[k] ? (int)(chenable[k] ? (sample > 0 ? (sample * noise) : 0) : n) : sample;
+                                    sample -= olevel[k];
                                     int L = sample;
                                     int R = sample;
 
@@ -383,6 +390,10 @@ class PSG2 : public PSG
                                     R = (panpot[k] & 1) != 0 ? (int)(R * panTable[panpotRM[k]]) : 0;
                                     L *= reversePhase->SSG[num][k][0];
                                     R *= reversePhase->SSG[num][k][1];
+
+                                    chan_output[k][0] = L;
+                                    chan_output[k][1] = R;
+
                                     revSampleL += (int)(L * rever->SendLevel[efcStartCh + k] * 0.6);
                                     revSampleR += (int)(R * rever->SendLevel[efcStartCh + k] * 0.6);
                                     sampleL += L;
@@ -442,12 +453,13 @@ class PSG2 : public PSG
                             {
                                 uint32_t lv = (p[k] == 3 ? env * olevel[k] / EmitTable[(15) * 2 + 1] : olevel[k]);
 
-                                int n = noise ? lv : -1 * (int)lv;
+                                int n = noise ? 2 * lv : 0;
 
                                 sample = getSample(duty[k], k, lv);
 
                                 //ノイズ
-                                sample = nenable[k] ? (int)(chenable[k] ? (sample > 0 ? (n) : -1 * (int)lv) : n) : sample;
+                                sample = nenable[k] ? (int)(chenable[k] ? (sample > 0 ? (sample * noise) : 0) : n) : sample;
+                                sample -= olevel[k];
 
                                 if(!chenable[k] && !nenable[k])
                                 {
@@ -465,6 +477,10 @@ class PSG2 : public PSG
                                 R = (panpot[k] & 1) != 0 ? (int)(R * panTable[panpotRM[k]]) : 0;
                                 L *= reversePhase->SSG[num][k][0];
                                 R *= reversePhase->SSG[num][k][1];
+
+                                chan_output[k][0] = L;
+                                chan_output[k][1] = R;
+
                                 revSampleL += (int)(L * rever->SendLevel[efcStartCh + k] * 0.6);
                                 revSampleR += (int)(R * rever->SendLevel[efcStartCh + k] * 0.6);
                                 sampleL += L;

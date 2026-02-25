@@ -99,6 +99,8 @@
 #define CHIP_FREQBASE fmFreqBase
 #define CHIP_DIVIDER fmDivBase
 
+#define PSG_OFFSET 12
+
 const char** DivPlatformYM2609::getRegisterSheet() {
   return NULL;
 }
@@ -129,6 +131,14 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
     {
       oscBuf[i]->putSample(samp,(ym2609->fm6[0].ch_output[i][0] + ym2609->fm6[0].ch_output[i][1]) / 2);
       oscBuf[i+6]->putSample(samp,(ym2609->fm6[1].ch_output[i][0] + ym2609->fm6[1].ch_output[i][1]) / 2);
+    }
+
+    for(int i = 0; i < 3; i++)
+    {
+      oscBuf[PSG_OFFSET+i]->putSample(samp,(ym2609->psg2[0].chan_output[i][0] + ym2609->psg2[0].chan_output[i][1]) * 3 / 2);
+      oscBuf[PSG_OFFSET+3+i]->putSample(samp,(ym2609->psg2[1].chan_output[i][0] + ym2609->psg2[1].chan_output[i][1]) * 3 / 2);
+      oscBuf[PSG_OFFSET+3*2+i]->putSample(samp,(ym2609->psg2[2].chan_output[i][0] + ym2609->psg2[2].chan_output[i][1]) * 3 / 2);
+      oscBuf[PSG_OFFSET+3*3+i]->putSample(samp,(ym2609->psg2[3].chan_output[i][0] + ym2609->psg2[3].chan_output[i][1]) * 3 / 2);
     }
 
     /*if(ym2609->fm6[0].ch[0].op[0].eg_phase_ != fmvgen::Operator::EGPhase::off)
