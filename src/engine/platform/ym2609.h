@@ -86,6 +86,7 @@ class DivPlatformYM2609: public DivDispatch {
 
     unsigned char autoEnvNum, autoEnvDen;
     unsigned short fixedFreq;
+    unsigned short wavetable;
 
     Channel():
       SharedChannel<signed short>(0xff),
@@ -111,10 +112,17 @@ class DivPlatformYM2609: public DivDispatch {
       }
   };
 
+  unsigned char psg_offset, rhythm_offset, adpcma_offset, adpcmb_offset;
+  bool extMode;
+
   unsigned char ayEnvMode[4];
   unsigned short ayEnvPeriod[4];
   short ayEnvSlideLow[4];
   short ayEnvSlide[4];
+
+  unsigned char writeRSSOff=0;
+  unsigned char writeRSSOn=0;
+  unsigned char globalRSSVolume=0;
 
   Channel chan[YM2609_NUM_CHANNELS];
   DivDispatchOscBuffer* oscBuf[YM2609_NUM_CHANNELS];
