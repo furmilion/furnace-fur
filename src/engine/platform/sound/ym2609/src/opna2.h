@@ -344,6 +344,7 @@ class OPNA2 /*: public OPNABase*/
             RebuildTimeTable();
             for (int i = 0; i < 6; i++)
             {
+                rhythm[i].rate = 18519;
                 rhythm[i].step = rhythm[i].rate * 1024 / r;
             }
 
@@ -751,7 +752,7 @@ class OPNA2 /*: public OPNABase*/
                 //visRtmVolume[1] = 0;
                 for (int i = 0; i < 6; i++)
                 {
-                    Rhythm r = rhythm[i];
+                    Rhythm& r = rhythm[i];
                     if ((rhythmkey & (1 << i)) != 0 && (uint8_t)r.level < 128)
                     {
                         int db = fmvgen::Limit(rhythmtl + rhythmtvol + r.level + r.volume, 127, -31);
@@ -764,9 +765,9 @@ class OPNA2 /*: public OPNABase*/
                             maskl = maskr = 0;
                         }
 
-                        for (int dest = 0; dest < count && r.pos < r.size; dest++)
+                        for (int dest = 0; dest < count && r.pos / 512 < r.size; dest++)
                         {
-                            int sample = (r.sample[r.pos / 1024] * vol) >> 12;
+                            int sample = (r.sample[r.pos / 512] * vol) / 4096;
                             r.pos += r.step;
 
                             int sL = sample;

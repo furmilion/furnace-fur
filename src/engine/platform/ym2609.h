@@ -120,6 +120,10 @@ class DivPlatformYM2609: public DivDispatch {
   short ayEnvSlideLow[4];
   short ayEnvSlide[4];
 
+  unsigned char writeRSSOff=0;
+  unsigned char writeRSSOn=0;
+  unsigned char globalRSSVolume=0;
+
   Channel chan[YM2609_NUM_CHANNELS];
   DivDispatchOscBuffer* oscBuf[YM2609_NUM_CHANNELS];
   struct QueuedWrite {
