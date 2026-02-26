@@ -99,8 +99,6 @@
 #define CHIP_FREQBASE fmFreqBase
 #define CHIP_DIVIDER fmDivBase
 
-#define PSG_OFFSET 12
-
 const char** DivPlatformYM2609::getRegisterSheet() {
   return NULL;
 }
@@ -135,10 +133,10 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
 
     for(int i = 0; i < 3; i++)
     {
-      oscBuf[PSG_OFFSET+i]->putSample(samp,(ym2609->psg2[0].chan_output[i][0] + ym2609->psg2[0].chan_output[i][1]) * 3 / 2);
-      oscBuf[PSG_OFFSET+3+i]->putSample(samp,(ym2609->psg2[1].chan_output[i][0] + ym2609->psg2[1].chan_output[i][1]) * 3 / 2);
-      oscBuf[PSG_OFFSET+3*2+i]->putSample(samp,(ym2609->psg2[2].chan_output[i][0] + ym2609->psg2[2].chan_output[i][1]) * 3 / 2);
-      oscBuf[PSG_OFFSET+3*3+i]->putSample(samp,(ym2609->psg2[3].chan_output[i][0] + ym2609->psg2[3].chan_output[i][1]) * 3 / 2);
+      oscBuf[psg_offset+i]->putSample(samp,(ym2609->psg2[0].chan_output[i][0] + ym2609->psg2[0].chan_output[i][1]) * 3 / 2);
+      oscBuf[psg_offset+3+i]->putSample(samp,(ym2609->psg2[1].chan_output[i][0] + ym2609->psg2[1].chan_output[i][1]) * 3 / 2);
+      oscBuf[psg_offset+3*2+i]->putSample(samp,(ym2609->psg2[2].chan_output[i][0] + ym2609->psg2[2].chan_output[i][1]) * 3 / 2);
+      oscBuf[psg_offset+3*3+i]->putSample(samp,(ym2609->psg2[3].chan_output[i][0] + ym2609->psg2[3].chan_output[i][1]) * 3 / 2);
     }
 
     /*if(ym2609->fm6[0].ch[0].op[0].eg_phase_ != fmvgen::Operator::EGPhase::off)
@@ -171,8 +169,6 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
 
 void DivPlatformYM2609::tick(bool sysTick) 
 {
-  bool doUpdateWave = false;
-
   for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
   {
     chan[i].std.next();
@@ -185,10 +181,11 @@ void DivPlatformYM2609::tick(bool sysTick)
     }
 
     bool writePan = false;
+    bool doUpdatePSGWave = false;
 
     if (chan[i].std.vol.had) 
     {
-      if (i<12)
+      if (i<psg_offset)
       {
         int inVol=chan[i].std.vol.val;
 
@@ -211,10 +208,10 @@ void DivPlatformYM2609::tick(bool sysTick)
           }
         }
       } 
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset)
       {
-        int ssg_num = (i - 12) / 3;
-        int chan_num = (i - 12) % 3;
+        int ssg_num = (i - psg_offset) / 3;
+        int chan_num = (i - psg_offset) % 3;
 
         chan[i].outVol=MIN(15,chan[i].std.vol.val)-(15-(chan[i].vol&15));
         if (chan[i].outVol<0) chan[i].outVol=0;
@@ -245,7 +242,7 @@ void DivPlatformYM2609::tick(bool sysTick)
     }
     if (chan[i].std.panL.had) 
     {
-      if(i < 12)
+      if(i < psg_offset)
       {
         if(chan[i].std.panL.val == 0)
         {
@@ -262,10 +259,10 @@ void DivPlatformYM2609::tick(bool sysTick)
 
         //rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
       }
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset)
       {
-        //int ssg_num = (i - 12) / 3;
-        //int chan_num = (i - 12) % 3;
+        //int ssg_num = (i - psg_offset) / 3;
+        //int chan_num = (i - psg_offset) % 3;
 
         if(chan[i].std.panL.val == 0)
         {
@@ -285,7 +282,7 @@ void DivPlatformYM2609::tick(bool sysTick)
     }
     if (chan[i].std.panR.had) 
     {
-      if(i < 12)
+      if(i < psg_offset)
       {
         if(chan[i].std.panR.val == 0)
         {
@@ -302,10 +299,10 @@ void DivPlatformYM2609::tick(bool sysTick)
         //rWrite(chanOffs[i]+ADDR_FB_ALG,(chan[i].state.alg&7)|(chan[i].state.fb<<3)|((chan[i].panRight&3)<<6));
         //rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
       }
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset)
       {
-        //int ssg_num = (i - 12) / 3;
-        //int chan_num = (i - 12) % 3;
+        //int ssg_num = (i - psg_offset) / 3;
+        //int chan_num = (i - psg_offset) % 3;
 
         if(chan[i].std.panR.val == 0)
         {
@@ -326,15 +323,15 @@ void DivPlatformYM2609::tick(bool sysTick)
 
     if(writePan)
     {
-      if(i < 12)
+      if(i < psg_offset)
       {
         rWrite(chanOffs[i]+ADDR_FB_ALG,(chan[i].state.alg&7)|(chan[i].state.fb<<3)|((chan[i].panRight&3)<<6));
         rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
       }
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset)
       {
-        int ssg_num = (i - 12) / 3;
-        int chan_num = (i - 12) % 3;
+        int ssg_num = (i - psg_offset) / 3;
+        int chan_num = (i - psg_offset) % 3;
 
         rWrite(ssg_offsets[ssg_num] + 0xf, chan[i].panRight | (chan[i].panLeft << 3) | (chan_num << 6));
         rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[i].vol&15)|((chan[i].curPSGMode.getEnvelope())<<2)|(chan[i].pan << 6));
@@ -343,9 +340,9 @@ void DivPlatformYM2609::tick(bool sysTick)
     }
 
     if (chan[i].std.duty.had) {
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset) //noise freq
       {
-        int ssg_num = (i - 12) / 3;
+        int ssg_num = (i - psg_offset) / 3;
 
         rWrite(ssg_offsets[ssg_num]+0x06,255-chan[i].std.duty.val);
       }
@@ -353,10 +350,10 @@ void DivPlatformYM2609::tick(bool sysTick)
 
     if (chan[i].std.wave.had) 
     {
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset)
       {
-        int ssg_num = (i - 12) / 3;
-        int chan_num = (i - 12) % 3;
+        int ssg_num = (i - psg_offset) / 3;
+        int chan_num = (i - psg_offset) % 3;
 
         chan[i].nextPSGMode.val=chan[i].std.wave.val&7;
         if (chan[i].active) {
@@ -379,10 +376,10 @@ void DivPlatformYM2609::tick(bool sysTick)
     }
 
     if (chan[i].std.phaseReset.had) {
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset)
       {
-        int ssg_num = (i - 12) / 3;
-        int chan_num = (i - 12) % 3;
+        int ssg_num = (i - psg_offset) / 3;
+        int chan_num = (i - psg_offset) % 3;
 
         if(chan[i].std.phaseReset.val == 1)
         {
@@ -392,7 +389,7 @@ void DivPlatformYM2609::tick(bool sysTick)
     }
 
     if (chan[i].std.alg.had) {
-      if(i < 12)
+      if(i < psg_offset)
       {
         chan[i].state.alg=chan[i].std.alg.val;
         rWrite(chanOffs[i]+ADDR_FB_ALG,(chan[i].state.alg&7)|(chan[i].state.fb<<3)|((chan[i].panRight&3)<<6));
@@ -410,7 +407,7 @@ void DivPlatformYM2609::tick(bool sysTick)
           }
         }
       }
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset)
       {
         chan[i].autoEnvDen=chan[i].std.alg.val;
         chan[i].freqChanged=true;
@@ -418,42 +415,45 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
     }
     if (chan[i].std.fb.had) {
-      if(i < 12)
+      if(i < psg_offset)
       {
         chan[i].state.fb=chan[i].std.fb.val;
         rWrite(chanOffs[i]+ADDR_FB_ALG,(chan[i].state.alg&7)|(chan[i].state.fb<<3)|((chan[i].panRight&3)<<6));
       }
     }
     if (chan[i].std.fms.had) {
-      if(i < 12)
+      if(i < psg_offset)
       {
         chan[i].state.fms=chan[i].std.fms.val;
         rWrite(chanOffs[i]+ADDR_LRAF,((chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
       }
     }
     if (chan[i].std.ams.had) {
-      if(i < 12)
+      if(i < psg_offset)
       {
         chan[i].state.ams=chan[i].std.ams.val;
         rWrite(chanOffs[i]+ADDR_LRAF,((chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
       }
     }
     if (chan[i].std.ex1.had) {
-      if(i < 12)
+      if(i < psg_offset)
       {
         chan[i].state_ym2609fm.alg_construct_switch=chan[i].std.ex1.val&1;
         rWrite(chanOffs[i]+ADDR_LRAF,(isMuted[i]?0:(chan[i].pan<<6))|(chan[i].state.fms&7)|((chan[i].state.ams&3)<<4)|(chan[i].state_ym2609fm.alg_construct_switch<<3));
       }
-      if(i >= 12 && i < 24) // wavetable index
+      if(i >= psg_offset && i < rhythm_offset) // wavetable index
       {
-        int ssg_num = (i - 12) / 3;
-        int chan_num = (i - 12) % 3;
+        int ssg_num = (i - psg_offset) / 3;
+        int chan_num = (i - psg_offset) % 3;
+        chan[i].wavetable = chan[i].std.ex1.val;
+        chan[i].op_ym2609[0].ws.changeWave1(chan[i].wavetable, true);
+        doUpdatePSGWave = true;
       }
     }
     if (chan[i].std.ex2.had) {
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset)
       {
-        int ssg_num = (i - 12) / 3;
+        int ssg_num = (i - psg_offset) / 3;
 
         ayEnvMode[ssg_num]=chan[i].std.ex2.val;
         rWrite(ssg_offsets[ssg_num]+0x0d,ayEnvMode[ssg_num]);
@@ -470,7 +470,7 @@ void DivPlatformYM2609::tick(bool sysTick)
         lfoValue[1]=(chan[i].std.ex3.val>7)?0:(8|(chan[i].std.ex3.val&7));
         rWrite(0x222,lfoValue[1]);
       }
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset)
       {
         chan[i].autoEnvNum=chan[i].std.ex3.val;
         chan[i].freqChanged=true;
@@ -478,21 +478,21 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
     }
     if (chan[i].std.ex4.had) {
-      if(i < 12)
+      if(i < psg_offset)
       {
         chan[i].opMask=chan[i].std.ex4.val&15;
         chan[i].opMaskChanged=true;
       }
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset)
       {
         chan[i].fixedFreq=chan[i].std.ex4.val;
         chan[i].freqChanged=true;
       }
     }
     if (chan[i].std.ex5.had) {
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset)
       {
-        int ssg_num = (i - 12) / 3;
+        int ssg_num = (i - psg_offset) / 3;
 
         ayEnvPeriod[ssg_num]=chan[i].std.ex5.val;
         rWrite(ssg_offsets[ssg_num]+0x0b,ayEnvPeriod[ssg_num]);
@@ -500,14 +500,15 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
     }
     if (chan[i].std.ex6.had) {
-      if(i >= 12 && i < 24)
+      if(i >= psg_offset && i < rhythm_offset)
       {
-        int ssg_num = (i - 12) / 3;
-        int chan_num = (i - 12) % 3;
+        //int ssg_num = (i - psg_offset) / 3;
+        int chan_num = (i - psg_offset) % 3;
 
         if(chan[i].std.ex6.val == 10) //custom wavetable
         {
-
+          chan[i].duty = 10 + chan_num;
+          chan[i].freqChanged = true;
         }
         else
         {
@@ -516,7 +517,7 @@ void DivPlatformYM2609::tick(bool sysTick)
         }
       }
     }
-    if(i < 12)
+    if(i < psg_offset)
     {
       for (int j=0; j<4; j++) {
         unsigned short baseAddr=chanOffs[i]|opOffs[j];
@@ -592,10 +593,37 @@ void DivPlatformYM2609::tick(bool sysTick)
         }
       }
     }
+
+    if(i >= psg_offset && i < rhythm_offset)
+    {
+      if (chan[i].active) 
+      {
+        if (chan[i].op_ym2609[0].ws.tick()) 
+        {
+          doUpdatePSGWave = true;
+        }
+      }
+
+      if(doUpdatePSGWave)
+      {
+        //updateWave();
+        int ssg_num = (i - psg_offset) / 3;
+        int chan_num = (i - psg_offset) % 3;
+
+        immWrite(ssg_offsets[ssg_num]+0x0d,ayEnvMode[ssg_num]|(chan_num << 4)|(1 << 7 /*reset wave counter*/));
+
+        for(int j = 0; j < 64; j++)
+        {
+          immWrite(ssg_offsets[ssg_num]+0x0e,chan[i].op_ym2609[0].ws.output[j] & 0xff);
+        }
+
+        doUpdatePSGWave = false;
+      }
+    }
   }
 
-  for (int i=0; i<12; i++) {
-    //if (i==2 && extMode) continue;
+  for (int i=0; i<psg_offset; i++) {
+    if ((i==2 || i==8) && extMode) continue;
     if (chan[i].keyOff) {
       rWrite(((i > 5) ? 0x228 : 0x28),0x00|konOffs[i % 6]);
       chan[i].keyOff=false;
@@ -604,7 +632,7 @@ void DivPlatformYM2609::tick(bool sysTick)
     
   for (int i=0; i<YM2609_NUM_CHANNELS; i++) 
   {
-    if(i < 12) //FM
+    if(i < psg_offset) //FM
     {
       if (chan[i].freqChanged) 
       {
@@ -638,7 +666,7 @@ void DivPlatformYM2609::tick(bool sysTick)
         if (i<6) {
           rWrite(0x28,(chan[i].opMask<<4)|konOffs[i]);
         }
-        else if(i < 12)
+        else if(i < psg_offset)
         {
           rWrite(0x228,(chan[i].opMask<<4)|konOffs[i-6]);
         }
@@ -647,10 +675,10 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
     }
 
-    if(i >= 12 && i < 24) //SSG
+    if(i >= psg_offset && i < rhythm_offset) //SSG
     {
-      int ssg_num = (i - 12) / 3;
-      int chan_num = (i - 12) % 3;
+      int ssg_num = (i - psg_offset) / 3;
+      int chan_num = (i - psg_offset) % 3;
       if (chan[i].freqChanged || chan[i].keyOn || chan[i].keyOff) {
         chan[i].freq=parent->calcFreq(chan[i].baseFreq,chan[i].pitch,chan[i].fixedArp?chan[i].baseNoteOverride:chan[i].arpOff,chan[i].fixedArp,true,0,chan[i].pitch2,chipClock,32);
 
@@ -781,7 +809,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
 
   switch (c.cmd) {
     case DIV_CMD_NOTE_ON: {
-      if(c.chan < 12) //FM
+      if(c.chan < psg_offset) //FM
       {
         DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
 
@@ -800,6 +828,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
         {
           if(ins->ym2609.ym2609fm.op[i].custom_wave)
           {
+            chan[c.chan].op_ym2609[i].ws.init(NULL,1024,8191,false);
             chan[c.chan].op_ym2609[i].ws.changeWave1(ins->ym2609.ym2609fm.op[i].custom_wave_index, true);
 
             //set wave channel and wave type
@@ -841,7 +870,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
         chan[c.chan].active=true;
         chan[c.chan].keyOn=true;
       }
-      if(c.chan >= 12 && c.chan < 24) //SSG
+      if(c.chan >= psg_offset && c.chan < rhythm_offset) //SSG
       {
         int chan_num = (c.chan - 12) % 3;
         int ssg_num = (c.chan - 12) / 3;
@@ -858,6 +887,9 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
         chan[c.chan].active=true;
         chan[c.chan].keyOn=true;
         chan[c.chan].macroInit(ins);
+
+        chan[c.chan].op_ym2609[0].ws.init(NULL,64,255,false);
+
         if (!parent->song.compatFlags.brokenOutVol && !chan[c.chan].std.vol.will) {
           chan[c.chan].outVol=chan[c.chan].vol;
         }
@@ -880,13 +912,13 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       break;
     }
     case DIV_CMD_NOTE_OFF:
-      if(c.chan < 12)
+      if(c.chan < psg_offset)
       {
         chan[c.chan].active=false;
         chan[c.chan].keyOff=true;
         chan[c.chan].keyOn=false;
       }
-      if(c.chan >= 12 && c.chan < 24) //SSG
+      if(c.chan >= psg_offset && c.chan < rhythm_offset) //SSG
       {
         chan[c.chan].active=false;
         chan[c.chan].keyOff=true;
@@ -894,14 +926,14 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       }
       break;
     case DIV_CMD_NOTE_OFF_ENV:
-      if(c.chan < 12)
+      if(c.chan < psg_offset)
       { 
         chan[c.chan].active=false;
         chan[c.chan].keyOff=true;
         chan[c.chan].keyOn=false;
         chan[c.chan].std.release();
       }
-      if(c.chan >= 12 && c.chan < 24) //SSG
+      if(c.chan >= psg_offset && c.chan < rhythm_offset) //SSG
       {
         chan[c.chan].std.release();
       }
@@ -920,7 +952,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       if (!chan[c.chan].std.vol.has) {
         chan[c.chan].outVol=c.value;
       }
-      if (c.chan < 12)
+      if (c.chan < psg_offset)
       {
         for (int i=0; i<4; i++) 
         {
@@ -950,7 +982,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       chan[c.chan].freqChanged=true;
       break;
     case DIV_CMD_NOTE_PORTA: {
-      if(c.chan < 12) //FM
+      if(c.chan < psg_offset) //FM
       {
         if (parent->song.compatFlags.linearPitch) {
           int destFreq=NOTE_FREQUENCY(c.value2+chan[c.chan].sampleNoteDelta);
@@ -977,7 +1009,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
         }
         PLEASE_HELP_ME(chan[c.chan],chan[c.chan].state.block);
       }
-      else if(c.chan >= 12 && c.chan < 24) //PSG
+      else if(c.chan >= psg_offset && c.chan < rhythm_offset) //PSG
       {
         int destFreq=NOTE_PERIODIC(c.value2+chan[c.chan].sampleNoteDelta);
         bool return2=false;
@@ -1003,7 +1035,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       break;
     }
     case DIV_CMD_LEGATO:
-      if(c.chan < 12) //FM
+      if(c.chan < psg_offset) //FM
       {
         if (chan[c.chan].insChanged) {
           DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
@@ -1014,7 +1046,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
         chan[c.chan].note=c.value;
         chan[c.chan].freqChanged=true;
       }
-      else if(c.chan >= 12 && c.chan < 24) //PSG
+      else if(c.chan >= psg_offset && c.chan < rhythm_offset) //PSG
       {
         chan[c.chan].baseFreq=NOTE_PERIODIC(c.value);
         chan[c.chan].freqChanged=true;
@@ -1031,7 +1063,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       chan[c.chan].inPorta=c.value;
       break;
     case DIV_CMD_FM_LFO: {
-      if (c.chan>=12) break;
+      if (c.chan>=psg_offset) break;
       lfoValue[c.chan > 5 ? 1 : 0]=(c.value&7)|((c.value>>4)<<3);
       rWrite(c.chan > 5 ? 0x200 : 0 + 0x22,lfoValue[c.chan > 5 ? 1 : 0]);
       break;
@@ -1129,7 +1161,7 @@ DivDispatchOscBuffer* DivPlatformYM2609::getOscBuffer(int ch) {
 }
 
 unsigned short DivPlatformYM2609::getPan(int ch) {
-  if(ch > 12 || ch <= 12 + 12)
+  if(ch > psg_offset || ch <= rhythm_offset)
   {
     int pan_right = (chan[ch].pan & 1) ? (3 - chan[ch].panRight + 1) : 0;
     int pan_left = (chan[ch].pan & 2) ? (3 - chan[ch].panLeft + 1) : 0;
@@ -1452,6 +1484,13 @@ int DivPlatformYM2609::init(DivEngine* p, int channels, int sugRate, const DivCo
     isMuted[i]=false;
     oscBuf[i]=new DivDispatchOscBuffer;
   }
+
+  psg_offset = 12;
+  rhythm_offset = 12 + 12;
+  adpcma_offset = 12 + 12 + 6;
+  adpcmb_offset = 12 + 12 + 6 + 6;
+
+  extMode = false;
 
   rev = new reverb(YM2609_DSP_RATE * 4, 39);
   dist = new distortion(YM2609_CLOCK, 39);
