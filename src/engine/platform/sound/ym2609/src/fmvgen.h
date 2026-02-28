@@ -215,6 +215,7 @@ class fmvgen /*: public fmgen*/
             void phase_reset()
             {
                 acc = 0;
+                lfsr = 0xAAAAAAAA;
             }
 
             void clock()
@@ -901,7 +902,8 @@ class fmvgen /*: public fmgen*/
                         pgin += In >> (20 + FM_PGBITS - FM_OPSINBITS - (2 + IS2EC_SHIFT));
                     }
                     //out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + ams_[chip_.GetAML()]));
-                    out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + (amon_ ? (((lfo[0]->output_am + lfo[1]->output_am) * (int)dam / 0x20) & ~1) : 0))); //for some reason LSB being not zero fucks up 
+                    uint32_t lfo_out = (lfo[0]->freq != 0 ? lfo[0]->output_am : 0) + (lfo[1]->freq != 0 ? lfo[1]->output_am : 0);
+                    out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + (amon_ ? (((lfo_out) * (int)(dam + 1) / 0x40) & ~1) : 0))); //for some reason LSB being not zero fucks up 
                     //out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + amon_));
 
                     dbgopout_ = out2_;
@@ -955,7 +957,8 @@ class fmvgen /*: public fmgen*/
                     }
 
                     //out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch,pgin) + ams_[chip_.GetAML()]));
-                    out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + (amon_ ? (((lfo[0]->output_am + lfo[1]->output_am) * (int)dam / 0x20) & ~1) : 0)));
+                    uint32_t lfo_out = (lfo[0]->freq != 0 ? lfo[0]->output_am : 0) + (lfo[1]->freq != 0 ? lfo[1]->output_am : 0);
+                    out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + (amon_ ? (((lfo_out) * (int)(dam + 1) / 0x40) & ~1) : 0))); //for some reason LSB being not zero fucks up 
                     //out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + amon_));
                     //dbgopout_ = out_;
 

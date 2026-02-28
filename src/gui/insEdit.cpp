@@ -339,14 +339,14 @@ const char* sid3SpecialWaveforms[]={
 };
 
 const char* YM2609SSGdutywaves[]={
-  _N("Pulse, 50 percent duty"),
-  _N("Pulse, 43.75 percent duty"),
-  _N("Pulse, 37.5 percent duty"),
-  _N("Pulse, 31.25 percent duty"),
-  _N("Pulse, 25 percent duty"),
-  _N("Pulse, 18.75 percent duty"),
-  _N("Pulse, 12.5 percent duty"),
-  _N("Pulse, 6.25 percent duty"),
+  _N("Pulse, 50% duty"),
+  _N("Pulse, 43.75% duty"),
+  _N("Pulse, 37.5% duty"),
+  _N("Pulse, 31.25% duty"),
+  _N("Pulse, 25% duty"),
+  _N("Pulse, 18.75% duty"),
+  _N("Pulse, 12.5% duty"),
+  _N("Pulse, 6.25% duty"),
   _N("Triangle"),
   _N("Sawtooth"),
   _N("Custom wavetable")
@@ -833,7 +833,7 @@ String macroLFOWavesYM2609(int id, float val, void* u) {
       label=_("Square");
       break;
     case 6:
-      label=_("25 percent pulse");
+      label=_("25% pulse");
       break;
     case 7:
       label=_("Squished sine");
@@ -7293,41 +7293,6 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
 
               ImGui::EndTable();
             }
-            
-            /*if (ImGui::BeginTable("FMParamsInnerOPZ",2)) {
-              ImGui::TableNextRow();
-              ImGui::TableNextColumn();
-
-              ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-              snprintf(tempID,1024,"%s: %%d",FM_NAME(FM_FINE));
-              P(CWSliderScalar("##FINE",ImGuiDataType_U8,&op.dvb,&_ZERO,&_FIFTEEN,tempID)); rightClickable
-
-              ImGui::TableNextColumn();
-              bool amOn=op.am;
-              if (ImGui::Checkbox(FM_NAME(FM_AM),&amOn)) { PARAMETER
-                op.am=amOn;
-              }
-              ImGui::SameLine();
-              if (ImGui::Checkbox(_("Fixed"),&egtOn)) { PARAMETER
-                op.egt=egtOn;
-              }
-
-              ImGui::TableNextRow();
-              ImGui::TableNextColumn();
-              ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-              snprintf(tempID,1024,"%s: %%d",FM_NAME(FM_EGSHIFT));
-              P(CWSliderScalar("##EGShift",ImGuiDataType_U8,&op.ksl,&_ZERO,&_THREE,tempID)); rightClickable
-
-              ImGui::TableNextColumn();
-              ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-              snprintf(tempID,1024,"%s: %%d",FM_NAME(FM_REV));
-              P(CWSliderScalar("##REV",ImGuiDataType_U8,&op.dam,&_ZERO,&_SEVEN,tempID)); rightClickable
-
-              ImGui::TableNextColumn();
-
-
-              ImGui::EndTable();
-            }*/
 
             ImGui::TableNextColumn();
             op.tl&=maxTl;
@@ -7383,7 +7348,7 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
     macroList.push_back(FurnaceGUIMacroDesc(label,&ins->std.fbMacro,0,7,96,uiColors[GUI_COLOR_MACRO_OTHER]));
     macroList.push_back(FurnaceGUIMacroDesc(_("AM Depth 1"),&ins->std.amsMacro,0,255,160,uiColors[GUI_COLOR_MACRO_OTHER]));
     macroList.push_back(FurnaceGUIMacroDesc(_("FM Depth 1"),&ins->std.fmsMacro,0,255,160,uiColors[GUI_COLOR_MACRO_OTHER]));
-    macroList.push_back(FurnaceGUIMacroDesc(_("AM Depth 2"),&ins->std.ex1Macro,0,255,160,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("AM Depth 2"),&ins->std.ex10Macro,0,255,160,uiColors[GUI_COLOR_MACRO_OTHER]));
     macroList.push_back(FurnaceGUIMacroDesc(_("FM Depth 2"),&ins->std.ex2Macro,0,255,160,uiColors[GUI_COLOR_MACRO_OTHER]));
     macroList.push_back(FurnaceGUIMacroDesc(_("LFO1 Freq"),&ins->std.ex3Macro,0,65535,160,uiColors[GUI_COLOR_MACRO_OTHER]));
     macroList.push_back(FurnaceGUIMacroDesc(_("LFO2 Freq"),&ins->std.ex5Macro,0,65535,160,uiColors[GUI_COLOR_MACRO_OTHER]));
@@ -7422,8 +7387,11 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
 
       if(i != 0)
       {
-        macroList.push_back(FurnaceGUIMacroDesc(_("OP FB"),&ins->std.opMacros[ordi].dvbMacro,0,7,64,uiColors[GUI_COLOR_MACRO_OTHER]));
+        macroList.push_back(FurnaceGUIMacroDesc(_("OP FB"),&ins->std.opMacros[ordi].kslMacro,0,7,64,uiColors[GUI_COLOR_MACRO_OTHER]));
       }
+
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_DVB),&ins->std.opMacros[ordi].dvbMacro,0,15,64,uiColors[GUI_COLOR_MACRO_OTHER]));
+      macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_DAM),&ins->std.opMacros[ordi].damMacro,0,7,64,uiColors[GUI_COLOR_MACRO_OTHER]));
 
       drawMacros(macroList,macroEditStateOP[ordi],ins);
       ImGui::EndTabItem();
