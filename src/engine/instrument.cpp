@@ -1902,6 +1902,7 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
         break;
       case DIV_INS_YM2609_SSG:
         feature9D=true;
+        if (ws.enabled) featureWS=true;
         break;
       case DIV_INS_MAX:
         break;

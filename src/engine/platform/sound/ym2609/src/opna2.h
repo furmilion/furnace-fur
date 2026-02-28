@@ -344,7 +344,7 @@ class OPNA2 /*: public OPNABase*/
             RebuildTimeTable();
             for (int i = 0; i < 6; i++)
             {
-                rhythm[i].rate = 18519;
+                rhythm[i].rate = 18519 * 36811 / 30842;
                 rhythm[i].step = rhythm[i].rate * 1024 / r;
             }
 

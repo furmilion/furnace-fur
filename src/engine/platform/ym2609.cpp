@@ -507,8 +507,11 @@ void DivPlatformYM2609::tick(bool sysTick)
 
         if(chan[i].std.ex6.val == 10) //custom wavetable
         {
-          chan[i].duty = 10 + chan_num;
-          chan[i].freqChanged = true;
+          if(chan[i].wavetable != -1)
+          {
+            chan[i].duty = 10 + chan_num;
+            chan[i].freqChanged = true;
+          }
         }
         else
         {
@@ -604,7 +607,7 @@ void DivPlatformYM2609::tick(bool sysTick)
         }
       }
 
-      if(doUpdatePSGWave)
+      if(doUpdatePSGWave && chan[i].wavetable != -1)
       {
         //updateWave();
         int ssg_num = (i - psg_offset) / 3;
@@ -915,7 +918,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
         chan[c.chan].keyOn=true;
         chan[c.chan].macroInit(ins);
 
-        chan[c.chan].op_ym2609[0].ws.init(NULL,64,255,false);
+        chan[c.chan].op_ym2609[0].ws.init(ins,64,255,false);
 
         if (!parent->song.compatFlags.brokenOutVol && !chan[c.chan].std.vol.will) {
           chan[c.chan].outVol=chan[c.chan].vol;
@@ -1276,6 +1279,7 @@ void DivPlatformYM2609::reset() {
     chan[i].panRight = 0;
 
     chan[i].duty = 0;
+    chan[i].wavetable = -1;
 
     for(int j = 0; j < 4; j++)
     {
