@@ -13,7 +13,7 @@
 #include "fmvgen.h"
 #include <cmath>
 
-static const float panTable[8] = { 1.0f, 0.8756f, 0.7512f, 0.6012f, 0.4512f, 0.2506f, 0.0500f, 0.0250f };
+const float panTable_psg[8] = { 1.0f, 0.8756f, 0.7512f, 0.6012f, 0.4512f, 0.2506f, 0.0500f, 0.0250f };
 
 class PSG2 : public PSG
 {
@@ -324,8 +324,8 @@ class PSG2 : public PSG
                                     chor->Mix(efcStartCh + k, L, R);
                                     hpflpf->Mix(efcStartCh + k, L, R);
                                     compressor->Mix(efcStartCh + k, L, R);
-                                    L = (panpot[k] & 2) != 0 ? (int)(L * panTable[panpotLM[k]]) : 0;
-                                    R = (panpot[k] & 1) != 0 ? (int)(R * panTable[panpotRM[k]]) : 0;
+                                    L = (panpot[k] & 2) != 0 ? (int)(L * panTable_psg[panpotLM[k]]) : 0;
+                                    R = (panpot[k] & 1) != 0 ? (int)(R * panTable_psg[panpotRM[k]]) : 0;
                                     L *= reversePhase->SSG[num][k][0];
                                     R *= reversePhase->SSG[num][k][1];
 
@@ -386,8 +386,8 @@ class PSG2 : public PSG
                                     chor->Mix(efcStartCh + k, L, R);
                                     hpflpf->Mix(efcStartCh + k, L, R);
                                     compressor->Mix(efcStartCh + k, L, R);
-                                    L = (panpot[k] & 2) != 0 ? (int)(L * panTable[panpotLM[k]]) : 0;
-                                    R = (panpot[k] & 1) != 0 ? (int)(R * panTable[panpotRM[k]]) : 0;
+                                    L = (panpot[k] & 2) != 0 ? (int)(L * panTable_psg[panpotLM[k]]) : 0;
+                                    R = (panpot[k] & 1) != 0 ? (int)(R * panTable_psg[panpotRM[k]]) : 0;
                                     L *= reversePhase->SSG[num][k][0];
                                     R *= reversePhase->SSG[num][k][1];
 
@@ -473,8 +473,8 @@ class PSG2 : public PSG
                                 chor->Mix(efcStartCh + k, L, R);
                                 hpflpf->Mix(efcStartCh + k, L, R);
                                 compressor->Mix(efcStartCh + k, L, R);
-                                L = (panpot[k] & 2) != 0 ? (int)(L * panTable[panpotLM[k]]) : 0;
-                                R = (panpot[k] & 1) != 0 ? (int)(R * panTable[panpotRM[k]]) : 0;
+                                L = (panpot[k] & 2) != 0 ? (int)(L * panTable_psg[panpotLM[k]]) : 0;
+                                R = (panpot[k] & 1) != 0 ? (int)(R * panTable_psg[panpotRM[k]]) : 0;
                                 L *= reversePhase->SSG[num][k][0];
                                 R *= reversePhase->SSG[num][k][1];
 

@@ -4274,6 +4274,7 @@ void FurnaceGUI::drawSettings() {
           UI_COLOR_CONFIG(GUI_COLOR_INSTR_SID3,_("SID3"));
           UI_COLOR_CONFIG(GUI_COLOR_INSTR_YM2609_FM,_("YM2609 FM"));
           UI_COLOR_CONFIG(GUI_COLOR_INSTR_YM2609_SSG,_("YM2609 SSG"));
+          UI_COLOR_CONFIG(GUI_COLOR_INSTR_YM2609_RSS,_("YM2609 RSS"));
           UI_COLOR_CONFIG(GUI_COLOR_INSTR_UNKNOWN,_("Other/Unknown"));
           ImGui::TreePop();
         }

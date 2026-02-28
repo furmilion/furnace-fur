@@ -27,6 +27,7 @@
 
 extern const int* _2608_samples[];
 extern uint32_t _2608_samples_sizes[];
+extern const float panTable_psg[];
 
 //	YM2609(OPNA2) ---------------------------------------------------
 class OPNA2 /*: public OPNABase*/
@@ -38,6 +39,8 @@ class OPNA2 /*: public OPNABase*/
         static constexpr float panTable[4] = { 1.0f, 0.7512f, 0.4512f, 0.0500f };
 
         uint32_t sinetable_opna[12][4][1024];
+
+        int rss_output[6][2];
 
         // ---------------------------------------------------------------------------
         //	構築
@@ -145,6 +148,8 @@ class OPNA2 /*: public OPNABase*/
         {
             public:
                 uint8_t pan;      // ぱん
+                uint8_t panpot_l;
+                uint8_t panpot_r;
                 int8_t level;     // おんりょう
                 int volume;     // おんりょうせってい
                 const int* sample;      // さんぷる
@@ -622,6 +627,16 @@ class OPNA2 /*: public OPNABase*/
                     rhythmtl = (int8_t)(~data & 63);
                     break;
 
+                case 0x12:      // Bass Drum
+                case 0x13:      // Snare Drum
+                case 0x14:      // Top Cymbal
+                case 0x15:      // Hihat
+                case 0x16:      // Tom-tom
+                case 0x17:      // Rim shot
+                    rhythm[(addr - 0x12) & 7].panpot_l = (data >> 3) & 7;
+                    rhythm[(addr - 0x12) & 7].panpot_r = data & 7;
+                    break;
+
                 case 0x18:      // Bass Drum
                 case 0x19:      // Snare Drum
                 case 0x1a:      // Top Cymbal
@@ -753,6 +768,8 @@ class OPNA2 /*: public OPNABase*/
                 for (int i = 0; i < 6; i++)
                 {
                     Rhythm& r = rhythm[i];
+                    rss_output[i][0] = 0;
+                    rss_output[i][1] = 0;
                     if ((rhythmkey & (1 << i)) != 0 && (uint8_t)r.level < 128)
                     {
                         int db = fmvgen::Limit(rhythmtl + rhythmtvol + r.level + r.volume, 127, -31);
@@ -770,8 +787,8 @@ class OPNA2 /*: public OPNABase*/
                             int sample = (r.sample[r.pos / 512] * vol) / 4096;
                             r.pos += r.step;
 
-                            int sL = sample;
-                            int sR = sample;
+                            int sL = sample * panTable_psg[r.panpot_l];
+                            int sR = sample * panTable_psg[r.panpot_r];
                             distortion->Mix(r.efcCh, sL, sR);
                             chorus->Mix(r.efcCh, sL, sR);
                             hpflpf->Mix(r.efcCh, sL, sR);
@@ -781,6 +798,10 @@ class OPNA2 /*: public OPNABase*/
                             sR = sR & maskr;
                             sL *= reversePhase->Rhythm[i][0];
                             sR *= reversePhase->Rhythm[i][1];
+                            
+                            rss_output[i][0] = sL;
+                            rss_output[i][1] = sR;
+
                             int revSampleL = (int)(sL * reverb->SendLevel[r.efcCh]);
                             int revSampleR = (int)(sR * reverb->SendLevel[r.efcCh]);
                             fmvgen::StoreSample(buffer[0][dest], sL);

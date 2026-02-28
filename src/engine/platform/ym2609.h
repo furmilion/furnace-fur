@@ -88,6 +88,8 @@ class DivPlatformYM2609: public DivDispatch {
     unsigned short fixedFreq;
     int wavetable;
 
+    int macroVolMul;
+
     Channel():
       SharedChannel<signed short>(0xff),
       opMask(15),
