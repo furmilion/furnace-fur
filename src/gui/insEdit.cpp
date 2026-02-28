@@ -811,6 +811,38 @@ String macroLFOWaves(int id, float val, void* u) {
   return fmt::sprintf("%d: %s",id,label);
 }
 
+String macroLFOWavesYM2609(int id, float val, void* u) {
+  const char* label="???";
+  switch (((int)val)&7) {
+    case 0:
+      label=_("Sine");
+      break;
+    case 1:
+      label=_("Triangle");
+      break;
+    case 2:
+      label=_("Sawtooth");
+      break;
+    case 3:
+      label=_("Noise");
+      break;
+    case 4:
+      label=_("Semisine");
+      break;
+    case 5:
+      label=_("Square");
+      break;
+    case 6:
+      label=_("25 percent pulse");
+      break;
+    case 7:
+      label=_("Squished sine");
+      break;
+    default: break;
+  }
+  return fmt::sprintf("%d: %s%s",id,label, (((int)val) & 8) ? _(" (inverted)") : "");
+}
+
 String macroVERAWaves(int id, float val, void* u) {
   const char* label="???";
   switch (((int)val)&3) {
@@ -6889,13 +6921,15 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
       //for opn it was
       ImGui::TableNextColumn();
       P(CWSliderScalar(fmt::sprintf("OP1 %s",FM_NAME(FM_FB)).c_str(),ImGuiDataType_U8,&ins->fm.fb,&_ZERO,&_SEVEN)); rightClickable
-      P(CWSliderScalar(FM_NAME(FM_FMS),ImGuiDataType_U8,&ins->fm.fms,&_ZERO,&_SEVEN)); rightClickable
+      P(CWSliderScalar(_("FM/PM depth 1"),ImGuiDataType_U8,&ins->ym2609.ym2609fm.lfo_fm_depth[0],&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE)); rightClickable
+      P(CWSliderScalar(_("FM/PM depth 2"),ImGuiDataType_U8,&ins->ym2609.ym2609fm.lfo_fm_depth[1],&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE)); rightClickable
       P(CWSliderScalar(FM_NAME(FM_BLOCK),ImGuiDataType_U8,&ins->fm.block,&_ZERO,&_EIGHT,blockTxt.c_str())); rightClickable
       ImGui::TableNextColumn();
       ImGui::BeginDisabled(ins->ym2609.ym2609fm.alg_construct_switch);
       P(CWSliderScalar(FM_NAME(FM_ALG),ImGuiDataType_U8,&ins->fm.alg,&_ZERO,&_SEVEN)); rightClickable
       ImGui::EndDisabled();
-      P(CWSliderScalar(FM_NAME(FM_AMS),ImGuiDataType_U8,&ins->fm.ams,&_ZERO,&_THREE)); rightClickable
+      P(CWSliderScalar(_("AM depth 1"),ImGuiDataType_U8,&ins->ym2609.ym2609fm.lfo_am_depth[0],&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE)); rightClickable
+      P(CWSliderScalar(_("AM depth 2"),ImGuiDataType_U8,&ins->ym2609.ym2609fm.lfo_am_depth[1],&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE)); rightClickable
       bool customalgOn=ins->ym2609.ym2609fm.alg_construct_switch;
       if (ImGui::Checkbox(_("AC Switch"),&customalgOn)) { PARAMETER
         ins->ym2609.ym2609fm.alg_construct_switch=customalgOn;
@@ -7184,7 +7218,7 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
 
             ImGui::TableNextColumn();
             float envHeight=sliderHeight;//-ImGui::GetStyle().ItemSpacing.y*2.0f;
-            envHeight-=ImGui::GetFrameHeightWithSpacing()*2.0f;
+            envHeight-=ImGui::GetFrameHeightWithSpacing()*3.0f;
             drawFMEnv(op.tl&maxTl,op.ar&maxArDr,op.dr&maxArDr,op.d2r&31,op.rr&15,op.sl&15,op.sus,op.ssgEnv&8,fmOrigin.alg,maxTl,maxArDr,15,ImVec2(ImGui::GetContentRegionAvail().x,envHeight),ins->type);
 
             ImGui::Separator();
@@ -7237,6 +7271,28 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
             }
 
             ImGui::EndDisabled();
+
+            ImGui::NewLine();
+
+            if (ImGui::BeginTable("FMParamsInnerOPZ",2)) 
+            {
+              ImGui::TableNextRow();
+              ImGui::TableNextColumn();
+              
+              snprintf(tempID,1024,"%s: %%d",FM_NAME(FM_DVB));
+              ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+              P(CWSliderScalar("##FM_DVB",ImGuiDataType_U8,&op.dvb,&_ZERO,&_FIFTEEN,tempID)); rightClickable
+
+              ImGui::TableNextColumn();
+
+              snprintf(tempID,1024,"%s: %%d",FM_NAME(FM_DAM));
+              ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+              P(CWSliderScalar("##FM_DAM",ImGuiDataType_U8,&op.dam,&_ZERO,&_SEVEN,tempID)); rightClickable
+
+              //ImGui::TableNextColumn();
+
+              ImGui::EndTable();
+            }
             
             /*if (ImGui::BeginTable("FMParamsInnerOPZ",2)) {
               ImGui::TableNextRow();
@@ -7280,7 +7336,7 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
             float textX_tl=ImGui::GetCursorPosX();
             P(CWVSliderScalar("##TL",ImVec2(tlSliderWidth,tlSliderHeight),ImGuiDataType_U8,&op.tl,&maxTl,&_ZERO)); rightClickable
 
-            ImGui::SetCursorPosY(ImGui::GetCursorPosY()-25.0f*dpiScale);
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY()-(25.0f*dpiScale - ImGui::GetFrameHeightWithSpacing()));
             CENTER_TEXT(FM_SHORT_NAME(FM_AM));
             ImGui::TextUnformatted(FM_SHORT_NAME(FM_AM));
             TOOLTIP_TEXT(FM_NAME(FM_AM));
@@ -7325,9 +7381,16 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
     macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_ALG),&ins->std.algMacro,0,7,96,uiColors[GUI_COLOR_MACRO_OTHER]));
     macroList.push_back(FurnaceGUIMacroDesc(_("AC"),&ins->std.ex1Macro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true,NULL));
     macroList.push_back(FurnaceGUIMacroDesc(label,&ins->std.fbMacro,0,7,96,uiColors[GUI_COLOR_MACRO_OTHER]));
-    macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_FMS),&ins->std.fmsMacro,0,7,96,uiColors[GUI_COLOR_MACRO_OTHER]));
-    macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_AMS),&ins->std.amsMacro,0,3,48,uiColors[GUI_COLOR_MACRO_OTHER]));
-    macroList.push_back(FurnaceGUIMacroDesc(_("LFO Speed"),&ins->std.ex3Macro,0,8,96,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("AM Depth 1"),&ins->std.amsMacro,0,255,160,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("FM Depth 1"),&ins->std.fmsMacro,0,255,160,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("AM Depth 2"),&ins->std.ex1Macro,0,255,160,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("FM Depth 2"),&ins->std.ex2Macro,0,255,160,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("LFO1 Freq"),&ins->std.ex3Macro,0,65535,160,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("LFO2 Freq"),&ins->std.ex5Macro,0,65535,160,uiColors[GUI_COLOR_MACRO_OTHER]));
+    macroList.push_back(FurnaceGUIMacroDesc(_("LFO1 Shape"),&ins->std.ex6Macro,0,15,64,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,macroLFOWavesYM2609));
+    macroList.push_back(FurnaceGUIMacroDesc(_("LFO2 Shape"),&ins->std.ex7Macro,0,15,64,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,macroLFOWavesYM2609));
+    macroList.push_back(FurnaceGUIMacroDesc(_("LFO1 Phase Reset"),&ins->std.ex8Macro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true));
+    macroList.push_back(FurnaceGUIMacroDesc(_("LFO2 Phase Reset"),&ins->std.ex9Macro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true));
     macroList.push_back(FurnaceGUIMacroDesc(_("OpMask"),&ins->std.ex4Macro,0,4,64,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true,fmOperatorBits));
 
     drawMacros(macroList,macroEditStateFM,ins);

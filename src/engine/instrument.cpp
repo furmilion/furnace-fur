@@ -699,6 +699,10 @@ bool DivInstrumentYM2609FM::Operator::operator==(const DivInstrumentYM2609FM::Op
 bool DivInstrumentYM2609FM::operator==(const DivInstrumentYM2609FM& other) {
   return (
     _C(alg_construct_switch) &&
+    _C(lfo_am_depth[0]) &&
+    _C(lfo_am_depth[1]) &&
+    _C(lfo_fm_depth[0]) &&
+    _C(lfo_fm_depth[1]) &&
     _C(op[0]) &&
     _C(op[1]) &&
     _C(op[2]) &&
@@ -1546,6 +1550,13 @@ void DivInstrument::writeFeature9F(SafeWriter* w) {
   FEATURE_BEGIN("9F");
 
   w->writeC(ym2609.ym2609fm.alg_construct_switch);
+
+  //new
+  w->writeC(ym2609.ym2609fm.lfo_am_depth[0]);
+  w->writeC(ym2609.ym2609fm.lfo_am_depth[1]);
+  w->writeC(ym2609.ym2609fm.lfo_fm_depth[0]);
+  w->writeC(ym2609.ym2609fm.lfo_fm_depth[1]);
+  //new end
 
   for(int i = 0; i < 4; i++)
   {
