@@ -90,6 +90,8 @@ class DivPlatformYM2609: public DivDispatch {
 
     int macroVolMul;
 
+    uint8_t lfoShape[2];
+
     Channel():
       SharedChannel<signed short>(0xff),
       opMask(15),
@@ -100,7 +102,13 @@ class DivPlatformYM2609: public DivDispatch {
       opMaskChanged(false),
       ac_switch(false),
       portaPauseFreq(0),
-      duty(0)
+      duty(0),
+      autoEnvNum(0),
+      autoEnvDen(0),
+      fixedFreq(0),
+      wavetable(-1),
+      macroVolMul(31),
+      lfoShape{0,0}
       {
         for(int i = 0; i < 4; i++)
         {
@@ -186,6 +194,9 @@ class DivPlatformYM2609: public DivDispatch {
 
   const unsigned short ssg_offsets[4] = { 0, 0x120, 0x200, 0x210 };
 
+  const unsigned short LFOBase_ofsets[2]={ 0xE0, 0x1E0 };
+  const unsigned short LFOSettings_ofsets[2]={ 0, 5 };
+
   double fmFreqBase;
 
   unsigned char writeOscBuf;
@@ -211,8 +222,6 @@ class DivPlatformYM2609: public DivDispatch {
   unsigned int* sampleOffB[3];
 
   unsigned char regPool[YM2609_NUM_REGISTERS];
-
-  uint8_t lfoValue[2];
 
   bool isMuted[YM2609_NUM_CHANNELS];
 

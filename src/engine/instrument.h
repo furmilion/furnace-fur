@@ -1034,6 +1034,8 @@ struct DivInstrumentSID3 {
 struct DivInstrumentYM2609FM {
   
   bool alg_construct_switch;
+  unsigned char lfo_am_depth[2];
+  unsigned char lfo_fm_depth[2];
 
   bool operator==(const DivInstrumentYM2609FM& other);
   bool operator!=(const DivInstrumentYM2609FM& other) {

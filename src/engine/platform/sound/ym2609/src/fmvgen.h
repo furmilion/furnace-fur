@@ -14,6 +14,8 @@ extern int pmtable[2][8][FM_LFOENTS];
 extern uint32_t amtable[2][4][FM_LFOENTS];
 extern bool tablemade;
 
+static int sine_table_lfo[1024] = { 0 };
+
 enum OpType : int
 {
     typeN = 0,
@@ -192,10 +194,117 @@ class fmvgen /*: public fmgen*/
             }
         }
 
+        class Channel4_LFO
+        {
+            public:
+
+            uint32_t acc;
+            uint32_t prev_acc;
+            uint16_t freq;
+
+            uint8_t wave_type;
+            uint8_t fm_depth, am_depth;
+
+            uint32_t lfsr;
+
+            int output;
+
+            int output_am;
+            int output_fm;
+
+            void phase_reset()
+            {
+                acc = 0;
+            }
+
+            void clock()
+            {
+                acc += freq << 10;
+
+                switch(wave_type & 7)
+                {
+                    case 0: //sine
+                    {
+                        output = sine_table_lfo[acc >> (32 - 10)];
+                        break;
+                    }
+                    case 1: //Triangle
+                    {
+                        output = ((acc < (1 << 31)) ? ((int)(acc >> 15)) : ((int)((0xffffffffU - acc) >> 15))) - 32768;
+                        break;
+                    }
+                    case 2: //Sawtooth
+                    {
+                        output = ((int)(acc >> (32 - 16))) - 32768;
+                        break;
+                    }
+                    case 3: //Noise
+                    {
+                        if((acc & (1 << (31 - 5))) != (prev_acc & (1 << (31 - 5))))
+                        {
+                            uint32_t feedback = lfsr & 1;
+                            lfsr >>= 1;
+
+                            if (feedback) 
+                            {
+                                lfsr ^= 1 | (1 << 23) | (1 << 25) | (1 << 29); //https://docs.amd.com/v/u/en-US/xapp052 for 30 bits: 30, 6, 4, 1; but inverted since our LFSR is moving in different direction
+                            }
+
+                            output = ((int)lfsr & 1) * 65536 - 32768;
+                        }
+                        
+                        break;
+                    }
+                    case 4: //Semisine
+                    {
+                        output = abs(sine_table_lfo[acc >> (32 - 10)]) * 2 - 32768;
+                        break;
+                    }
+                    case 5: //Square
+                    {
+                        output = acc >= (1 << 31) ? 32767 : -32768;
+                        break;
+                    }
+                    case 6: //25 percent pulse
+                    {
+                        output = acc >= (1 << 30) ? 32767 : -32768;
+                        break;
+                    }
+                    case 7: //Squished sine
+                    {
+                        output = (acc < (1 << 31)) ? sine_table_lfo[acc >> (32 - (10 + 1))] : 0;
+                        break;
+                    }
+                    default: break;
+                }
+
+                prev_acc = acc;
+
+                if(wave_type & 8) output *= -1;
+
+                output_am = ((output + 32768) * am_depth / 255);
+                output_fm = output * fm_depth / 255;
+            }
+
+            Channel4_LFO()
+            {
+                memset(this, 0, sizeof(this));
+
+                for(int i = 0; i < 1024; i++)
+                {
+                    sine_table_lfo[i] = sin((float)i * 2.0 * M_PI / 1024.0) * 32768;
+                }
+
+                lfsr = 0xAAAAAAAA;
+            }
+        };
+
         //	Operator -------------------------------------------------------------
         class Operator /*: fmgen::Operator*/
         {
             public:
+                Channel4_LFO* lfo[2]; 
+
                 uint32_t (*sinetable_opna)[12][4][1024] = NULL;
 
                 static constexpr const uint8_t notetable[128] =
@@ -319,6 +428,9 @@ class fmvgen /*: public fmgen*/
                 uint8_t algLink_;
                 uint8_t wt_;
                 bool amon_;     // enable Amplitude Modulation
+
+                uint8_t dvb = 0, dam = 0;
+
                 bool param_changed_;    // パラメータが更新された
                 //	ISample を envelop count (2π) に変換するシフト量
                 
@@ -737,7 +849,9 @@ class fmvgen /*: public fmgen*/
                 uint32_t PGCalcL()
                 {
                     uint32_t ret = pg_count_;
-                    pg_count_ += (uint32_t)(pg_diff_ + ((pg_diff_lfo_ * chip_.GetPMV()) >> 5));// & -(1 << (2+IS2EC_SHIFT)));
+                    //pg_count_ += (uint32_t)(pg_diff_ + ((pg_diff_lfo_ * chip_.GetPMV()) >> 5));// & -(1 << (2+IS2EC_SHIFT)));
+                    pg_count_ += (uint32_t)(pg_diff_ + ((dvb != 0 ? ((lfo[0]->output_fm + lfo[1]->output_fm) * dvb * 16) : 0)));
+                    //pg_count_ += (uint32_t)(pg_diff_);
 
                     dbgpgout_ = (int)ret;
                     return ret /* + pmv * pg_diff_;*/;
@@ -786,7 +900,9 @@ class fmvgen /*: public fmgen*/
                         //                                      1
                         pgin += In >> (20 + FM_PGBITS - FM_OPSINBITS - (2 + IS2EC_SHIFT));
                     }
-                    out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + ams_[chip_.GetAML()]));
+                    //out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + ams_[chip_.GetAML()]));
+                    out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + (amon_ ? (((lfo[0]->output_am + lfo[1]->output_am) * (int)dam / 0x20) & ~1) : 0))); //for some reason LSB being not zero fucks up 
+                    //out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + amon_));
 
                     dbgopout_ = out2_;
                     return out2_;
@@ -820,7 +936,7 @@ class fmvgen /*: public fmgen*/
                         pgin += ((In << (int)(1 + IS2EC_SHIFT)) >> (int)fb) >> (20 + FM_PGBITS - FM_OPSINBITS);
                     }
                     out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch,pgin)));
-                    dbgopout_ = out2_;
+                    //dbgopout_ = out2_;
 
                     return out2_;
                 }
@@ -838,8 +954,10 @@ class fmvgen /*: public fmgen*/
                         pgin += ((In << (int)(1 + IS2EC_SHIFT)) >> (int)fb) >> (20 + FM_PGBITS - FM_OPSINBITS);
                     }
 
-                    out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch,pgin) + ams_[chip_.GetAML()]));
-                    dbgopout_ = out_;
+                    //out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch,pgin) + ams_[chip_.GetAML()]));
+                    out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + (amon_ ? (((lfo[0]->output_am + lfo[1]->output_am) * (int)dam / 0x20) & ~1) : 0)));
+                    //out_ = LogToLin((uint32_t)(eg_out_ + SINE(ch, pgin) + amon_));
+                    //dbgopout_ = out_;
 
                     return out_;
                 }
@@ -1082,7 +1200,6 @@ class fmvgen /*: public fmgen*/
 
                 uint32_t key_scale_rate_;       // key scale rate
                 EGPhase eg_phase_;
-                //uint32_t* ams_;
                 uint32_t* ams_;
                 
 
@@ -1163,6 +1280,8 @@ class fmvgen /*: public fmgen*/
         public:
             static constexpr const uint8_t fbtable[8] = { 31, 7, 6, 5, 4, 3, 2, 1 };
 
+            Channel4_LFO lfo[2];
+
             //fmvgen::Operator* op = NULL;
             std::vector<fmvgen::Operator> op;
 
@@ -1176,6 +1295,7 @@ class fmvgen /*: public fmgen*/
             Channel4(int ch, uint32_t(*sinetable_opna)[12][4][1024] = NULL)
             {
                 //op = new fmvgen::Operator[4](sinetable_opna);
+
                 for (int i = 0; i < 4; i++)
                 {
                     op.push_back(fmvgen::Operator(sinetable_opna));
@@ -1187,6 +1307,13 @@ class fmvgen /*: public fmgen*/
 
                 SetAlgorithm(0);
                 pms = pmtable[0][0];
+
+                for (int i = 0; i < 4; i++)
+                {
+                  op[i].lfo[0] = &lfo[0];
+                  op[i].lfo[1] = &lfo[1];
+                }
+
                 this->ch = ch;
             }
 
@@ -1221,6 +1348,12 @@ class fmvgen /*: public fmgen*/
                 op[1].Reset();
                 op[2].Reset();
                 op[3].Reset();
+
+                for (int i = 0; i < 4; i++)
+                {
+                  op[i].lfo[0] = &lfo[0];
+                  op[i].lfo[1] = &lfo[1];
+                }
             }
 
             //	Calc の用意
@@ -1234,6 +1367,9 @@ class fmvgen /*: public fmgen*/
                 pms = pmtable[(int)op[0].type_][op[0].ms_ & 7];
                 int key = (op[0].IsOn() | op[1].IsOn() | op[2].IsOn() | op[3].IsOn()) != 0 ? 1 : 0;
                 int lfo = (op[0].ms_ & ((op[0].amon_ | op[1].amon_ | op[2].amon_ | op[3].amon_) ? 0x37 : 7)) != 0 ? 2 : 0;
+
+                if(op[0].lfo[0]->freq != 0 || op[0].lfo[1]->freq != 0) lfo = 2; //LFO is the same for all ops
+
                 return key | lfo;
             }
 
@@ -1242,30 +1378,6 @@ class fmvgen /*: public fmgen*/
             {
                 for (int i = 0; i < 4; i++)
                     op[i].SetFNum(f);
-            }
-
-            static constexpr const uint32_t kctable[16] = 
-            {
-                    5197, 5506, 5833, 6180, 6180, 6547, 6937, 7349,
-                    7349, 7786, 8249, 8740, 8740, 9259, 9810, 10394,
-            };
-
-            //	KC/KF を設定
-            void SetKCKF(uint32_t kc, uint32_t kf)
-            {
-                int oct = (int)(19 - ((kc >> 4) & 7));
-
-                uint32_t kcv = kctable[kc & 0x0f];
-                kcv = (kcv + 2) / 4 * 4;
-                uint32_t dp = (uint32_t)(kcv * kftable[kf & 0x3f]);
-                dp >>= 16 + 3;
-                dp <<= 16 + 3;
-                dp >>= oct;
-                uint32_t bn = (kc >> 2) & 31;
-                op[0].SetDPBN(dp, bn);
-                op[1].SetDPBN(dp, bn);
-                op[2].SetDPBN(dp, bn);
-                op[3].SetDPBN(dp, bn);
             }
 
             //	キー制御
@@ -1393,7 +1505,10 @@ class fmvgen /*: public fmgen*/
             //  合成
             int CalcL()
             {
-                chip_.SetPMV(pms[chip_.GetPML()]);
+                //chip_.SetPMV(pms[chip_.GetPML()]);
+
+                lfo[0].clock();
+                lfo[1].clock();
 
                 for(int i = 0; i < 4; i++)
                 {

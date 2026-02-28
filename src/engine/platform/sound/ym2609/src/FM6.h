@@ -67,6 +67,8 @@ class FM6
 
             chip = Chip();
 
+            lfo_curr_ch = 0;
+
             for (int i = 0; i < 6; i++)
             {
                 ch[i] = fmvgen::Channel4(i + n * 6, sinetable_opna);
@@ -113,8 +115,8 @@ class FM6
             int act = (((ch[2].Prepare() << 2) | ch[1].Prepare()) << 2) | ch[0].Prepare();
             if ((reg29 & 0x80) != 0)
                 act |= (ch[3].Prepare() | ((ch[4].Prepare() | (ch[5].Prepare() << 2)) << 2)) << 6;
-            if ((reg22 & 0x08) == 0)
-                act &= 0x555;
+            //if ((reg22 & 0x08) == 0)
+                //act &= 0x555;
 
             if ((act & 0x555) == 0) return;
 
@@ -147,6 +149,8 @@ class FM6
 
             int cnt;
             int d;
+
+            uint8_t lfo_num = addr > 0xe4 ? 1 : 0;
 
             switch (addr)
             {
@@ -309,15 +313,61 @@ class FM6
                     ch[c].SetMS(data);
                     ch[c].SetAC((data & 0x08) != 0);
                     break;
-
+                
+                case 0xe0:
+                case 0xe5:
+                {
+                    ch[lfo_curr_ch].lfo[lfo_num].wave_type = data >> 4;
+                    if(data & 8) ch[lfo_curr_ch].lfo[lfo_num].phase_reset();
+                    break;
+                }
+                case 0xe1:
+                case 0xe6:
+                {
+                    ch[lfo_curr_ch].lfo[lfo_num].freq = (data << 8) | (ch[lfo_curr_ch].lfo[lfo_num].freq & 0xff);
+                    break;
+                }
+                case 0xe2:
+                case 0xe7:
+                {
+                    ch[lfo_curr_ch].lfo[lfo_num].freq = (data) | (ch[lfo_curr_ch].lfo[lfo_num].freq & 0xff00);
+                    break;
+                }
+                case 0xe3:
+                case 0xe8:
+                {
+                    ch[lfo_curr_ch].lfo[lfo_num].am_depth = data;
+                    break;
+                }
+                case 0xe4:
+                case 0xe9:
+                {
+                    ch[lfo_curr_ch].lfo[lfo_num].fm_depth = data;
+                    break;
+                }
+                case 0xea:
+                case 0xeb:
+                case 0xec:
+                case 0xed:
+                {
+                    ch[lfo_curr_ch].op[addr - 0xea].dvb = data & 15;
+                    ch[lfo_curr_ch].op[addr - 0xea].dam = (data >> 4) & 7;
+                    ch[lfo_curr_ch].op[addr - 0xea].param_changed_ = true;
+                    break;
+                }
+                case 0xee:
+                {
+                    lfo_curr_ch = data % 6;
+                    break;
+                }
                 // LFO -------------------------------------------------------------------
-                case 0x22:
+                /*case 0x22:
                     modified = reg22 ^ data;
                     reg22 = (uint8_t)data;
                     if ((modified & 0x8) != 0)
                         lfocount = 0;
                     lfodcount = (reg22 & 8) != 0 ? lfotable[reg22 & 7] : 0;
-                    break;
+                    break;*/
 
                 // 音色 ------------------------------------------------------------------
                 default:
@@ -348,6 +398,8 @@ class FM6
         uint32_t lfocount;
         uint32_t lfodcount;
         uint8_t regtc;
+
+        uint8_t lfo_curr_ch; //channel to set LFO1 & LFO2 and ops' DVB and DAM settings for
 
         void SetParameter(fmvgen::Channel4* ch, uint32_t addr, uint32_t data, int c)
         {
@@ -431,7 +483,7 @@ class FM6
                 ibuf[0] = ibuf[1] = ibuf[2] = ibuf[3] = 0;
                 if ((activech & 0xaaa) != 0)
                 {
-                    LFO();
+                    //LFO();
                     MixSubSL(activech, idest, ibuf);
                 }
                 else
@@ -688,7 +740,7 @@ class FM6
             }
         }
 
-        void LFO()
+        /*void LFO()
         {
             //	LOG3("%4d - %8d, %8d\n", c, lfocount, lfodcount);
 
@@ -702,7 +754,7 @@ class FM6
             {
                 ch[i].SetChip(chip);
             }
-        }
+        }*/
     private:
         reverb* reverb;
         distortion* distortion;
