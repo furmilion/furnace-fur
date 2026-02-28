@@ -1792,7 +1792,8 @@ void FurnaceGUI::doAction(int what) {
           wave->max=DIV_WAVETABLE_MAX_HEIGHT;
           wave->len=end-start;
           for (unsigned int i=start; i<end; i++) {
-            wave->data[i-start]=(((unsigned short)sample->data16[i]&0xff00)>>8)^0x80;
+            //wave->data[i-start]=(((unsigned short)sample->data16[i]&0xff00)>>8)^0x80;
+            wave->data[i-start]=(((unsigned short)sample->data16[i])>>3)^0x1000;
           }
           nextWindow=GUI_WINDOW_WAVE_EDIT;
           MARK_MODIFIED;

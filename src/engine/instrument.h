@@ -1064,7 +1064,9 @@ struct DivInstrumentYM2609FM {
   } op[4];
 
   DivInstrumentYM2609FM():
-    alg_construct_switch(0) {}
+    alg_construct_switch(0),
+    lfo_am_depth{0,0},
+    lfo_fm_depth{0,0} {}
 };
 
 struct DivInstrumentYM2609 {

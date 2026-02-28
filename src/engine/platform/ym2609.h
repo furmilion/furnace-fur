@@ -194,7 +194,7 @@ class DivPlatformYM2609: public DivDispatch {
 
   const unsigned short ssg_offsets[4] = { 0, 0x120, 0x200, 0x210 };
 
-  const unsigned short LFOBase_ofsets[2]={ 0xE0, 0x1E0 };
+  const unsigned short LFOBase_ofsets[2]={ 0xE0, 0x2E0 };
   const unsigned short LFOSettings_ofsets[2]={ 0, 5 };
 
   double fmFreqBase;

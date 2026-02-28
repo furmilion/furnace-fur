@@ -487,16 +487,16 @@ void DivPlatformYM2609::tick(bool sysTick)
       if(i < psg_offset)
       {
         chan[i].state_ym2609fm.lfo_fm_depth[0]=chan[i].std.fms.val;
-        rWrite(LFOBase_ofsets[i > 6 ? 1 : 0] + 0xe, i % 6);
-        rWrite(LFOBase_ofsets[i > 6 ? 1 : 0] + LFOSettings_ofsets[0] + 4, chan[i].state_ym2609fm.lfo_fm_depth[0]);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[0] + 4, chan[i].state_ym2609fm.lfo_fm_depth[0]);
       }
     }
     if (chan[i].std.ams.had) {
       if(i < psg_offset)
       {
         chan[i].state_ym2609fm.lfo_am_depth[0]=chan[i].std.ams.val;
-        rWrite(LFOBase_ofsets[i > 6 ? 1 : 0] + 0xe, i % 6);
-        rWrite(LFOBase_ofsets[i > 6 ? 1 : 0] + LFOSettings_ofsets[0] + 3, chan[i].state_ym2609fm.lfo_am_depth[0]);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[0] + 3, chan[i].state_ym2609fm.lfo_am_depth[0]);
       }
     }
     if (chan[i].std.ex1.had) {
@@ -515,6 +515,12 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
     }
     if (chan[i].std.ex2.had) {
+      if(i < psg_offset)
+      {
+        chan[i].state_ym2609fm.lfo_fm_depth[1]=chan[i].std.ex2.val;
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[1] + 4, chan[i].state_ym2609fm.lfo_fm_depth[1]);
+      }
       if(i >= psg_offset && i < rhythm_offset)
       {
         int ssg_num = (i - psg_offset) / 3;
@@ -543,11 +549,11 @@ void DivPlatformYM2609::tick(bool sysTick)
     }*/
     if (chan[i].std.ex3.had) 
     {
-      if(i < psg_offset)
+      if(i < psg_offset) //LFO1 freq
       {
-        rWrite(LFOBase_ofsets[i > 6 ? 1 : 0] + 0xe, i % 6);
-        rWrite(LFOBase_ofsets[i > 6 ? 1 : 0] + LFOSettings_ofsets[0] + 1, (chan[i].std.ex3.val >> 8) & 0xff);
-        rWrite(LFOBase_ofsets[i > 6 ? 1 : 0] + LFOSettings_ofsets[0] + 2, chan[i].std.ex3.val & 0xff);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[0] + 1, (chan[i].std.ex3.val >> 8) & 0xff);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[0] + 2, chan[i].std.ex3.val & 0xff);
       }
       if(i >= psg_offset && i < rhythm_offset)
       {
@@ -570,6 +576,12 @@ void DivPlatformYM2609::tick(bool sysTick)
     }
     if (chan[i].std.ex5.had) 
     {
+      if(i < psg_offset) //LFO2 freq
+      {
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[1] + 1, (chan[i].std.ex5.val >> 8) & 0xff);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[1] + 2, chan[i].std.ex5.val & 0xff);
+      }
       if(i >= psg_offset && i < rhythm_offset)
       {
         int ssg_num = (i - psg_offset) / 3;
@@ -582,8 +594,8 @@ void DivPlatformYM2609::tick(bool sysTick)
     if (chan[i].std.ex6.had) {
       if(i < psg_offset) //LFO1 shape
       {
-        rWrite(LFOBase_ofsets[i > 6 ? 1 : 0] + 0xe, i % 6);
-        rWrite(LFOBase_ofsets[i > 6 ? 1 : 0], (chan[i].std.ex6.val & 0xf) << 4);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0], (chan[i].std.ex6.val & 0xf) << 4);
         chan[i].lfoShape[0] = (chan[i].std.ex6.val & 0xf);
       }
       if(i >= psg_offset && i < rhythm_offset)
@@ -604,6 +616,42 @@ void DivPlatformYM2609::tick(bool sysTick)
           chan[i].duty = chan[i].std.ex6.val;
           chan[i].freqChanged = true;
         }
+      }
+    }
+    if (chan[i].std.ex7.had) {
+      if(i < psg_offset) //LFO2 shape
+      {
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[1], (chan[i].std.ex7.val & 0xf) << 4);
+        chan[i].lfoShape[1] = (chan[i].std.ex7.val & 0xf);
+      }
+    }
+    if (chan[i].std.ex8.had) {
+      if(i < psg_offset) //LFO1 phase reset
+      {
+        if(chan[i].std.ex8.val)
+        {
+          rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+          rWrite(LFOBase_ofsets[i > 5 ? 1 : 0], ((chan[i].lfoShape[0] & 0xf) << 4)|(1 << 3));
+        }
+      }
+    }
+    if (chan[i].std.ex9.had) {
+      if(i < psg_offset) //LFO2 phase reset
+      {
+        if(chan[i].std.ex9.val)
+        {
+          rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+          rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[1], ((chan[i].lfoShape[1] & 0xf) << 4)|(1 << 3));
+        }
+      }
+    }
+    if (chan[i].std.ex10.had) {
+      if(i < psg_offset) //LFO2 AM depth
+      {
+        chan[i].state_ym2609fm.lfo_am_depth[1]=chan[i].std.ex10.val;
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+        rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[1] + 3, chan[i].state_ym2609fm.lfo_am_depth[1]);
       }
     }
     if(i < psg_offset)
@@ -679,6 +727,16 @@ void DivPlatformYM2609::tick(bool sysTick)
             op_ym2609.feedback=m.ksl.val;
             rWrite(baseAddr+ADDR_DT2_D2R,(op.d2r&31)|(op_ym2609.feedback<<5));
           }
+        }
+        if (m.dvb.had) {
+          op.dvb=m.dvb.val & 0xf;
+          rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+          rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xa + orderedOps[j], (op.dvb & 0xf) | ((op.dam & 0x7) << 4));
+        }
+        if (m.dam.had) {
+          op.dam=m.dam.val & 7;
+          rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+          rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xa + orderedOps[j], (op.dvb & 0xf) | ((op.dam & 0x7) << 4));
         }
       }
     }
@@ -1411,8 +1469,24 @@ void DivPlatformYM2609::reset() {
   //lfoValue[1]=8;
 
   // LFO
-  //immWrite(0x22,lfoValue[0]);
-  //immWrite(0x222,lfoValue[1]);
+  for(int i = 0; i < 12; i++)
+  {
+    immWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
+
+    immWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xa, 0);
+    immWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xb, 0);
+    immWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xc, 0);
+    immWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xd, 0);
+
+    for(int j = 0; j < 2; j++)
+    {
+      immWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[j], 0);
+      immWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[j] + 1, 0);
+      immWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[j] + 2, 0);
+      immWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[j] + 3, 0);
+      immWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + LFOSettings_ofsets[j] + 4, 0);
+    }
+  }
 
   // RSS volume
   immWrite(0x11,globalRSSVolume); //RSS

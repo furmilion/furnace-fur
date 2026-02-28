@@ -3239,6 +3239,11 @@ void DivInstrument::readFeature9F(SafeReader& reader, short version) {
 
   ym2609.ym2609fm.alg_construct_switch = reader.readC();
 
+  ym2609.ym2609fm.lfo_am_depth[0] = reader.readC();
+  ym2609.ym2609fm.lfo_am_depth[1] = reader.readC();
+  ym2609.ym2609fm.lfo_fm_depth[0] = reader.readC();
+  ym2609.ym2609fm.lfo_fm_depth[1] = reader.readC();
+
   for(int i = 0; i < 4; i++)
   {
     DivInstrumentWaveSynth& op_ws = ym2609.ym2609fm.op[i].ws;
