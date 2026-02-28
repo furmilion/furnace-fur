@@ -86,7 +86,7 @@ class DivPlatformYM2609: public DivDispatch {
 
     unsigned char autoEnvNum, autoEnvDen;
     unsigned short fixedFreq;
-    unsigned short wavetable;
+    int wavetable;
 
     Channel():
       SharedChannel<signed short>(0xff),
