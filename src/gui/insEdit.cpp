@@ -3195,6 +3195,8 @@ void FurnaceGUI::alterSampleMap(int column, int val) {
     int digits=1;
     if (e->song.sample.size()>=10) digits=2;
     if (e->song.sample.size()>=100) digits=3;
+    if (e->song.sample.size()>=1000) digits=4;
+    if (e->song.sample.size()>=10000) digits=5;
     if (++sampleMapDigit>=digits) {
       sampleMapDigit=0;
       advance=true;
