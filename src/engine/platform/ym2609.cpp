@@ -212,29 +212,7 @@ void DivPlatformYM2609::tick(bool sysTick)
             }
           }
         }
-      } 
-      /*if (chan[i].std.vol.had) {
-      chan[i].outVol=(chan[i].vol*MIN(chan[i].macroVolMul,chan[i].std.vol.val))/chan[i].macroVolMul;
-    }
-    if (chan[i].std.duty.had) {
-      if (globalRSSVolume!=(chan[i].std.duty.val&0x3f)) {
-        globalRSSVolume=chan[i].std.duty.val&0x3f;
-        immWrite(0x11,globalRSSVolume);
-        hardResetElapsed++;
       }
-    }
-    if (chan[i].std.panL.had) {
-      chan[i].pan=chan[i].std.panL.val&3;
-    }
-    if (chan[i].std.phaseReset.had) {
-      if ((chan[i].std.phaseReset.val==1) && chan[i].active) {
-        chan[i].keyOn=true;
-      }
-    }
-    if (!isMuted[i] && (chan[i].std.vol.had || chan[i].std.panL.had)) {
-      immWrite(0x18+(i-(9+isCSM)),isMuted[i]?0:((chan[i].pan<<6)|chan[i].outVol));
-      hardResetElapsed++;
-    }*/
       if(i >= psg_offset && i < rhythm_offset)
       {
         int ssg_num = (i - psg_offset) / 3;
@@ -459,12 +437,12 @@ void DivPlatformYM2609::tick(bool sysTick)
           unsigned short baseAddr=chanOffs[i]|opOffs[j];
           DivInstrumentFM::Operator& op=chan[i].state.op[j];
           if (isMuted[i] || !op.enable) {
-            rWrite(baseAddr+ADDR_TL,127);
+            rWrite(baseAddr+ADDR_TL,127|(((chan[i].op_ym2609[j].wave_type >> 1) & 1) << 7));
           } else {
             if (KVS(i,j)) {
-              rWrite(baseAddr+ADDR_TL,127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[i].outVol&0x7f,127));
+              rWrite(baseAddr+ADDR_TL,(127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[i].outVol&0x7f,127))|(((chan[i].op_ym2609[j].wave_type >> 1) & 1) << 7));
             } else {
-              rWrite(baseAddr+ADDR_TL,op.tl);
+              rWrite(baseAddr+ADDR_TL,op.tl|(((chan[i].op_ym2609[j].wave_type >> 1) & 1) << 7));
             }
           }
         }
@@ -484,7 +462,7 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
     }
     if (chan[i].std.fms.had) {
-      if(i < psg_offset)
+      if(i < psg_offset) //LFO1 FM depth
       {
         chan[i].state_ym2609fm.lfo_fm_depth[0]=chan[i].std.fms.val;
         rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
@@ -492,7 +470,7 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
     }
     if (chan[i].std.ams.had) {
-      if(i < psg_offset)
+      if(i < psg_offset) //LFO1 AM depth
       {
         chan[i].state_ym2609fm.lfo_am_depth[0]=chan[i].std.ams.val;
         rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
@@ -515,7 +493,7 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
     }
     if (chan[i].std.ex2.had) {
-      if(i < psg_offset)
+      if(i < psg_offset) //LFO2 FM depth
       {
         chan[i].state_ym2609fm.lfo_fm_depth[1]=chan[i].std.ex2.val;
         rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
@@ -529,24 +507,6 @@ void DivPlatformYM2609::tick(bool sysTick)
         rWrite(ssg_offsets[ssg_num]+0x0d,ayEnvMode[ssg_num]);
       }
     }
-    /*if (chan[i].std.ex3.had) {
-      if(i < 6)
-      {
-        lfoValue[0]=(chan[i].std.ex3.val>7)?0:(8|(chan[i].std.ex3.val&7));
-        rWrite(0x22,lfoValue[0]);
-      }
-      if(i >= 6 && i < 12)
-      {
-        lfoValue[1]=(chan[i].std.ex3.val>7)?0:(8|(chan[i].std.ex3.val&7));
-        rWrite(0x222,lfoValue[1]);
-      }
-      if(i >= psg_offset && i < rhythm_offset)
-      {
-        chan[i].autoEnvNum=chan[i].std.ex3.val;
-        chan[i].freqChanged=true;
-        if (!chan[i].std.alg.will) chan[i].autoEnvDen=1;
-      }
-    }*/
     if (chan[i].std.ex3.had) 
     {
       if(i < psg_offset) //LFO1 freq
@@ -931,7 +891,7 @@ void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
       (chan[ch].state.op[3].enable?8:0);
   }
 
-  rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + 0xe, ch % 6);
+  rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + 0xe, ch % 6);
   
   for (int i=0; i<4; i++) 
   {
@@ -972,7 +932,7 @@ void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
       rWrite(baseAddr+ADDR_SL_RR,(op.rr&15)|(op.sl<<4));
       rWrite(baseAddr+ADDR_SSG,(op.ssgEnv&15)|(op_ym2609.alg_link<<4));
 
-      rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + 0xa + i, (chan[ch].state.op[orderedOps[i]].dvb & 0xf) | ((chan[ch].state.op[orderedOps[i]].dam & 0x7) << 4));
+      rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + 0xa + i, (chan[ch].state.op[orderedOps[i]].dvb & 0xf) | ((chan[ch].state.op[orderedOps[i]].dam & 0x7) << 4));
     }
   }
   if (chan[ch].insChanged) {
@@ -981,11 +941,11 @@ void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
     chan[ch].freqChanged = true; //to write left soft pan
 
     //LFO...
-    //rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + 0xe, ch % 6);
-    rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + LFOSettings_ofsets[0] + 3, chan[ch].state_ym2609fm.lfo_am_depth[0]);
-    rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + LFOSettings_ofsets[0] + 4, chan[ch].state_ym2609fm.lfo_fm_depth[0]);
-    rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + LFOSettings_ofsets[1] + 3, chan[ch].state_ym2609fm.lfo_am_depth[1]);
-    rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + LFOSettings_ofsets[1] + 4, chan[ch].state_ym2609fm.lfo_fm_depth[1]);
+    //rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + 0xe, ch % 6);
+    rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + LFOSettings_ofsets[0] + 3, chan[ch].state_ym2609fm.lfo_am_depth[0]);
+    rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + LFOSettings_ofsets[0] + 4, chan[ch].state_ym2609fm.lfo_fm_depth[0]);
+    rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + LFOSettings_ofsets[1] + 3, chan[ch].state_ym2609fm.lfo_am_depth[1]);
+    rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + LFOSettings_ofsets[1] + 4, chan[ch].state_ym2609fm.lfo_fm_depth[1]);
   }
 }
 
@@ -1161,12 +1121,12 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
           unsigned short baseAddr=chanOffs[c.chan]|opOffs[i];
           DivInstrumentFM::Operator& op=chan[c.chan].state.op[i];
           if (isMuted[c.chan] || !op.enable) {
-            rWrite(baseAddr+ADDR_TL,127);
+            rWrite(baseAddr+ADDR_TL,127|(((chan[c.chan].op_ym2609[i].wave_type >> 1) & 1) << 7));
           } else {
             if (KVS(c.chan,i)) {
-              rWrite(baseAddr+ADDR_TL,127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[c.chan].outVol&0x7f,127));
+              rWrite(baseAddr+ADDR_TL,(127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[c.chan].outVol&0x7f,127))|(((chan[c.chan].op_ym2609[i].wave_type >> 1) & 1) << 7));
             } else {
-              rWrite(baseAddr+ADDR_TL,op.tl);
+              rWrite(baseAddr+ADDR_TL,op.tl|(((chan[c.chan].op_ym2609[i].wave_type >> 1) & 1) << 7));
             }
           }
         }
@@ -1311,7 +1271,39 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
 
 void DivPlatformYM2609::muteChannel(int ch, bool mute) {
   isMuted[ch]=mute;
-  //sid3_set_is_muted(sid3,ch,mute);
+  if (ch>=psg_offset) { // PSG
+    int ssg_num = (ch - psg_offset) / 3;
+    int chan_num = (ch - psg_offset) % 3;
+
+    if(isMuted[ch])
+    {
+      rWrite(ssg_offsets[ssg_num]+0x08+chan_num,((chan[ch].nextPSGMode.getEnvelope())<<2));
+    }
+    else
+    {
+      rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[ch].outVol&15)|((chan[ch].nextPSGMode.getEnvelope())<<2)|(chan[ch].pan << 6));
+    }
+    return;
+  }
+  // FM
+  if(ch<psg_offset)
+  {
+    for (int j=0; j<4; j++) {
+      unsigned short baseAddr=chanOffs[ch]|opOffs[j];
+      DivInstrumentFM::Operator& op=chan[ch].state.op[j];
+      DivInstrumentYM2609FM::Operator& op_ym2609=chan[ch].state_ym2609fm.op[j];
+      if (isMuted[ch] || !op.enable) {
+        rWrite(baseAddr+ADDR_TL,127|(((chan[ch].op_ym2609[j].wave_type >> 1) & 1) << 7));
+      } else {
+        if (KVS(ch,j)) {
+          rWrite(baseAddr+ADDR_TL,(127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[ch].outVol&0x7f,127))|(((chan[ch].op_ym2609[j].wave_type >> 1) & 1) << 7));
+        } else {
+          rWrite(baseAddr+ADDR_TL,op.tl|(((chan[ch].op_ym2609[j].wave_type >> 1) & 1) << 7));
+        }
+      }
+    }
+    rWrite(chanOffs[ch]+ADDR_LRAF,(isMuted[ch]?0:(chan[ch].pan<<6))|(chan[ch].state.fms&7)|((chan[ch].state.ams&3)<<4));
+  }
 }
 
 void DivPlatformYM2609::forceIns() {

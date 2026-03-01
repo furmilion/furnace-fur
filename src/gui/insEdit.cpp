@@ -7383,7 +7383,7 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
       macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_AM),&ins->std.opMacros[ordi].amMacro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true));
       macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_SSG),&ins->std.opMacros[ordi].ssgMacro,0,4,64,uiColors[GUI_COLOR_MACRO_ENVELOPE],false,NULL,NULL,true,ssgEnvBits));
       
-      macroList.push_back(FurnaceGUIMacroDesc(_("ALG LINK"),&ins->std.opMacros[ordi].damMacro,0,4,64,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true,YM2609FMAlgLinkBits[i]));
+      macroList.push_back(FurnaceGUIMacroDesc(_("ALG LINK"),&ins->std.opMacros[ordi].egtMacro,0,4,64,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true,YM2609FMAlgLinkBits[i]));
 
       if(i != 0)
       {
