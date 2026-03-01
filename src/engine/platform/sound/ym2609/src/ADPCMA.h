@@ -38,6 +38,8 @@ class ADPCMA
         uint8_t reg[32];
         int16_t jedi_table[(48 + 1) * 16];
 
+        int chan_output[6][2];
+
         ADPCMA(int num = 0, reverb* reverb = NULL, distortion* distortion = NULL, chorus* chorus = NULL, HPFLPF* hpflpf = NULL, ReversePhase* reversePhase = NULL, Compressor* compressor = NULL, int revStartCh = 0)
         {
             this->num = num;
@@ -101,7 +103,9 @@ class ADPCMA
                 int revSampleR = 0;
                 for (int i = 0; i < 6; i++)
                 {
-                    Channel r = channel[i];
+                    Channel& r = channel[i];
+                    chan_output[i][0] = 0;
+                    chan_output[i][1] = 0;
                     if ((key & (1 << i)) != 0 && (uint8_t)r.level < 128)
                     {
                         //uint32_t maskl = (uint32_t)(r.panL == 0f ? -1 : 0);
@@ -153,6 +157,10 @@ class ADPCMA
                             sampleR = (int)(sampleR * r.panR) * reversePhase->AdpcmA[i][1];
                             fmvgen::StoreSample(buffer[0][dest], sampleL);
                             fmvgen::StoreSample(buffer[1][dest], sampleR);
+
+                            chan_output[i][0] = sampleL;
+                            chan_output[i][1] = sampleR;
+
                             revSampleL += (int)(sampleL * reverb->SendLevel[revStartCh + i] * 0.6);
                             revSampleR += (int)(sampleR * reverb->SendLevel[revStartCh + i] * 0.6);
                             //visRtmVolume[0] = (int)(sample & maskl);

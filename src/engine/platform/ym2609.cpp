@@ -129,6 +129,10 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
     {
       oscBuf[i]->putSample(samp,(ym2609->fm6[0].ch_output[i][0] + ym2609->fm6[0].ch_output[i][1]) / 2);
       oscBuf[i+6]->putSample(samp,(ym2609->fm6[1].ch_output[i][0] + ym2609->fm6[1].ch_output[i][1]) / 2);
+
+      oscBuf[rhythm_offset+i]->putSample(samp,(ym2609->rss_output[i][0] + ym2609->rss_output[i][1]));
+
+      oscBuf[adpcma_offset+i]->putSample(samp,(ym2609->adpcma.chan_output[i][0] + ym2609->adpcma.chan_output[i][1]));
     }
 
     for(int i = 0; i < 3; i++)
@@ -139,29 +143,6 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
       oscBuf[psg_offset+3*3+i]->putSample(samp,(ym2609->psg2[3].chan_output[i][0] + ym2609->psg2[3].chan_output[i][1]) * 3 / 2);
     }
 
-    for(int i = 0; i < 6; i++)
-    {
-      oscBuf[rhythm_offset+i]->putSample(samp,(ym2609->rss_output[i][0] + ym2609->rss_output[i][1]));
-    }
-
-    /*if(ym2609->fm6[0].ch[0].op[0].eg_phase_ != fmvgen::Operator::EGPhase::off)
-    {
-      logD("ch0 op0 eg stage %d acc (level) %d eg_out_ %d tl_out_ %d", (int)ym2609->fm6[0].ch[0].op[0].eg_phase_, (int)ym2609->fm6[0].ch[0].op[0].eg_level_, (int)ym2609->fm6[0].ch[0].op[0].eg_out_, (int)ym2609->fm6[0].ch[0].op[0].tl_out_);
-    }*/
-
-    /*if (!writes.empty()) 
-    {
-      for(int i = 0; i < clocks_per_sample; i++)
-      {
-        QueuedWrite w=writes.front();
-        ym2609->SetReg(w.addr, w.val);
-        regPool[w.addr % YM2609_NUM_REGISTERS]=w.val;
-        writes.pop();
-
-        if(writes.empty()) break;
-      }
-    }*/
-
     buf[0][samp] = output_buf[0][0];
     buf[1][samp] = output_buf[1][0];
   }
@@ -170,6 +151,14 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
   {
     oscBuf[i]->end(len);
   }
+}
+
+double DivPlatformYM2609::NOTE_ADPCMB(int note) {
+  if (chan[adpcmb_offset].sample>=0 && chan[adpcmb_offset].sample<parent->song.sampleLen) {
+    double off=65535.0*(double)(parent->getSample(chan[adpcmb_offset].sample)->centerRate)/parent->getCenterRate();
+    return parent->calcBaseFreq((double)chipClock/144,off,note,false);
+  }
+  return 0;
 }
 
 void DivPlatformYM2609::tick(bool sysTick) 
@@ -212,29 +201,7 @@ void DivPlatformYM2609::tick(bool sysTick)
             }
           }
         }
-      } 
-      /*if (chan[i].std.vol.had) {
-      chan[i].outVol=(chan[i].vol*MIN(chan[i].macroVolMul,chan[i].std.vol.val))/chan[i].macroVolMul;
-    }
-    if (chan[i].std.duty.had) {
-      if (globalRSSVolume!=(chan[i].std.duty.val&0x3f)) {
-        globalRSSVolume=chan[i].std.duty.val&0x3f;
-        immWrite(0x11,globalRSSVolume);
-        hardResetElapsed++;
       }
-    }
-    if (chan[i].std.panL.had) {
-      chan[i].pan=chan[i].std.panL.val&3;
-    }
-    if (chan[i].std.phaseReset.had) {
-      if ((chan[i].std.phaseReset.val==1) && chan[i].active) {
-        chan[i].keyOn=true;
-      }
-    }
-    if (!isMuted[i] && (chan[i].std.vol.had || chan[i].std.panL.had)) {
-      immWrite(0x18+(i-(9+isCSM)),isMuted[i]?0:((chan[i].pan<<6)|chan[i].outVol));
-      hardResetElapsed++;
-    }*/
       if(i >= psg_offset && i < rhythm_offset)
       {
         int ssg_num = (i - psg_offset) / 3;
@@ -252,6 +219,13 @@ void DivPlatformYM2609::tick(bool sysTick)
       if(i >= rhythm_offset && i < adpcma_offset)
       {
         chan[i].outVol=(chan[i].vol*MIN(chan[i].macroVolMul,chan[i].std.vol.val))/chan[i].macroVolMul;
+        immWrite(0x18+(i-(rhythm_offset)),isMuted[i]?0:((chan[i].pan<<6)|chan[i].outVol));
+      }
+      if(i >= adpcma_offset && i < adpcmb_offset)
+      {
+        chan[i].outVol=(chan[i].vol*MIN(chan[i].macroVolMul,chan[i].std.vol.val))/chan[i].macroVolMul;
+        immWrite(0x113,i-adpcma_offset);
+        immWrite(0x114,isMuted[i]?0:(chan[i].outVol));
       }
     }
     if (NEW_ARP_STRAT) {
@@ -316,6 +290,20 @@ void DivPlatformYM2609::tick(bool sysTick)
 
         rWrite(0x12 + i - rhythm_offset, chan[i].panRight | (chan[i].panLeft << 3));
       }
+      if(i >= adpcma_offset && i < adpcmb_offset)
+      {
+        if(chan[i].std.panL.val == 0)
+        {
+          chan[i].pan &= ~(1 << 1);
+        }
+        else
+        {
+          chan[i].pan |= (1 << 1);
+          chan[i].panLeft = (3 - ((chan[i].std.panL.val - 1) & 3));
+        }
+
+        immWrite(0x115,isMuted[i]?0:(((chan[i].pan & 2) << 6) | ((chan[i].panLeft & 3) << 5) | ((chan[i].pan & 1) << 4) | ((chan[i].panRight & 3) << 2)));
+      }
     }
     if (chan[i].std.panR.had) 
     {
@@ -361,6 +349,20 @@ void DivPlatformYM2609::tick(bool sysTick)
 
         rWrite(0x12 + i - rhythm_offset, chan[i].panRight | (chan[i].panLeft << 3));
       }
+      if(i >= adpcma_offset && i < adpcmb_offset)
+      {
+        if(chan[i].std.panR.val == 0)
+        {
+          chan[i].pan &= ~(1 << 0);
+        }
+        else
+        {
+          chan[i].pan |= (1 << 0);
+          chan[i].panRight = (3 - ((chan[i].std.panR.val - 1) & 3));
+        }
+
+        immWrite(0x115,isMuted[i]?0:(((chan[i].pan & 2) << 6) | ((chan[i].panLeft & 3) << 5) | ((chan[i].pan & 1) << 4) | ((chan[i].panRight & 3) << 2)));
+      }
     }
 
     if(writePan)
@@ -393,6 +395,13 @@ void DivPlatformYM2609::tick(bool sysTick)
         if (globalRSSVolume!=(chan[i].std.duty.val&0x3f)) {
           globalRSSVolume=chan[i].std.duty.val&0x3f;
           immWrite(0x11,globalRSSVolume);
+        }
+      }
+      if(i >= adpcma_offset && i < adpcmb_offset) //global RSS volume
+      {
+        if (globalADPCMAVolume!=(chan[i].std.duty.val&0x3f)) {
+          globalADPCMAVolume=chan[i].std.duty.val&0x3f;
+          immWrite(0x112,globalADPCMAVolume);
         }
       }
     }
@@ -442,7 +451,7 @@ void DivPlatformYM2609::tick(bool sysTick)
           rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[i].outVol&15)|((chan[i].nextPSGMode.getEnvelope())<<2)|(chan[i].pan << 6)|(1 << 5));
         }
       }
-      if(i >= rhythm_offset && i < adpcma_offset)
+      if(i >= rhythm_offset && i < adpcmb_offset)
       {
         if ((chan[i].std.phaseReset.val==1) && chan[i].active) {
           chan[i].keyOn=true;
@@ -459,12 +468,12 @@ void DivPlatformYM2609::tick(bool sysTick)
           unsigned short baseAddr=chanOffs[i]|opOffs[j];
           DivInstrumentFM::Operator& op=chan[i].state.op[j];
           if (isMuted[i] || !op.enable) {
-            rWrite(baseAddr+ADDR_TL,127);
+            rWrite(baseAddr+ADDR_TL,127|(((chan[i].op_ym2609[j].wave_type >> 1) & 1) << 7));
           } else {
             if (KVS(i,j)) {
-              rWrite(baseAddr+ADDR_TL,127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[i].outVol&0x7f,127));
+              rWrite(baseAddr+ADDR_TL,(127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[i].outVol&0x7f,127))|(((chan[i].op_ym2609[j].wave_type >> 1) & 1) << 7));
             } else {
-              rWrite(baseAddr+ADDR_TL,op.tl);
+              rWrite(baseAddr+ADDR_TL,op.tl|(((chan[i].op_ym2609[j].wave_type >> 1) & 1) << 7));
             }
           }
         }
@@ -484,7 +493,7 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
     }
     if (chan[i].std.fms.had) {
-      if(i < psg_offset)
+      if(i < psg_offset) //LFO1 FM depth
       {
         chan[i].state_ym2609fm.lfo_fm_depth[0]=chan[i].std.fms.val;
         rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
@@ -492,7 +501,7 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
     }
     if (chan[i].std.ams.had) {
-      if(i < psg_offset)
+      if(i < psg_offset) //LFO1 AM depth
       {
         chan[i].state_ym2609fm.lfo_am_depth[0]=chan[i].std.ams.val;
         rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
@@ -515,7 +524,7 @@ void DivPlatformYM2609::tick(bool sysTick)
       }
     }
     if (chan[i].std.ex2.had) {
-      if(i < psg_offset)
+      if(i < psg_offset) //LFO2 FM depth
       {
         chan[i].state_ym2609fm.lfo_fm_depth[1]=chan[i].std.ex2.val;
         rWrite(LFOBase_ofsets[i > 5 ? 1 : 0] + 0xe, i % 6);
@@ -529,24 +538,6 @@ void DivPlatformYM2609::tick(bool sysTick)
         rWrite(ssg_offsets[ssg_num]+0x0d,ayEnvMode[ssg_num]);
       }
     }
-    /*if (chan[i].std.ex3.had) {
-      if(i < 6)
-      {
-        lfoValue[0]=(chan[i].std.ex3.val>7)?0:(8|(chan[i].std.ex3.val&7));
-        rWrite(0x22,lfoValue[0]);
-      }
-      if(i >= 6 && i < 12)
-      {
-        lfoValue[1]=(chan[i].std.ex3.val>7)?0:(8|(chan[i].std.ex3.val&7));
-        rWrite(0x222,lfoValue[1]);
-      }
-      if(i >= psg_offset && i < rhythm_offset)
-      {
-        chan[i].autoEnvNum=chan[i].std.ex3.val;
-        chan[i].freqChanged=true;
-        if (!chan[i].std.alg.will) chan[i].autoEnvDen=1;
-      }
-    }*/
     if (chan[i].std.ex3.had) 
     {
       if(i < psg_offset) //LFO1 freq
@@ -902,20 +893,28 @@ void DivPlatformYM2609::tick(bool sysTick)
       writeRSSOn=0;
     }
   }
-
-  /*if (chan[YM2609_NUM_CHANNELS - 1].active && !chan[YM2609_NUM_CHANNELS - 1].pcm) 
+  for(int i = adpcma_offset; i < adpcmb_offset; i++)
   {
-    if (ws.tick()) 
-    {
-      doUpdateWave = true;
+    if (chan[i].keyOff) {
+      writeADPCMAOff|=(1<<(i-adpcma_offset));
+      chan[i].keyOff=false;
+    }
+    if (chan[i].keyOn) {
+      if (chan[i].sample>=0 && chan[i].sample<parent->song.sampleLen) {
+        writeADPCMAOn|=(1<<(i-adpcma_offset));
+      }
+      chan[i].keyOn=false;
     }
   }
+  if (writeADPCMAOff) {
+    immWrite(0x111,0x80|writeADPCMAOff);
+    writeADPCMAOff=0;
+  }
 
-  if(doUpdateWave)
-  {
-    updateWave();
-    doUpdateWave = false;
-  }*/
+  if (writeADPCMAOn) {
+    immWrite(0x111,writeADPCMAOn);
+    writeADPCMAOn=0;
+  }
 }
 
 void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
@@ -931,7 +930,7 @@ void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
       (chan[ch].state.op[3].enable?8:0);
   }
 
-  rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + 0xe, ch % 6);
+  rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + 0xe, ch % 6);
   
   for (int i=0; i<4; i++) 
   {
@@ -972,7 +971,7 @@ void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
       rWrite(baseAddr+ADDR_SL_RR,(op.rr&15)|(op.sl<<4));
       rWrite(baseAddr+ADDR_SSG,(op.ssgEnv&15)|(op_ym2609.alg_link<<4));
 
-      rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + 0xa + i, (chan[ch].state.op[orderedOps[i]].dvb & 0xf) | ((chan[ch].state.op[orderedOps[i]].dam & 0x7) << 4));
+      rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + 0xa + i, (chan[ch].state.op[orderedOps[i]].dvb & 0xf) | ((chan[ch].state.op[orderedOps[i]].dam & 0x7) << 4));
     }
   }
   if (chan[ch].insChanged) {
@@ -981,11 +980,11 @@ void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
     chan[ch].freqChanged = true; //to write left soft pan
 
     //LFO...
-    //rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + 0xe, ch % 6);
-    rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + LFOSettings_ofsets[0] + 3, chan[ch].state_ym2609fm.lfo_am_depth[0]);
-    rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + LFOSettings_ofsets[0] + 4, chan[ch].state_ym2609fm.lfo_fm_depth[0]);
-    rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + LFOSettings_ofsets[1] + 3, chan[ch].state_ym2609fm.lfo_am_depth[1]);
-    rWrite(LFOBase_ofsets[ch > 6 ? 1 : 0] + LFOSettings_ofsets[1] + 4, chan[ch].state_ym2609fm.lfo_fm_depth[1]);
+    //rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + 0xe, ch % 6);
+    rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + LFOSettings_ofsets[0] + 3, chan[ch].state_ym2609fm.lfo_am_depth[0]);
+    rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + LFOSettings_ofsets[0] + 4, chan[ch].state_ym2609fm.lfo_fm_depth[0]);
+    rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + LFOSettings_ofsets[1] + 3, chan[ch].state_ym2609fm.lfo_am_depth[1]);
+    rWrite(LFOBase_ofsets[ch > 5 ? 1 : 0] + LFOSettings_ofsets[1] + 4, chan[ch].state_ym2609fm.lfo_fm_depth[1]);
   }
 }
 
@@ -1054,6 +1053,8 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
 
         chan[c.chan].active=true;
         chan[c.chan].keyOn=true;
+
+        break;
       }
       if(c.chan >= psg_offset && c.chan < rhythm_offset) //SSG
       {
@@ -1092,6 +1093,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
            ((chan[12+ssg_num*3+0].curPSGMode.getNoise())<<2)|
            ((chan[12+ssg_num*3+1].curPSGMode.getNoise())<<3)|
            ((chan[12+ssg_num*3+2].curPSGMode.getNoise())<<4)));
+        break;
       }
       if(c.chan >= rhythm_offset && c.chan < adpcma_offset) //RSS
       {
@@ -1111,10 +1113,50 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
         chan[c.chan].keyOn=true;
         break;
       }
+      if(c.chan >= adpcma_offset && c.chan < adpcmb_offset) //ADPCM-A
+      {
+        DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_ADPCM_A);
+        chan[c.chan].macroVolMul=31;
+        if (skipRegisterWrites) break;
+        chan[c.chan].macroInit(ins);
+        if (!chan[c.chan].std.vol.will) {
+          chan[c.chan].outVol=chan[c.chan].vol;
+        }
+        if (c.value!=DIV_NOTE_NULL) chan[c.chan].sample=ins->amiga.getSample(c.value);
+
+        immWrite(0x113,c.chan-adpcma_offset);
+
+        if (chan[c.chan].sample>=0 && chan[c.chan].sample<parent->song.sampleLen) 
+        {
+          DivSample* s=parent->getSample(chan[c.chan].sample);
+          immWrite(0x116,(sampleOffA[chan[c.chan].sample]>>8)&0xff);
+          immWrite(0x116,sampleOffA[chan[c.chan].sample]>>16);
+          int end=sampleOffA[chan[c.chan].sample]+s->lengthA-1;
+          immWrite(0x117,(end>>8)&0xff);
+          immWrite(0x117,end>>16);
+          immWrite(0x114,isMuted[c.chan]?0:(chan[c.chan].outVol));
+          immWrite(0x115,isMuted[c.chan]?0:(((chan[c.chan].pan & 2) << 6) | ((chan[c.chan].panLeft & 3) << 5) | ((chan[c.chan].pan & 1) << 4) | ((chan[c.chan].panRight & 3) << 2)));
+          if (c.value!=DIV_NOTE_NULL) {
+            chan[c.chan].note=c.value;
+            chan[c.chan].baseFreq=NOTE_ADPCMB(chan[c.chan].note);
+            chan[c.chan].freqChanged=true;
+          }
+          chan[c.chan].active=true;
+          chan[c.chan].keyOn=true;
+        } else {
+          writeADPCMAOff|=(1<<(c.chan-adpcma_offset));
+          /*immWrite(0x110+c.chan-adpcma_offset,0);
+          immWrite(0x118+c.chan-adpcma_offset,0);
+          immWrite(0x120+c.chan-adpcma_offset,0);
+          immWrite(0x128+c.chan-adpcma_offset,0);*/
+          break;
+        }
+        break;
+      }
       break;
     }
     case DIV_CMD_NOTE_OFF:
-      if(c.chan < psg_offset)
+      if(c.chan < psg_offset || (c.chan >= rhythm_offset && c.chan < adpcmb_offset))
       {
         chan[c.chan].active=false;
         chan[c.chan].keyOff=true;
@@ -1128,7 +1170,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       }
       break;
     case DIV_CMD_NOTE_OFF_ENV:
-      if(c.chan < psg_offset)
+      if(c.chan < psg_offset || (c.chan >= rhythm_offset && c.chan < adpcmb_offset))
       { 
         chan[c.chan].active=false;
         chan[c.chan].keyOff=true;
@@ -1161,12 +1203,12 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
           unsigned short baseAddr=chanOffs[c.chan]|opOffs[i];
           DivInstrumentFM::Operator& op=chan[c.chan].state.op[i];
           if (isMuted[c.chan] || !op.enable) {
-            rWrite(baseAddr+ADDR_TL,127);
+            rWrite(baseAddr+ADDR_TL,127|(((chan[c.chan].op_ym2609[i].wave_type >> 1) & 1) << 7));
           } else {
             if (KVS(c.chan,i)) {
-              rWrite(baseAddr+ADDR_TL,127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[c.chan].outVol&0x7f,127));
+              rWrite(baseAddr+ADDR_TL,(127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[c.chan].outVol&0x7f,127))|(((chan[c.chan].op_ym2609[i].wave_type >> 1) & 1) << 7));
             } else {
-              rWrite(baseAddr+ADDR_TL,op.tl);
+              rWrite(baseAddr+ADDR_TL,op.tl|(((chan[c.chan].op_ym2609[i].wave_type >> 1) & 1) << 7));
             }
           }
         }
@@ -1185,6 +1227,12 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       if(c.chan >= rhythm_offset && c.chan < adpcma_offset)
       {
         immWrite(0x18+(c.chan-(rhythm_offset)),isMuted[c.chan]?0:((chan[c.chan].pan<<6)|chan[c.chan].outVol));
+      }
+      if(c.chan >= adpcma_offset && c.chan < adpcmb_offset) // ADPCM-A
+      { 
+        immWrite(0x113,c.chan-adpcma_offset);
+        immWrite(0x114,isMuted[c.chan]?0:(chan[c.chan].outVol));
+        break;
       }
       break;
     case DIV_CMD_GET_VOLUME:
@@ -1311,7 +1359,48 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
 
 void DivPlatformYM2609::muteChannel(int ch, bool mute) {
   isMuted[ch]=mute;
-  //sid3_set_is_muted(sid3,ch,mute);
+  if (ch>=adpcma_offset && ch < adpcmb_offset) { // ADPCM-A
+    immWrite(0x113,ch-adpcma_offset);
+    immWrite(0x115,isMuted[ch]?0:(((chan[ch].pan & 2) << 6) | ((chan[ch].panLeft & 3) << 5) | ((chan[ch].pan & 1) << 4) | ((chan[ch].panRight & 3) << 2)));
+    return;
+  }
+  if (ch>=rhythm_offset && ch < adpcma_offset) { // RSS
+    immWrite(0x18+(ch-(rhythm_offset)),isMuted[ch]?0:((chan[ch].pan<<6)|chan[ch].outVol));
+    return;
+  }
+  if (ch>=psg_offset && ch < rhythm_offset) { // PSG
+    int ssg_num = (ch - psg_offset) / 3;
+    int chan_num = (ch - psg_offset) % 3;
+
+    if(isMuted[ch])
+    {
+      rWrite(ssg_offsets[ssg_num]+0x08+chan_num,((chan[ch].nextPSGMode.getEnvelope())<<2));
+    }
+    else
+    {
+      rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[ch].outVol&15)|((chan[ch].nextPSGMode.getEnvelope())<<2)|(chan[ch].pan << 6));
+    }
+    return;
+  }
+  // FM
+  if(ch<psg_offset)
+  {
+    for (int j=0; j<4; j++) {
+      unsigned short baseAddr=chanOffs[ch]|opOffs[j];
+      DivInstrumentFM::Operator& op=chan[ch].state.op[j];
+      DivInstrumentYM2609FM::Operator& op_ym2609=chan[ch].state_ym2609fm.op[j];
+      if (isMuted[ch] || !op.enable) {
+        rWrite(baseAddr+ADDR_TL,127|(((chan[ch].op_ym2609[j].wave_type >> 1) & 1) << 7));
+      } else {
+        if (KVS(ch,j)) {
+          rWrite(baseAddr+ADDR_TL,(127-VOL_SCALE_LOG_BROKEN(127-op.tl,chan[ch].outVol&0x7f,127))|(((chan[ch].op_ym2609[j].wave_type >> 1) & 1) << 7));
+        } else {
+          rWrite(baseAddr+ADDR_TL,op.tl|(((chan[ch].op_ym2609[j].wave_type >> 1) & 1) << 7));
+        }
+      }
+    }
+    rWrite(chanOffs[ch]+ADDR_LRAF,(isMuted[ch]?0:(chan[ch].pan<<6))|(chan[ch].state.fms&7)|((chan[ch].state.ams&3)<<4));
+  }
 }
 
 void DivPlatformYM2609::forceIns() {
@@ -1329,6 +1418,7 @@ void DivPlatformYM2609::forceIns() {
   //rWrite(0x222,lfoValue[1]);
 
   immWrite(0x11,globalRSSVolume&0x3f);
+  immWrite(0x112,globalADPCMAVolume&0x3f);
 
   for (int i=rhythm_offset; i<adpcma_offset; i++) {
     chan[i].insChanged=true;
@@ -1437,6 +1527,8 @@ void DivPlatformYM2609::reset() {
     chan[i].duty = 0;
     chan[i].wavetable = -1;
 
+    chan[i].sample = -1;
+
     for(int j = 0; j < 4; j++)
     {
       chan[i].op_ym2609[j].ws.setEngine(parent);
@@ -1451,6 +1543,10 @@ void DivPlatformYM2609::reset() {
     ayEnvSlideLow[i] = 0;
     ayEnvSlide[i] = 0;
   }
+
+  writeADPCMAOff=0;
+  writeADPCMAOn=0;
+  globalADPCMAVolume=0x3f;
 
   writeRSSOff=0;
   writeRSSOn=0;
@@ -1495,6 +1591,16 @@ void DivPlatformYM2609::reset() {
   for(int i = 0; i < 6; i++)
   {
     immWrite(0x12+i, 0);
+  }
+
+  // ADPCM-A volume
+  immWrite(0x112,globalADPCMAVolume); //ADPCM-A
+
+  // ADPCM-A panpot
+  for(int i = 0; i < 6; i++)
+  {
+    immWrite(0x113, i);
+    immWrite(0x115, 0);
   }
 }
 
