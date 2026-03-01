@@ -15,6 +15,9 @@
 
 const float panTable_psg[8] = { 1.0f, 0.8756f, 0.7512f, 0.6012f, 0.4512f, 0.2506f, 0.0500f, 0.0250f };
 
+#define noisetablesize (1 << 18)
+extern uint8_t ym2609_noisetable[];
+
 class PSG2 : public PSG
 {
     protected:
@@ -368,7 +371,7 @@ class PSG2 : public PSG
                             for (int j = 0; j < (1 << oversampling); j++)
                             {
                                 ncount += (uint32_t)(nperiod / (reg[6] != 0 ? ncountDiv : 1));
-                                noise = noisetable[(ncount >> (noiseshift + oversampling - 1)) & (noisetablesize - 1)] ? 1 : 0;
+                                noise = ym2609_noisetable[(ncount >> (noiseshift + oversampling - 2)) & (noisetablesize - 1)] ? 1 : 0;
 
                                 for (int k = 0; k < 3; k++)
                                 {
@@ -447,7 +450,7 @@ class PSG2 : public PSG
                             }
 
                             ncount += (uint32_t)(nperiod / (reg[6] != 0 ? ncountDiv : 1));
-                            noise = noisetable[(ncount >> (noiseshift + oversampling - 1)) & (noisetablesize - 1)] ? 1 : 0;
+                            noise = ym2609_noisetable[(ncount >> (noiseshift + oversampling - 2)) & (noisetablesize - 1)] ? 1 : 0;
 
                             for (int k = 0; k < 3; k++)
                             {

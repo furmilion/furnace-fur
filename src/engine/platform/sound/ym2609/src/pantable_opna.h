@@ -26,11 +26,11 @@
 #define FM_RATIOBITS 7         // 8-12 くらいまで？
 #define FM_EGBITS 16
 
+#define noisetablesize (1 << 18)
+
 extern float panTable_opna[4];
 //extern uint32_t sinetable_opna[12][4][1024];
 
-extern int amtable_opna[FM_LFOENTS];
-extern int pmtable_opna[FM_LFOENTS];
 extern int tltable_opna[FM_TLENTS + FM_TLPOS];
 
 #endif

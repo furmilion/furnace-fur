@@ -9,8 +9,6 @@
 #include "fmvgen.h"
 //#include "opna2.h"
 
-extern int amtable_opna[];
-extern int pmtable_opna[];
 extern int tltable_opna[];
 
 class FM6
@@ -739,22 +737,6 @@ class FM6
                 ch_output[5][1] = R;
             }
         }
-
-        /*void LFO()
-        {
-            //	LOG3("%4d - %8d, %8d\n", c, lfocount, lfodcount);
-
-            //	Operator::SetPML(pmtable[(lfocount >> (FM_LFOCBITS+1)) & 0xff]);
-            //	Operator::SetAML(amtable[(lfocount >> (FM_LFOCBITS+1)) & 0xff]);
-            chip.SetPML((uint32_t)(pmtable_opna[(lfocount >> (FM_LFOCBITS + 1)) & 0xff]));
-            chip.SetAML((uint32_t)(amtable_opna[(lfocount >> (FM_LFOCBITS + 1)) & 0xff]));
-            lfocount += lfodcount;
-
-            for(int i = 0; i < 6; i++)
-            {
-                ch[i].SetChip(chip);
-            }
-        }*/
     private:
         reverb* reverb;
         distortion* distortion;

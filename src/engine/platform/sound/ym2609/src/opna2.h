@@ -232,19 +232,6 @@ class OPNA2 /*: public OPNABase*/
                 tltable_opna[i + FM_TLPOS] = (int)((uint32_t)(65536.0 * pow(2.0, i * -16.0 / FM_TLENTS))) - 1;
             }
 
-            for (int c = 0; c < 256; c++)
-            {
-                int v;
-                if (c < 0x40) v = c * 2 + 0x80;
-                else if (c < 0xc0) v = 0x7f - (c - 0x40) * 2 + 0x80;
-                else v = (c - 0xc0) * 2;
-                pmtable_opna[c] = c;
-
-                if (c < 0x80) v = 0xff - c * 2;
-                else v = (c - 0x80) * 2;
-                amtable_opna[c] = v & ~3;
-            }
-
             SetVolumeFM(-12);
             SetVolumePSG(-12);
             SetVolumeADPCM(-12);
