@@ -103,6 +103,7 @@ enum DivInstrumentType: unsigned short {
   DIV_INS_YM2609_FM=67,
   DIV_INS_YM2609_SSG=68,
   DIV_INS_YM2609_RSS=69,
+  DIV_INS_YM2609_ADPCM_A=70,
   DIV_INS_MAX,
   DIV_INS_NULL
 };

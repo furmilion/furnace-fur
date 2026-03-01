@@ -89,6 +89,7 @@ class DivPlatformYM2609: public DivDispatch {
     int wavetable;
 
     int macroVolMul;
+    int sample;
 
     uint8_t lfoShape[2];
 
@@ -108,6 +109,7 @@ class DivPlatformYM2609: public DivDispatch {
       fixedFreq(0),
       wavetable(-1),
       macroVolMul(31),
+      sample(-1),
       lfoShape{0,0}
       {
         for(int i = 0; i < 4; i++)
@@ -229,21 +231,16 @@ class DivPlatformYM2609: public DivDispatch {
 
   unsigned char prescale;
 
+  unsigned char writeADPCMAOff, writeADPCMAOn;
+  int globalADPCMAVolume;
+
   DivMemoryComposition memCompoA;
   DivMemoryComposition memCompoB[3];
   
   friend void putDispatchChip(void*,int);
   friend void putDispatchChan(void*,int,int);
 
-  /*void updateFlags(int channel, bool gate);
-  void updateFilter(int channel, int filter);
-  void updateFreq(int channel);
-  void updateNoiseFreq(int channel);
-  void updateNoiseLFSRMask(int channel);
-  void updateDuty(int channel);
-  void updateEnvelope(int channel);
-  void updatePanning(int channel);
-  void updateWave();*/
+  double NOTE_ADPCMB(int note);
 
   public:
     void acquire(short** buf, size_t len);
