@@ -5,6 +5,6 @@ For builds, go [here](https://nightly.link/furmilion/furnace-fur/workflows/build
 ## Current status:
 FM: Works
 SSG: only user wavetable not working
-ADPCM: Neither built-in OPNA not ADPCM-A/B channels work.
+ADPCM: RSS and ADPCM-A works, ADPCM-B doesn't.
 
 Source files located at `./src/engine/platform/sound/ym2609/src/`
