@@ -132,7 +132,7 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
 
       oscBuf[rhythm_offset+i]->putSample(samp,(ym2609->rss_output[i][0] + ym2609->rss_output[i][1]));
 
-      oscBuf[adpcma_offset+i]->putSample(samp,(ym2609->adpcma.chan_output[i][0] + ym2609->adpcma.chan_output[i][1]));
+      oscBuf[adpcma_offset+i]->putSample(samp,(ym2609->adpcma.chan_output[i][0] + ym2609->adpcma.chan_output[i][1]) / 2);
     }
 
     for(int i = 0; i < 3; i++)
