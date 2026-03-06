@@ -32,7 +32,7 @@ class PSG2 : public PSG
     private:
         uint32_t GetSampleFromUserDef(int k, uint32_t lv)
         {
-            if (chenable[k] == 0) return 0;
+            if (chenable[k] == 0) return olevel[k];
 
             //ユーザー定義
             uint32_t pos = (scount[k] >> (toneshift + oversampling - 3 - 2)) & 63;
@@ -43,7 +43,7 @@ class PSG2 : public PSG
 
         uint32_t GetSampleFromSaw(int k, uint32_t lv)
         {
-            if (chenable[k] == 0) return 0;
+            if (chenable[k] == 0) return olevel[k];
 
             uint32_t n = ((scount[k] >> (toneshift + oversampling - 3)) & chenable[k]);
             //のこぎり波
@@ -53,7 +53,7 @@ class PSG2 : public PSG
 
         uint32_t GetSampleFromTriangle(int k, uint32_t lv)
         {
-            if (chenable[k] == 0) return 0;
+            if (chenable[k] == 0) return olevel[k];
 
             uint32_t n = ((scount[k] >> (toneshift + oversampling - 4)) & (chenable[k] ? 0x1f : 0));
             //三角波
@@ -63,7 +63,7 @@ class PSG2 : public PSG
 
         uint32_t GetSampleFromDuty(int k, uint32_t lv)
         {
-            if (chenable[k] == 0) return 0;
+            if (chenable[k] == 0) return olevel[k];
 
             uint32_t n = ((scount[k] >> (toneshift + oversampling - 3)) & chenable[k]);
             //矩形波
@@ -150,7 +150,7 @@ class PSG2 : public PSG
                     break;
                 }
 
-                default: return 0; break;
+                default: return olevel[k]; break;
             }
         }
 
@@ -321,8 +321,9 @@ class PSG2 : public PSG
                                 for (int k = 0; k < 3; k++)
                                 {
                                     sample = getSample(duty[k], k, olevel[k]);
-                                    int L = sample - olevel[k];
-                                    int R = sample - olevel[k];
+                                    sample -= olevel[k];
+                                    int L = sample;
+                                    int R = sample;
                                     distort->Mix(efcStartCh + k, L, R);
                                     chor->Mix(efcStartCh + k, L, R);
                                     hpflpf->Mix(efcStartCh + k, L, R);
