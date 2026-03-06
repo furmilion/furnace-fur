@@ -1246,6 +1246,8 @@ struct DivInstrument: DivInstrumentPOD {
   void convertC64SpecialMacro();
   void convertOldADSRLFO();
 
+  bool compileWaveSynth(SafeWriter* w);
+  bool compileSampleMap(SafeWriter* w, bool nes);
   bool compileMacros(SafeWriter* w, std::initializer_list<DivCompileMacroDef> which, unsigned int start);
 
   /**
