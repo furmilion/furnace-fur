@@ -503,7 +503,7 @@ class PSG2 : public PSG
                         rever->StoreDataC(revSampleL, revSampleR);
                         ptrDest++;
 
-                        visVolume = sampleL;
+                        //visVolume = sampleL;
 
                     }
                 }
