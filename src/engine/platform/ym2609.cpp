@@ -448,7 +448,11 @@ void DivPlatformYM2609::tick(bool sysTick)
 
         if(chan[i].std.phaseReset.val == 1)
         {
-          rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[i].outVol&15)|((chan[i].nextPSGMode.getEnvelope())<<2)|(chan[i].pan << 6)|(1 << 5));
+          if (isMuted[i]) {
+            rWrite(ssg_offsets[ssg_num]+0x08+chan_num,0|(chan[i].pan << 6));
+          } else {
+            rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[i].outVol&15)|((chan[i].nextPSGMode.getEnvelope())<<2)|(chan[i].pan << 6)|(1 << 5));
+          }
         }
       }
       if(i >= rhythm_offset && i < adpcmb_offset)
