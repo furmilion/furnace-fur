@@ -230,6 +230,14 @@ void DivPlatformYM2609::tick(bool sysTick)
         immWrite(0x113,i-adpcma_offset);
         immWrite(0x114,isMuted[i]?0:(chan[i].outVol));
       }
+      if(i >= adpcmb_offset && !isMuted[i])
+      {
+        int adpcm_ch = i - adpcmb_offset;
+
+        chan[i].outVol=(chan[i].vol*MIN(chan[i].macroVolMul,chan[i].std.vol.val))/chan[i].macroVolMul;
+
+        immWrite(adpcmb_offsets[adpcm_ch] + 0xb,chan[i].outVol);
+      }
     }
     if (NEW_ARP_STRAT) {
       chan[i].handleArp();
@@ -307,6 +315,23 @@ void DivPlatformYM2609::tick(bool sysTick)
 
         immWrite(0x115,isMuted[i]?0:(((chan[i].pan & 2) << 6) | ((chan[i].panLeft & 3) << 5) | ((chan[i].pan & 1) << 4) | ((chan[i].panRight & 3) << 2)));
       }
+      if(i >= adpcmb_offset)
+      {
+        int adpcm_ch = i - adpcmb_offset;
+
+        if(chan[i].std.panL.val == 0)
+        {
+          chan[i].pan &= ~(1 << 1);
+        }
+        else
+        {
+          chan[i].pan |= (1 << 1);
+          chan[i].panLeft = (3 - ((chan[i].std.panL.val - 1) & 3));
+        }
+
+        immWrite(adpcmb_offsets[adpcm_ch] + 0x1,(isMuted[i]?0:(chan[i].pan<<6))|2);
+        immWrite(adpcmb_offsets[adpcm_ch] + 0x7,((chan[i].panRight & 3)<<4)|((chan[i].panLeft & 3)<<6));
+      }
     }
     if (chan[i].std.panR.had) 
     {
@@ -365,6 +390,23 @@ void DivPlatformYM2609::tick(bool sysTick)
         }
 
         immWrite(0x115,isMuted[i]?0:(((chan[i].pan & 2) << 6) | ((chan[i].panLeft & 3) << 5) | ((chan[i].pan & 1) << 4) | ((chan[i].panRight & 3) << 2)));
+      }
+      if(i >= adpcmb_offset)
+      {
+        int adpcm_ch = i - adpcmb_offset;
+
+        if(chan[i].std.panR.val == 0)
+        {
+          chan[i].pan &= ~(1 << 0);
+        }
+        else
+        {
+          chan[i].pan |= (1 << 0);
+          chan[i].panRight = (3 - ((chan[i].std.panR.val - 1) & 3));
+        }
+
+        immWrite(adpcmb_offsets[adpcm_ch] + 0x1,(isMuted[i]?0:(chan[i].pan<<6))|2);
+        immWrite(adpcmb_offsets[adpcm_ch] + 0x7,((chan[i].panRight & 3)<<4)|((chan[i].panLeft & 3)<<6));
       }
     }
 
@@ -458,7 +500,7 @@ void DivPlatformYM2609::tick(bool sysTick)
           }
         }
       }
-      if(i >= rhythm_offset && i < adpcmb_offset)
+      if(i >= rhythm_offset && i < adpcmb_offset + 3)
       {
         if ((chan[i].std.phaseReset.val==1) && chan[i].active) {
           chan[i].keyOn=true;
@@ -1226,7 +1268,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
           int end=sampleOffB[adpcm_ch][chan[c.chan].sample]+s->lengthB-1;
           immWrite(adpcmb_offsets[adpcm_ch] + 0x4,(end>>addr_bit_shift)&0xff);
           immWrite(adpcmb_offsets[adpcm_ch] + 0x5,end>>(addr_bit_shift + 8));
-          immWrite(adpcmb_offsets[adpcm_ch] + 0x1,isMuted[c.chan]?0:(chan[c.chan].pan<<6)|2);
+          immWrite(adpcmb_offsets[adpcm_ch] + 0x1,(isMuted[c.chan]?0:(chan[c.chan].pan<<6))|2);
 
           if(!isMuted[c.chan])
           {
@@ -1316,18 +1358,26 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
 
         if (isMuted[c.chan]) {
           rWrite(ssg_offsets[ssg_num]+0x08+chan_num,0|(chan[c.chan].pan << 6));
+          break;
         } else {
           rWrite(ssg_offsets[ssg_num]+0x08+chan_num,(chan[c.chan].outVol&15)|((chan[c.chan].nextPSGMode.getEnvelope())<<2)|(chan[c.chan].pan << 6));
+          break;
         }
       }
       if(c.chan >= rhythm_offset && c.chan < adpcma_offset)
       {
         immWrite(0x18+(c.chan-(rhythm_offset)),isMuted[c.chan]?0:((chan[c.chan].pan<<6)|chan[c.chan].outVol));
+        break;
       }
       if(c.chan >= adpcma_offset && c.chan < adpcmb_offset) // ADPCM-A
       { 
         immWrite(0x113,c.chan-adpcma_offset);
         immWrite(0x114,isMuted[c.chan]?0:(chan[c.chan].outVol));
+        break;
+      }
+      if(c.chan >= adpcmb_offset && !isMuted[c.chan])
+      {
+        immWrite(adpcmb_offsets[c.chan-adpcmb_offset] + 0xb,chan[c.chan].outVol);
         break;
       }
       break;
@@ -1490,6 +1540,10 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
 
 void DivPlatformYM2609::muteChannel(int ch, bool mute) {
   isMuted[ch]=mute;
+  if (ch>=adpcmb_offset) { // ADPCM-B
+    immWrite(adpcmb_offsets[ch-adpcmb_offset] + 0x1,(isMuted[ch]?0:(chan[ch].pan<<6))|2);
+    return;
+  }
   if (ch>=adpcma_offset && ch < adpcmb_offset) { // ADPCM-A
     immWrite(0x113,ch-adpcma_offset);
     immWrite(0x115,isMuted[ch]?0:(((chan[ch].pan & 2) << 6) | ((chan[ch].panLeft & 3) << 5) | ((chan[ch].pan & 1) << 4) | ((chan[ch].panRight & 3) << 2)));
