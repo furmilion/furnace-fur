@@ -102,6 +102,7 @@ class OPNA2 /*: public OPNABase*/
                 adpcmb[i].adpcmvol = 0;
                 adpcmb[i].control2 = 0;
                 adpcmb[i].shiftBit = (i == 0) ? 6 : 9;
+                adpcmb[i].limitaddr = (uint32_t)((i == 0) ? (0x3ffff + 1) : (0xffffff + 1));
                 //adpcmb[i].parent = this;
             }
 
@@ -382,7 +383,7 @@ class OPNA2 /*: public OPNABase*/
         {
             //reg29 = 0x1f;
             rhythmkey = 0;
-            limitaddr = 0x3ffff;
+            //limitaddr = 0x3ffff;
             //OPNABase::Reset();
 
             SetPrescaler(0);
@@ -819,7 +820,7 @@ class OPNA2 /*: public OPNABase*/
         uint32_t psgrate;           // FMGen  出力レート
         uint32_t status;
 
-        uint32_t limitaddr;
+        //uint32_t limitaddr;
 
         int rhythmmask_;
 

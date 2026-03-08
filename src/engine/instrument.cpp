@@ -2111,6 +2111,7 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
         feature9D=true;
         break;
       case DIV_INS_YM2609_ADPCM_A:
+      case DIV_INS_YM2609_ADPCM_B:
         featureSM=true;
         featureSL=true;
         feature9D=true;
