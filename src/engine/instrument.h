@@ -1071,8 +1071,148 @@ struct DivInstrumentYM2609FM {
     lfo_fm_depth{0,0} {}
 };
 
+struct DivInstrumentYM2609DSP {
+  
+  //per-channel DSP
+
+  //phase inversion
+  bool phase_inv_left;
+  bool phase_inv_right;
+
+  //reverb
+  bool reverb_enable;
+  unsigned char reverb_delta; //7 bits
+  unsigned char reverb_send_level; //4 bits
+
+  //distortion
+  bool distortion_enable;
+  unsigned char distortion_output_level; //7 bits
+  unsigned char distortion_gain; //7 bits
+  unsigned char distortion_cutoff; //7 bits
+
+  //chorus
+  bool chorus_enable;
+  unsigned char chorus_mixlevel; //7 bits
+  unsigned char chorus_rate; //7 bits
+  unsigned char chorus_depth; //7 bits
+  unsigned char chorus_feedback; //7 bits
+
+  //LPF
+  bool lpf_on;
+  unsigned char lpf_cutoff; //8 bits
+  unsigned char lpf_q; //8 bits
+
+  //HPF
+  bool hpf_on;
+  unsigned char hpf_cutoff; //8 bits
+  unsigned char hpf_q; //8 bits
+
+  //global DSP
+
+  //3-band equalizer
+  bool eq_on;
+  bool eq_low_on;
+  bool eq_mid_on;
+  bool eq_high_on;
+
+  unsigned char eq_low_freq;
+  unsigned char eq_low_gain;
+  unsigned char eq_low_q;
+
+  unsigned char eq_mid_freq;
+  unsigned char eq_mid_gain;
+  unsigned char eq_mid_q;
+
+  unsigned char eq_high_freq;
+  unsigned char eq_high_gain;
+  unsigned char eq_high_q;
+
+  //compressor
+  bool compressor_on;
+
+  unsigned char compressor_volume; //7 bits
+  unsigned char compressor_threshold; //8 bits
+  unsigned char compressor_ratio; //8 bits
+
+  unsigned char compressor_env_freq; //8 bits
+  unsigned char compressor_env_q; //8 bits
+
+  unsigned char compressor_gain_freq; //8 bits
+  unsigned char compressor_gain_q; //8 bits
+
+  //aux, internal Furnace use
+  bool enable_macros;
+  bool enable_global_macros;
+
+  bool operator==(const DivInstrumentYM2609DSP& other);
+  bool operator!=(const DivInstrumentYM2609DSP& other) {
+    return !(*this==other);
+  }
+
+  DivInstrumentYM2609DSP():
+    phase_inv_left(false),
+    phase_inv_right(false),
+    
+    reverb_enable(false),
+    reverb_delta(64),
+    reverb_send_level(0),
+
+    distortion_enable(false),
+    distortion_output_level(32),
+    distortion_gain(64),
+    distortion_cutoff(64),
+
+    chorus_enable(false),
+    chorus_mixlevel(40),
+    chorus_rate(24),
+    chorus_depth(3),
+    chorus_feedback(40),
+
+    lpf_on(false),
+    lpf_cutoff(126),
+    lpf_q(67),
+
+    hpf_on(false),
+    hpf_cutoff(126),
+    hpf_q(67),
+
+    eq_on(false),
+    eq_low_on(false),
+    eq_mid_on(false),
+    eq_high_on(false),
+
+    eq_low_freq(126),
+    eq_low_gain(141),
+    eq_low_q(67),
+
+    eq_mid_freq(162),
+    eq_mid_gain(102),
+    eq_mid_q(67),
+
+    eq_high_freq(192),
+    eq_high_gain(154),
+    eq_high_q(67),
+
+    compressor_on(false),
+
+    compressor_volume(0),
+    compressor_threshold(0),
+    compressor_ratio(0),
+
+    compressor_env_freq(0),
+    compressor_env_q(0),
+
+    compressor_gain_freq(0),
+    compressor_gain_q(0),
+
+    enable_macros(false),
+    enable_global_macros(false)
+    {}
+};
+
 struct DivInstrumentYM2609 {
   DivInstrumentYM2609FM ym2609fm;
+  DivInstrumentYM2609DSP ym2609dsp;
 };
 
 struct DivInstrumentPOD {

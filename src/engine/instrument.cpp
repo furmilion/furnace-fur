@@ -902,6 +902,62 @@ bool DivInstrumentYM2609FM::operator==(const DivInstrumentYM2609FM& other) {
   );
 }
 
+bool DivInstrumentYM2609DSP::operator==(const DivInstrumentYM2609DSP& other) {
+  return (
+    _C(phase_inv_left) &&
+    _C(phase_inv_right) &&
+
+    _C(reverb_enable) &&
+    _C(reverb_delta) &&
+    _C(reverb_send_level) &&
+
+    _C(distortion_enable) &&
+    _C(distortion_output_level) &&
+    _C(distortion_gain) &&
+    _C(distortion_cutoff) &&
+
+    _C(chorus_enable) &&
+    _C(chorus_mixlevel) &&
+    _C(chorus_rate) &&
+    _C(chorus_depth) &&
+    _C(chorus_feedback) &&
+
+    _C(lpf_on) &&
+    _C(lpf_cutoff) &&
+    _C(lpf_q) &&
+
+    _C(hpf_on) &&
+    _C(hpf_cutoff) &&
+    _C(hpf_q) &&
+
+    _C(eq_on) &&
+    _C(eq_low_on) &&
+    _C(eq_mid_on) &&
+    _C(eq_high_on) &&
+    _C(eq_low_freq) &&
+    _C(eq_low_gain) &&
+    _C(eq_low_q) &&
+    _C(eq_mid_freq) &&
+    _C(eq_mid_gain) &&
+    _C(eq_mid_q) &&
+    _C(eq_high_freq) &&
+    _C(eq_high_gain) &&
+    _C(eq_high_q) &&
+
+    _C(compressor_on) &&
+    _C(compressor_volume) &&
+    _C(compressor_threshold) &&
+    _C(compressor_ratio) &&
+    _C(compressor_env_freq) &&
+    _C(compressor_env_q) &&
+    _C(compressor_gain_freq) &&
+    _C(compressor_gain_q) &&
+
+    _C(enable_macros) &&
+    _C(enable_global_macros)
+  );
+}
+
 #undef _C
 
 #define CONSIDER(x,t) \

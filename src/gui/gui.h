@@ -2605,7 +2605,7 @@ class FurnaceGUI {
   int macroLoopDragLen;
   bool macroLoopDragActive;
 
-  FurnaceGUIMacroEditState macroEditStateFM, macroEditStateOP[4], macroEditStateMacros;
+  FurnaceGUIMacroEditState macroEditStateFM, macroEditStateOP[4], macroEditStateMacros, macroEditStateYM2609DSPChan, macroEditStateYM2609DSPGlobal;
 
   ImVec2 waveDragStart;
   ImVec2 waveDragAreaSize;
@@ -3097,6 +3097,7 @@ class FurnaceGUI {
   void drawInsEdit();
   void drawInsSID3(DivInstrument* ins);
   void drawInsYM2609FM(DivInstrument* ins);
+  void drawInsYM2609DSP(DivInstrument* ins);
   void drawWaveList(bool asChild=false);
   void drawWaveEdit();
   void drawSampleList(bool asChild=false);

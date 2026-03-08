@@ -7403,6 +7403,48 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
   macroList.clear();
 }
 
+void FurnaceGUI::drawInsYM2609DSP(DivInstrument* ins)
+{
+  DivInstrumentYM2609DSP& dsp = ins->ym2609.ym2609dsp;
+
+  if (ImGui::BeginTabItem("DSP")) 
+  {
+    ImGui::Checkbox(_("Use per-channel DSP macros"), &dsp.enable_macros);
+    ImGui::Checkbox(_("Use global DSP macros"), &dsp.enable_global_macros);
+    ImGui::EndTabItem();
+  }
+
+  std::vector<FurnaceGUIMacroDesc> macroList;
+
+  if(dsp.enable_macros)
+  {
+    if (ImGui::BeginTabItem(_("Channel DSP macros"))) 
+    {
+      macroList.push_back(FurnaceGUIMacroDesc(_("AM Depth 1"),&ins->std.amsMacro,0,255,160,uiColors[GUI_COLOR_MACRO_OTHER]));
+
+      drawMacros(macroList,macroEditStateYM2609DSPChan,ins);
+
+      ImGui::EndTabItem();
+    }
+  }
+
+  macroList.clear();
+  
+  if(dsp.enable_global_macros)
+  {
+    if (ImGui::BeginTabItem(_("Global DSP macros"))) 
+    {
+      macroList.push_back(FurnaceGUIMacroDesc(_("AM Depth 1"),&ins->std.amsMacro,0,255,160,uiColors[GUI_COLOR_MACRO_OTHER]));
+
+      drawMacros(macroList,macroEditStateYM2609DSPGlobal,ins);
+
+      ImGui::EndTabItem();
+    }
+  }
+
+  macroList.clear();
+}
+
 void FurnaceGUI::drawInsEdit() {
   if (nextWindow==GUI_WINDOW_INS_EDIT) {
     insEditOpen=true;
@@ -8397,6 +8439,13 @@ void FurnaceGUI::drawInsEdit() {
         }
         if (ins->type==DIV_INS_YM2609_FM) {
           drawInsYM2609FM(ins);
+        }
+        if (ins->type==DIV_INS_YM2609_FM ||
+            ins->type==DIV_INS_YM2609_SSG ||
+            ins->type==DIV_INS_YM2609_RSS ||
+            ins->type==DIV_INS_YM2609_ADPCM_A ||
+            ins->type==DIV_INS_YM2609_ADPCM_B) {
+          drawInsYM2609DSP(ins);
         }
         if (ins->type==DIV_INS_MSM6258 ||
             ins->type==DIV_INS_MSM6295 ||
