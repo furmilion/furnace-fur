@@ -102,7 +102,7 @@ class OPNA2 /*: public OPNABase*/
                 adpcmb[i].adpcmvol = 0;
                 adpcmb[i].control2 = 0;
                 adpcmb[i].shiftBit = (i == 0) ? 6 : 9;
-                adpcmb[i].limitaddr = (uint32_t)((i == 0) ? (0x3ffff + 1) : (0xffffff + 1));
+                adpcmb[i].limitaddr = (uint32_t)((i == 0) ? ((0x3ffff + 1) * 2) : ((0xffffff + 1) * 2));
                 //adpcmb[i].parent = this;
             }
 
