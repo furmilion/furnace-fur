@@ -18,6 +18,8 @@ class ChInfo
         float depth = 10.0f; // コーラスの揺らぎの深さ。5.0～200.0サンプル程度
         float feedback = 0.3f; // コーラスのフィードバック量。0.0～1.0の間
 
+        float speed = 0.0f;
+
         // 内部変数
         CRingBuffur* ringbufL;
         CRingBuffur* ringbufR; // リングバッファ(https://vstcpp.wpblog.jp/?p=1505 より)
@@ -38,6 +40,16 @@ class ChInfo
             sw = false;
             ringbufL = new CRingBuffur(clock, 0.02f);
             ringbufR = new CRingBuffur(clock, 0.02f);
+            ringbufL->SetInterval(delaysample);
+            ringbufR->SetInterval(delaysample);
+        }
+
+        void reinit()
+        {
+            delaysample = 10;
+            theta = 0; // ディレイ読み込み位置を揺らすためのsin関数の角度 θ。初期値は0
+
+            sw = false;
             ringbufL->SetInterval(delaysample);
             ringbufR->SetInterval(delaysample);
         }
@@ -70,16 +82,25 @@ class chorus
         {
             this->clock = (float)clock;
             this->maxCh = maxCh;
+            this->chInfo = NULL;
             Init();
         }
 
         void Init()
         {
-            chInfo = new ChInfo*[maxCh];
+            if(chInfo == NULL)
+            {
+                chInfo = new ChInfo*[maxCh];
+
+                for (int i = 0; i < maxCh; i++)
+                {
+                    chInfo[i] = new ChInfo((int)clock);
+                }
+            }
 
             for (int i = 0; i < maxCh; i++)
             {
-                chInfo[i] = new ChInfo((int)clock);
+                chInfo[i]->reinit();
             }
         }
 
@@ -101,17 +122,17 @@ class chorus
             if (chInfo[ch] == NULL) return;
             if (!chInfo[ch]->sw) return;
 
-            ChInfo ci = *chInfo[ch];
+            ChInfo& ci = *chInfo[ch];
             float finL = inL / 21474.83647f;
             float finR = inR / 21474.83647f;
-            float speed = (2.0f * 3.14159265f * ci.rate) / clock; // 揺らぎのスピード。角速度ωと同じ。
+            //float speed = (2.0f * 3.14159265f * ci.rate) / clock; // 揺らぎのスピード。角速度ωと同じ。
 
             // inL[]、inR[]、outL[]、outR[]はそれぞれ入力信号と出力信号のバッファ(左右)
             // wavelenghtはバッファのサイズ、サンプリング周波数は44100Hzとする
 
             // 入力信号にコーラスかける
             // 角度θに角速度を加える
-            ci.theta += speed;
+            ci.theta += ci.speed;
 
             // 読み込み位置を揺らす量を計算
             // sin()関数の結果にdepthを掛ける
@@ -161,6 +182,8 @@ class chorus
             else if (adr == 2)
             {
                 chInfo[currentCh]->rate = 16.0f * (data & 0x7f) / 127.0f;
+
+                chInfo[currentCh]->speed = (2.0f * 3.14159265f * chInfo[currentCh]->rate) / clock;
             }
             else if (adr == 3)
             {

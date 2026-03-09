@@ -7460,79 +7460,121 @@ void FurnaceGUI::drawInsYM2609DSP(DivInstrument* ins)
     char tempID[125];
 
     ImGui::Checkbox(_("Use DSP effects"), &dsp.enable);
-    ImGui::Checkbox(_("Reset DSP effects on new note"), &dsp.reset_all);
 
-    if (ImGui::BeginTable("channeldsp",2,ImGuiTableFlags_Borders)) 
+    if(dsp.enable)
     {
-      ImGui::TableNextRow();
-      ImGui::TableNextColumn();
+      ImGui::Checkbox(_("Reset DSP effects on new note"), &dsp.reset_all);
 
-      CENTER_TEXT(_("Lowpass filter"));
-      ImGui::TextUnformatted(_("Lowpass filter"));
-      
-      ImGui::TableNextColumn();
+      ImGui::Separator();
 
-      CENTER_TEXT(_("Highpass filter"));
-      ImGui::TextUnformatted(_("Highpass filter"));
+      ImGui::Checkbox(_("Phase inv. left"), &dsp.phase_inv_left);
+      ImGui::SameLine();
+      ImGui::Checkbox(_("Phase inv. right"), &dsp.phase_inv_right);
 
-      ImGui::TableNextRow();
-      ImGui::TableNextColumn();
+      if (ImGui::BeginTable("channeldsp",2,ImGuiTableFlags_Borders)) 
+      {
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
 
-      ImGui::Checkbox(_("Enable filter##enlpf"), &dsp.lpf_on);
-      ImGui::Checkbox(_("Initialize filter##initlpf"), &dsp.lpf_init);
+        CENTER_TEXT(_("Lowpass filter"));
+        ImGui::TextUnformatted(_("Lowpass filter"));
+        
+        ImGui::TableNextColumn();
 
-      snprintf(tempID,1024,_("%%d (%.2fHz)"), YM2609_get_filter_cutoff(dsp.lpf_cutoff));
-      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Cutoff")).x);
-      CWSliderScalar("Cutoff##LPF_CUTOFF",ImGuiDataType_U8,&dsp.lpf_cutoff,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
+        CENTER_TEXT(_("Highpass filter"));
+        ImGui::TextUnformatted(_("Highpass filter"));
 
-      snprintf(tempID,1024,"%%d (%.2f)", YM2609_get_q(dsp.lpf_q));
-      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Resonance")).x);
-      CWSliderScalar("Resonance##LPF_Q",ImGuiDataType_U8,&dsp.lpf_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
 
-      ImGui::TableNextColumn();
+        ImGui::Checkbox(_("Enable filter##enlpf"), &dsp.lpf_on);
+        ImGui::Checkbox(_("Initialize filter##initlpf"), &dsp.lpf_init);
 
-      ImGui::Checkbox(_("Enable filter##enhpf"), &dsp.hpf_on);
-      ImGui::Checkbox(_("Initialize filter##inithpf"), &dsp.hpf_init);
+        snprintf(tempID,1024,_("%%d (%.2fHz)"), YM2609_get_filter_cutoff(dsp.lpf_cutoff));
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Cutoff")).x);
+        CWSliderScalar("Cutoff##LPF_CUTOFF",ImGuiDataType_U8,&dsp.lpf_cutoff,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
 
-      snprintf(tempID,1024,_("%%d (%.2fHz)"), YM2609_get_filter_cutoff(dsp.hpf_cutoff));
-      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Cutoff")).x);
-      CWSliderScalar(_("Cutoff##HPF_CUTOFF"),ImGuiDataType_U8,&dsp.hpf_cutoff,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
+        snprintf(tempID,1024,"%%d (%.2f)", YM2609_get_q(dsp.lpf_q));
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Resonance")).x);
+        CWSliderScalar("Resonance##LPF_Q",ImGuiDataType_U8,&dsp.lpf_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
 
-      snprintf(tempID,1024,"%%d (%.2f)", YM2609_get_q(dsp.hpf_q));
-      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Resonance")).x);
-      CWSliderScalar(_("Resonance##HPF_Q"),ImGuiDataType_U8,&dsp.hpf_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
+        ImGui::TableNextColumn();
 
-      ImGui::EndTable();
-    }
+        ImGui::Checkbox(_("Enable filter##enhpf"), &dsp.hpf_on);
+        ImGui::Checkbox(_("Initialize filter##inithpf"), &dsp.hpf_init);
 
-    if (ImGui::BeginTable("channeldsp2",2,ImGuiTableFlags_Borders)) 
-    {
-      ImGui::TableNextRow();
-      ImGui::TableNextColumn();
+        snprintf(tempID,1024,_("%%d (%.2fHz)"), YM2609_get_filter_cutoff(dsp.hpf_cutoff));
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Cutoff")).x);
+        CWSliderScalar(_("Cutoff##HPF_CUTOFF"),ImGuiDataType_U8,&dsp.hpf_cutoff,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
 
-      CENTER_TEXT(_("Distortion"));
-      ImGui::TextUnformatted(_("Distortion"));
-      
-      ImGui::TableNextColumn();
+        snprintf(tempID,1024,"%%d (%.2f)", YM2609_get_q(dsp.hpf_q));
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Resonance")).x);
+        CWSliderScalar(_("Resonance##HPF_Q"),ImGuiDataType_U8,&dsp.hpf_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
 
-      CENTER_TEXT(_("Chorus"));
-      ImGui::TextUnformatted(_("Chorus"));
+        ImGui::EndTable();
+      }
 
-      ImGui::TableNextRow();
-      ImGui::TableNextColumn();
+      if (ImGui::BeginTable("channeldsp2",2,ImGuiTableFlags_Borders)) 
+      {
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
 
-      ImGui::Checkbox(_("Enable distortion##endist"), &dsp.distortion_enable);
+        CENTER_TEXT(_("Distortion"));
+        ImGui::TextUnformatted(_("Distortion"));
+        
+        ImGui::TableNextColumn();
 
-      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("OutLevel")).x);
-      CWSliderScalar(_("OutLevel##DIST_OUTLVL"),ImGuiDataType_U8,&dsp.distortion_output_level,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+        CENTER_TEXT(_("Chorus"));
+        ImGui::TextUnformatted(_("Chorus"));
 
-      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Gain")).x);
-      CWSliderScalar(_("Gain##DIST_GAIN"),ImGuiDataType_U8,&dsp.distortion_gain,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
 
-      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Cutoff")).x);
-      CWSliderScalar(_("Cutoff##DIST_CUTOFF"),ImGuiDataType_U8,&dsp.distortion_cutoff,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+        ImGui::Checkbox(_("Enable distortion##endist"), &dsp.distortion_enable);
 
-      ImGui::EndTable();
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("OutLevel")).x);
+        CWSliderScalar(_("OutLevel##DIST_OUTLVL"),ImGuiDataType_U8,&dsp.distortion_output_level,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Gain")).x);
+        CWSliderScalar(_("Gain##DIST_GAIN"),ImGuiDataType_U8,&dsp.distortion_gain,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Cutoff")).x);
+        CWSliderScalar(_("Cutoff##DIST_CUTOFF"),ImGuiDataType_U8,&dsp.distortion_cutoff,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+
+        ImGui::TableNextColumn();
+
+        ImGui::Checkbox(_("Enable chorus##endist"), &dsp.chorus_enable);
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("MixLevel")).x);
+        CWSliderScalar(_("MixLevel##CHOR_MIXLEVEL"),ImGuiDataType_U8,&dsp.chorus_mixlevel,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Rate")).x);
+        CWSliderScalar(_("Rate##CHOR_RATE"),ImGuiDataType_U8,&dsp.chorus_rate,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Depth")).x);
+        CWSliderScalar(_("Depth##CHOR_DEPTH"),ImGuiDataType_U8,&dsp.chorus_depth,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Feedback")).x);
+        CWSliderScalar(_("Feedback##CHOR_FEEDBACK"),ImGuiDataType_U8,&dsp.chorus_feedback,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+
+        ImGui::EndTable();
+      }
+
+      if (ImGui::BeginTable("channeldsp3",1,ImGuiTableFlags_Borders)) 
+      {
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+
+        CENTER_TEXT(_("Channel compressor"));
+        ImGui::TextUnformatted(_("Channel compressor"));
+
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+
+        ImGui::Checkbox(_("Enable channel compressor##enchcomp"), &dsp.ins_compressor_on);
+
+        ImGui::EndTable();
+      }
     }
 
     ImGui::Checkbox(_("Use global DSP effects"), &dsp.enable_global);
