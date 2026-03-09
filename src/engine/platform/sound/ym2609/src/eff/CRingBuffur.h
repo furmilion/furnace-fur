@@ -11,7 +11,7 @@ class CRingBuffur
         int rpos; // 読み込み位置
         int wpos; // 書き込み位置
         float* buf = NULL;// RB_SIZE]; // 内部バッファ
-        int RB_SIZE = 44100 * 4;
+        int RB_SIZE = 48000 * 4;
 
     public:
         CRingBuffur(int clock, float RB = 4.0f)

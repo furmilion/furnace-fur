@@ -7403,12 +7403,127 @@ void FurnaceGUI::drawInsYM2609FM(DivInstrument* ins)
   macroList.clear();
 }
 
+static float YM2609_get_filter_cutoff(unsigned char param)
+{
+  if (param < 256 / 8 * 3)
+  {
+    return ((float)param + 1.0f);
+  }
+  else if (param < 256 / 8 * 5)
+  {
+    return ((float)param - 256.0f / 8.0f * 3.0f) * 10.0f + 100.0f;
+  }
+  else if (param < 256 / 8 * 7)
+  {
+    return ((float)param - 256.0f / 8.0f * 5.0f) * 100.0f + 800.0f;
+  }
+  else
+  {
+    return ((float)param - 256.0f / 8.0f * 7.0f) * 1000.0f + 7500.0f;
+  }
+}
+
+static float YM2609_get_q(unsigned char param)
+{
+  if (param < 256 / 8 * 3)
+  {
+    return (float)(1.0f / (256.0f / 8.0f * 3.0f) * (param + 1.0f)); // 0-95 : 0.01041667 ～ 1.0
+  }
+  else if (param < 256 / 8 * 6)
+  {
+    return (float)(10.0f / (256.0f / 8.0f * 3.0f) * (param + 1.0f - 256.0f / 8.0f * 3.0f) + 1.0f); // 96-191 : 1.104167 ～ 11.0
+  }
+  else
+  {
+    return (float)(10.0f / (256.0f / 8.0f * 2.0f) * (param + 1.0f - 256.0f / 8.0f * 6.0f) + 11.0f); // 192-255 : 11.15625 ～ 21.0
+  }
+}
+
+static float YM2609_get_gain(unsigned char param)
+{
+  if (param < 128)
+  {
+    return (float)(-20.0f / 128.0f * (128.0f - param));
+  }
+  else
+  {
+    return (float)(20.0f / 128.0f * (param - 128.0f));
+  }
+}
+
 void FurnaceGUI::drawInsYM2609DSP(DivInstrument* ins)
 {
   DivInstrumentYM2609DSP& dsp = ins->ym2609.ym2609dsp;
 
   if (ImGui::BeginTabItem("DSP")) 
   {
+    char tempID[125];
+
+    ImGui::Checkbox(_("Use DSP effects"), &dsp.enable);
+    ImGui::Checkbox(_("Reset DSP effects on new note"), &dsp.reset_all);
+
+    if (ImGui::BeginTable("channeldsp",2,ImGuiTableFlags_Borders)) 
+    {
+      //ImGui::TableSetupColumn("c0",ImGuiTableColumnFlags_WidthFixed,0.0f);
+      //ImGui::TableSetupColumn("c1",ImGuiTableColumnFlags_WidthFixed,0.0f);
+
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+
+      CENTER_TEXT(_("Lowpass filter"));
+      ImGui::TextUnformatted(_("Lowpass filter"));
+      
+      ImGui::TableNextColumn();
+
+      CENTER_TEXT(_("Highpass filter"));
+      ImGui::TextUnformatted(_("Highpass filter"));
+
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+
+      ImGui::Checkbox(_("Enable filter##enlpf"), &dsp.lpf_on);
+
+      snprintf(tempID,1024,_("%%d (%.2fHz)"), YM2609_get_filter_cutoff(dsp.lpf_cutoff));
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+      CWSliderScalar("Cutoff##LPF_CUTOFF",ImGuiDataType_U8,&dsp.lpf_cutoff,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
+
+      snprintf(tempID,1024,"%%d (%.2f)", YM2609_get_q(dsp.lpf_q));
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+      CWSliderScalar("Cutoff##LPF_Q",ImGuiDataType_U8,&dsp.lpf_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
+
+      ImGui::TableNextColumn();
+
+      ImGui::Checkbox(_("Enable filter##enhpf"), &dsp.hpf_on);
+
+      snprintf(tempID,1024,_("%%d (%.2fHz)"), YM2609_get_filter_cutoff(dsp.hpf_cutoff));
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+      CWSliderScalar("Cutoff##HPF_CUTOFF",ImGuiDataType_U8,&dsp.hpf_cutoff,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
+
+      snprintf(tempID,1024,"%%d (%.2f)", YM2609_get_q(dsp.hpf_q));
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+      CWSliderScalar("Cutoff##HPF_Q",ImGuiDataType_U8,&dsp.hpf_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
+
+      ImGui::EndTable();
+    }
+
+    ImGui::Checkbox(_("Use global DSP effects"), &dsp.enable_global);
+
+    if (ImGui::BeginTable("globaldsp",2,ImGuiTableFlags_Borders)) 
+    {
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+
+      CENTER_TEXT(_("3-band equalizer"));
+      ImGui::TextUnformatted(_("3-band equalizer"));
+      
+      ImGui::TableNextColumn();
+
+      CENTER_TEXT(_("Chip compressor"));
+      ImGui::TextUnformatted(_("Chip compressor"));
+
+      ImGui::EndTable();
+    }
+
     ImGui::Checkbox(_("Use per-channel DSP macros"), &dsp.enable_macros);
     ImGui::Checkbox(_("Use global DSP macros"), &dsp.enable_global_macros);
     ImGui::EndTabItem();
@@ -7416,7 +7531,7 @@ void FurnaceGUI::drawInsYM2609DSP(DivInstrument* ins)
 
   std::vector<FurnaceGUIMacroDesc> macroList;
 
-  if(dsp.enable_macros)
+  if(dsp.enable && dsp.enable_macros)
   {
     if (ImGui::BeginTabItem(_("Channel DSP macros"))) 
     {
@@ -7430,7 +7545,7 @@ void FurnaceGUI::drawInsYM2609DSP(DivInstrument* ins)
 
   macroList.clear();
   
-  if(dsp.enable_global_macros)
+  if(dsp.enable_global && dsp.enable_global_macros)
   {
     if (ImGui::BeginTabItem(_("Global DSP macros"))) 
     {

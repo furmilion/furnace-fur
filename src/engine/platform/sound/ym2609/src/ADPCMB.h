@@ -36,6 +36,8 @@ class ADPCMB
         bool adpcmmask_ = false;
         bool adpcmplay;     // ADPCM 再生中
 
+        int chan_output[2];
+
         ADPCMB(int num = 0, reverb* reverb = NULL, distortion* distortion = NULL, chorus* chorus = NULL, HPFLPF* hpflpf = NULL, ReversePhase* reversePhase = NULL, Compressor* compressor = NULL, int efcCh = 0)
         {
             this->num = num;
@@ -83,6 +85,10 @@ class ADPCMB
 
                         sL = (int)(sL * panL) * reversePhase->Adpcm[num][0];
                         sR = (int)(sR * panR) * reversePhase->Adpcm[num][1];
+
+                        chan_output[0] = sL;
+                        chan_output[1] = sR;
+
                         int revSampleL = (int)(sL * reverb->SendLevel[efcCh]);
                         int revSampleR = (int)(sR * reverb->SendLevel[efcCh]);
                         fmvgen::StoreSample(dest[0][ptrDest], sL);
@@ -111,6 +117,10 @@ class ADPCMB
 
                         sL = (int)(sL * panL) * reversePhase->Adpcm[num][0];
                         sR = (int)(sR * panR) * reversePhase->Adpcm[num][1];
+
+                        chan_output[0] = sL;
+                        chan_output[1] = sR;
+
                         int revSampleL = (int)(sL * reverb->SendLevel[efcCh]);
                         int revSampleR = (int)(sR * reverb->SendLevel[efcCh]);
                         fmvgen::StoreSample(dest[0][ptrDest], sL);
@@ -147,6 +157,10 @@ class ADPCMB
 
                         sL = (int)(sL * panL) * reversePhase->Adpcm[num][0];
                         sR = (int)(sR * panR) * reversePhase->Adpcm[num][1];
+
+                        chan_output[0] = sL;
+                        chan_output[1] = sR;
+                        
                         int revSampleL = (int)(sL * reverb->SendLevel[efcCh]);
                         int revSampleR = (int)(sR * reverb->SendLevel[efcCh]);
                         fmvgen::StoreSample(dest[0][ptrDest], sL);

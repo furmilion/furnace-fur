@@ -930,6 +930,15 @@ bool DivInstrumentYM2609DSP::operator==(const DivInstrumentYM2609DSP& other) {
     _C(hpf_cutoff) &&
     _C(hpf_q) &&
 
+    _C(ins_compressor_on) &&
+    _C(ins_compressor_volume) &&
+    _C(ins_compressor_threshold) &&
+    _C(ins_compressor_ratio) &&
+    _C(ins_compressor_env_freq) &&
+    _C(ins_compressor_env_q) &&
+    _C(ins_compressor_gain_freq) &&
+    _C(ins_compressor_gain_q) &&
+
     _C(eq_on) &&
     _C(eq_low_on) &&
     _C(eq_mid_on) &&
@@ -953,8 +962,11 @@ bool DivInstrumentYM2609DSP::operator==(const DivInstrumentYM2609DSP& other) {
     _C(compressor_gain_freq) &&
     _C(compressor_gain_q) &&
 
+    _C(enable) &&
+    _C(enable_global) &&
     _C(enable_macros) &&
-    _C(enable_global_macros)
+    _C(enable_global_macros) &&
+    _C(reset_all)
   );
 }
 

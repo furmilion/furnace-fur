@@ -30,7 +30,7 @@ class ChInfo
         float theta;
         //public float speed;
 
-        ChInfo(int clock = 44100)
+        ChInfo(int clock = 48000)
         {
             delaysample = 10;
             theta = 0; // ディレイ読み込み位置を揺らすためのsin関数の角度 θ。初期値は0

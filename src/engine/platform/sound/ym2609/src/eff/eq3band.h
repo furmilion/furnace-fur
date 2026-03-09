@@ -22,7 +22,7 @@ class eq3band
 {
     private:
     float fl, fr;
-        int samplerate = 44100;
+        int samplerate = 48000;
 
         // エフェクターのパラメーター
         bool lowSw = false;
@@ -61,7 +61,7 @@ class eq3band
         CMyFilter highL = CMyFilter(), highR = CMyFilter(); // フィルタークラス(https://vstcpp.wpblog.jp/?page_id=728 より)
 
     public:
-    eq3band(int samplerate = 44100)
+    eq3band(int samplerate = 48000)
     {
         this->samplerate = samplerate;
         if (freqTable == NULL) lowL.makeTable();

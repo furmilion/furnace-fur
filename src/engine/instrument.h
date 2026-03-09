@@ -1107,6 +1107,19 @@ struct DivInstrumentYM2609DSP {
   unsigned char hpf_cutoff; //8 bits
   unsigned char hpf_q; //8 bits
 
+  //compressor
+  bool ins_compressor_on;
+
+  unsigned char ins_compressor_volume; //7 bits
+  unsigned char ins_compressor_threshold; //8 bits
+  unsigned char ins_compressor_ratio; //8 bits
+
+  unsigned char ins_compressor_env_freq; //8 bits
+  unsigned char ins_compressor_env_q; //8 bits
+
+  unsigned char ins_compressor_gain_freq; //8 bits
+  unsigned char ins_compressor_gain_q; //8 bits
+
   //global DSP
 
   //3-band equalizer
@@ -1141,8 +1154,11 @@ struct DivInstrumentYM2609DSP {
   unsigned char compressor_gain_q; //8 bits
 
   //aux, internal Furnace use
+  bool enable;
+  bool enable_global;
   bool enable_macros;
   bool enable_global_macros;
+  bool reset_all;
 
   bool operator==(const DivInstrumentYM2609DSP& other);
   bool operator!=(const DivInstrumentYM2609DSP& other) {
@@ -1176,6 +1192,18 @@ struct DivInstrumentYM2609DSP {
     hpf_cutoff(126),
     hpf_q(67),
 
+    ins_compressor_on(false),
+
+    ins_compressor_volume(0),
+    ins_compressor_threshold(0),
+    ins_compressor_ratio(0),
+
+    ins_compressor_env_freq(0),
+    ins_compressor_env_q(0),
+
+    ins_compressor_gain_freq(0),
+    ins_compressor_gain_q(0),
+
     eq_on(false),
     eq_low_on(false),
     eq_mid_on(false),
@@ -1205,8 +1233,11 @@ struct DivInstrumentYM2609DSP {
     compressor_gain_freq(0),
     compressor_gain_q(0),
 
+    enable(false),
+    enable_global(false),
     enable_macros(false),
-    enable_global_macros(false)
+    enable_global_macros(false),
+    reset_all(false)
     {}
 };
 

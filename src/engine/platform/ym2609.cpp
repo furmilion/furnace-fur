@@ -94,7 +94,7 @@
 //TODO: replace with custom clock
 
 #define YM2609_CLOCK 8000000
-#define YM2609_DSP_RATE 48000
+#define YM2609_DSP_RATE 96000
 
 #define CHIP_FREQBASE fmFreqBase
 #define CHIP_DIVIDER fmDivBase
@@ -141,6 +141,8 @@ void DivPlatformYM2609::acquire(short** buf, size_t len)
       oscBuf[psg_offset+3+i]->putSample(samp,(ym2609->psg2[1].chan_output[i][0] + ym2609->psg2[1].chan_output[i][1]) * 3 / 2);
       oscBuf[psg_offset+3*2+i]->putSample(samp,(ym2609->psg2[2].chan_output[i][0] + ym2609->psg2[2].chan_output[i][1]) * 3 / 2);
       oscBuf[psg_offset+3*3+i]->putSample(samp,(ym2609->psg2[3].chan_output[i][0] + ym2609->psg2[3].chan_output[i][1]) * 3 / 2);
+
+      oscBuf[adpcmb_offset+i]->putSample(samp,(ym2609->adpcmb[i].chan_output[0] + ym2609->adpcmb[i].chan_output[0]) / 2);
     }
 
     buf[0][samp] = output_buf[0][0];
@@ -1072,11 +1074,60 @@ void DivPlatformYM2609::commitState(int ch, DivInstrument* ins) {
   }
 }
 
+//0-11:FM 12-23:SSG 24-26:ADPCM 27-32:Rhythm 33-38:ADPCM-A
+static int get_dsp_chan_index(int ch)
+{
+  if(ch < 12 + 12) return ch; //fm, psg
+  if(ch >= 12 + 12 + 6 + 6) return (ch - (12 + 12 + 6 + 6) + 24); //adpcm-b
+  if(ch >= 12 + 12 && ch < 12 + 12 + 6) return (ch - (12 + 12) + 27); //rhythm
+  if(ch >= 12 + 12 + 6 && ch < 12 + 12 + 6 + 6) return (ch - (12 + 12 + 6) + 33); //adpcm-a
+
+  return 0;
+}
+
 int DivPlatformYM2609::dispatch(DivCommand c) {
   if (c.chan>YM2609_NUM_CHANNELS - 1) return 0;
 
   switch (c.cmd) {
     case DIV_CMD_NOTE_ON: {
+      DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
+
+      if(ins->ym2609.ym2609dsp.enable)
+      {
+        DivInstrumentYM2609DSP& dsp = ins->ym2609.ym2609dsp;
+        
+        if(dsp.lpf_on || dsp.hpf_on || dsp.chorus_enable || dsp.ins_compressor_on || dsp.distortion_enable)
+        {
+          rWrite(0x323, get_dsp_chan_index(c.chan) | (dsp.reset_all ? 0x80 : 0));
+
+          if(dsp.lpf_on)
+          {
+            rWrite(0x3c0, 1);
+            rWrite(0x3c1, dsp.lpf_cutoff);
+            rWrite(0x3c2, dsp.lpf_q);
+          }
+          else
+          {
+            rWrite(0x3c0, 0);
+          }
+
+          if(dsp.hpf_on)
+          {
+            rWrite(0x3c3, 1);
+            rWrite(0x3c4, dsp.hpf_cutoff);
+            rWrite(0x3c5, dsp.hpf_q);
+          }
+          else
+          {
+            rWrite(0x3c3, 0);
+          }
+        }
+        else
+        {
+          rWrite(0x323, get_dsp_chan_index(c.chan) | 0x80); //reset all?
+        }
+      }
+
       if(c.chan < psg_offset) //FM
       {
         DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_YM2609_FM);
@@ -2044,7 +2095,7 @@ int DivPlatformYM2609::init(DivEngine* p, int channels, int sugRate, const DivCo
   dist = new distortion(YM2609_CLOCK, 39);
   chor = new chorus(YM2609_CLOCK, 39);
   eq = new eq3band(YM2609_DSP_RATE);
-  filt = new HPFLPF(YM2609_CLOCK, 39);
+  filt = new HPFLPF(YM2609_DSP_RATE, 39);
   reph = new ReversePhase();
   comp = new Compressor(YM2609_DSP_RATE, 39);
 
