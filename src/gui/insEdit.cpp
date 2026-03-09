@@ -7407,19 +7407,19 @@ static float YM2609_get_filter_cutoff(unsigned char param)
 {
   if (param < 256 / 8 * 3)
   {
-    return ((float)param + 1.0f);
+    return ((float)param + 1.0f) / 2.0f;
   }
   else if (param < 256 / 8 * 5)
   {
-    return ((float)param - 256.0f / 8.0f * 3.0f) * 10.0f + 100.0f;
+    return (((float)param - 256.0f / 8.0f * 3.0f) * 10.0f + 100.0f) / 2.0f;
   }
   else if (param < 256 / 8 * 7)
   {
-    return ((float)param - 256.0f / 8.0f * 5.0f) * 100.0f + 800.0f;
+    return (((float)param - 256.0f / 8.0f * 5.0f) * 100.0f + 800.0f) / 2.0f;
   }
   else
   {
-    return ((float)param - 256.0f / 8.0f * 7.0f) * 1000.0f + 7500.0f;
+    return (((float)param - 256.0f / 8.0f * 7.0f) * 1000.0f + 7500.0f) / 2.0f;
   }
 }
 
@@ -7464,9 +7464,6 @@ void FurnaceGUI::drawInsYM2609DSP(DivInstrument* ins)
 
     if (ImGui::BeginTable("channeldsp",2,ImGuiTableFlags_Borders)) 
     {
-      //ImGui::TableSetupColumn("c0",ImGuiTableColumnFlags_WidthFixed,0.0f);
-      //ImGui::TableSetupColumn("c1",ImGuiTableColumnFlags_WidthFixed,0.0f);
-
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
 
@@ -7482,26 +7479,58 @@ void FurnaceGUI::drawInsYM2609DSP(DivInstrument* ins)
       ImGui::TableNextColumn();
 
       ImGui::Checkbox(_("Enable filter##enlpf"), &dsp.lpf_on);
+      ImGui::Checkbox(_("Initialize filter##initlpf"), &dsp.lpf_init);
 
       snprintf(tempID,1024,_("%%d (%.2fHz)"), YM2609_get_filter_cutoff(dsp.lpf_cutoff));
-      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Cutoff")).x);
       CWSliderScalar("Cutoff##LPF_CUTOFF",ImGuiDataType_U8,&dsp.lpf_cutoff,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
 
       snprintf(tempID,1024,"%%d (%.2f)", YM2609_get_q(dsp.lpf_q));
-      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-      CWSliderScalar("Cutoff##LPF_Q",ImGuiDataType_U8,&dsp.lpf_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Resonance")).x);
+      CWSliderScalar("Resonance##LPF_Q",ImGuiDataType_U8,&dsp.lpf_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
 
       ImGui::TableNextColumn();
 
       ImGui::Checkbox(_("Enable filter##enhpf"), &dsp.hpf_on);
+      ImGui::Checkbox(_("Initialize filter##inithpf"), &dsp.hpf_init);
 
       snprintf(tempID,1024,_("%%d (%.2fHz)"), YM2609_get_filter_cutoff(dsp.hpf_cutoff));
-      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-      CWSliderScalar("Cutoff##HPF_CUTOFF",ImGuiDataType_U8,&dsp.hpf_cutoff,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Cutoff")).x);
+      CWSliderScalar(_("Cutoff##HPF_CUTOFF"),ImGuiDataType_U8,&dsp.hpf_cutoff,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
 
       snprintf(tempID,1024,"%%d (%.2f)", YM2609_get_q(dsp.hpf_q));
-      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-      CWSliderScalar("Cutoff##HPF_Q",ImGuiDataType_U8,&dsp.hpf_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Resonance")).x);
+      CWSliderScalar(_("Resonance##HPF_Q"),ImGuiDataType_U8,&dsp.hpf_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE,tempID); rightClickable
+
+      ImGui::EndTable();
+    }
+
+    if (ImGui::BeginTable("channeldsp2",2,ImGuiTableFlags_Borders)) 
+    {
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+
+      CENTER_TEXT(_("Distortion"));
+      ImGui::TextUnformatted(_("Distortion"));
+      
+      ImGui::TableNextColumn();
+
+      CENTER_TEXT(_("Chorus"));
+      ImGui::TextUnformatted(_("Chorus"));
+
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+
+      ImGui::Checkbox(_("Enable distortion##endist"), &dsp.distortion_enable);
+
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("OutLevel")).x);
+      CWSliderScalar(_("OutLevel##DIST_OUTLVL"),ImGuiDataType_U8,&dsp.distortion_output_level,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Gain")).x);
+      CWSliderScalar(_("Gain##DIST_GAIN"),ImGuiDataType_U8,&dsp.distortion_gain,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Cutoff")).x);
+      CWSliderScalar(_("Cutoff##DIST_CUTOFF"),ImGuiDataType_U8,&dsp.distortion_cutoff,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
 
       ImGui::EndTable();
     }

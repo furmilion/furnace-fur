@@ -32,6 +32,7 @@ class DivPlatformYM2609: public DivDispatch {
   struct Channel: public SharedChannel<signed short> {
     DivInstrumentFM state;
     DivInstrumentYM2609FM state_ym2609fm;
+    DivInstrumentYM2609DSP state_ym2609dsp;
     unsigned char opMask;
     unsigned char panLeft, panRight; //soft pan
     unsigned char pan; //hard pan

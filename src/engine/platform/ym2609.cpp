@@ -94,7 +94,7 @@
 //TODO: replace with custom clock
 
 #define YM2609_CLOCK 8000000
-#define YM2609_DSP_RATE 96000
+#define YM2609_DSP_RATE 48000
 
 #define CHIP_FREQBASE fmFreqBase
 #define CHIP_DIVIDER fmDivBase
@@ -1100,11 +1100,22 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
         {
           rWrite(0x323, get_dsp_chan_index(c.chan) | (dsp.reset_all ? 0x80 : 0));
 
+          chan[c.chan].state_ym2609dsp.lpf_on = dsp.lpf_on;
+          chan[c.chan].state_ym2609dsp.hpf_on = dsp.hpf_on;
+          chan[c.chan].state_ym2609dsp.distortion_enable = dsp.distortion_enable;
+
           if(dsp.lpf_on)
           {
             rWrite(0x3c0, 1);
-            rWrite(0x3c1, dsp.lpf_cutoff);
-            rWrite(0x3c2, dsp.lpf_q);
+
+            if(dsp.lpf_init)
+            {
+              rWrite(0x3c1, dsp.lpf_cutoff);
+              rWrite(0x3c2, dsp.lpf_q);
+
+              chan[c.chan].state_ym2609dsp.lpf_cutoff = dsp.lpf_cutoff;
+              chan[c.chan].state_ym2609dsp.lpf_q = dsp.lpf_q;
+            }
           }
           else
           {
@@ -1114,12 +1125,34 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
           if(dsp.hpf_on)
           {
             rWrite(0x3c3, 1);
-            rWrite(0x3c4, dsp.hpf_cutoff);
-            rWrite(0x3c5, dsp.hpf_q);
+
+            if(dsp.hpf_init)
+            {
+              rWrite(0x3c4, dsp.hpf_cutoff);
+              rWrite(0x3c5, dsp.hpf_q);
+
+              chan[c.chan].state_ym2609dsp.hpf_cutoff = dsp.hpf_cutoff;
+              chan[c.chan].state_ym2609dsp.hpf_q = dsp.hpf_q;
+            }
           }
           else
           {
             rWrite(0x3c3, 0);
+          }
+
+          if(dsp.distortion_enable)
+          {
+            rWrite(0x325, 0x80 | (dsp.distortion_output_level));
+            rWrite(0x326, dsp.distortion_gain);
+            rWrite(0x327, dsp.distortion_cutoff);
+
+            chan[c.chan].state_ym2609dsp.distortion_output_level = dsp.distortion_output_level;
+            chan[c.chan].state_ym2609dsp.distortion_gain = dsp.distortion_gain;
+            chan[c.chan].state_ym2609dsp.distortion_cutoff = dsp.distortion_cutoff;
+          }
+          else
+          {
+            rWrite(0x325, chan[c.chan].state_ym2609dsp.distortion_output_level);
           }
         }
         else
@@ -2095,7 +2128,7 @@ int DivPlatformYM2609::init(DivEngine* p, int channels, int sugRate, const DivCo
   dist = new distortion(YM2609_CLOCK, 39);
   chor = new chorus(YM2609_CLOCK, 39);
   eq = new eq3band(YM2609_DSP_RATE);
-  filt = new HPFLPF(YM2609_DSP_RATE, 39);
+  filt = new HPFLPF(YM2609_DSP_RATE * 2, 39); //so that filter doesn't glitch out on highest cutoffs
   reph = new ReversePhase();
   comp = new Compressor(YM2609_DSP_RATE, 39);
 

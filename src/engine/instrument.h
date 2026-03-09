@@ -1081,7 +1081,6 @@ struct DivInstrumentYM2609DSP {
 
   //reverb
   bool reverb_enable;
-  unsigned char reverb_delta; //7 bits
   unsigned char reverb_send_level; //4 bits
 
   //distortion
@@ -1099,11 +1098,13 @@ struct DivInstrumentYM2609DSP {
 
   //LPF
   bool lpf_on;
+  bool lpf_init;
   unsigned char lpf_cutoff; //8 bits
   unsigned char lpf_q; //8 bits
 
   //HPF
   bool hpf_on;
+  bool hpf_init;
   unsigned char hpf_cutoff; //8 bits
   unsigned char hpf_q; //8 bits
 
@@ -1153,6 +1154,9 @@ struct DivInstrumentYM2609DSP {
   unsigned char compressor_gain_freq; //8 bits
   unsigned char compressor_gain_q; //8 bits
 
+  //global reverb setting
+  unsigned char reverb_delta;
+
   //aux, internal Furnace use
   bool enable;
   bool enable_global;
@@ -1170,7 +1174,6 @@ struct DivInstrumentYM2609DSP {
     phase_inv_right(false),
     
     reverb_enable(false),
-    reverb_delta(64),
     reverb_send_level(0),
 
     distortion_enable(false),
@@ -1185,10 +1188,12 @@ struct DivInstrumentYM2609DSP {
     chorus_feedback(40),
 
     lpf_on(false),
+    lpf_init(false),
     lpf_cutoff(126),
     lpf_q(67),
 
     hpf_on(false),
+    hpf_init(false),
     hpf_cutoff(126),
     hpf_q(67),
 
@@ -1232,6 +1237,8 @@ struct DivInstrumentYM2609DSP {
 
     compressor_gain_freq(0),
     compressor_gain_q(0),
+
+    reverb_delta(64),
 
     enable(false),
     enable_global(false),

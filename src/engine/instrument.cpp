@@ -908,7 +908,6 @@ bool DivInstrumentYM2609DSP::operator==(const DivInstrumentYM2609DSP& other) {
     _C(phase_inv_right) &&
 
     _C(reverb_enable) &&
-    _C(reverb_delta) &&
     _C(reverb_send_level) &&
 
     _C(distortion_enable) &&
@@ -923,10 +922,12 @@ bool DivInstrumentYM2609DSP::operator==(const DivInstrumentYM2609DSP& other) {
     _C(chorus_feedback) &&
 
     _C(lpf_on) &&
+    _C(lpf_init) &&
     _C(lpf_cutoff) &&
     _C(lpf_q) &&
 
     _C(hpf_on) &&
+    _C(hpf_init) &&
     _C(hpf_cutoff) &&
     _C(hpf_q) &&
 
@@ -961,6 +962,8 @@ bool DivInstrumentYM2609DSP::operator==(const DivInstrumentYM2609DSP& other) {
     _C(compressor_env_q) &&
     _C(compressor_gain_freq) &&
     _C(compressor_gain_q) &&
+
+    _C(reverb_delta) &&
 
     _C(enable) &&
     _C(enable_global) &&
