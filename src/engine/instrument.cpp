@@ -968,8 +968,7 @@ bool DivInstrumentYM2609DSP::operator==(const DivInstrumentYM2609DSP& other) {
     _C(enable) &&
     _C(enable_global) &&
     _C(enable_macros) &&
-    _C(enable_global_macros) &&
-    _C(reset_all)
+    _C(enable_global_macros)
   );
 }
 

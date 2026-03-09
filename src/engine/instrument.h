@@ -1243,8 +1243,7 @@ struct DivInstrumentYM2609DSP {
     enable(false),
     enable_global(false),
     enable_macros(false),
-    enable_global_macros(false),
-    reset_all(false)
+    enable_global_macros(false)
     {}
 };
 

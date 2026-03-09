@@ -7463,9 +7463,9 @@ void FurnaceGUI::drawInsYM2609DSP(DivInstrument* ins)
 
     if(dsp.enable)
     {
-      ImGui::Checkbox(_("Reset DSP effects on new note"), &dsp.reset_all);
+      //ImGui::Checkbox(_("Reset DSP effects on new note"), &dsp.reset_all);
 
-      ImGui::Separator();
+      //ImGui::Separator();
 
       ImGui::Checkbox(_("Phase inv. left"), &dsp.phase_inv_left);
       ImGui::SameLine();

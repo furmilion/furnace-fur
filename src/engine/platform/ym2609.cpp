@@ -1121,7 +1121,8 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
         
         if(dsp.lpf_on || dsp.hpf_on || dsp.chorus_enable || dsp.ins_compressor_on || dsp.distortion_enable)
         {
-          rWrite(0x323, get_dsp_chan_index(c.chan) | (dsp.reset_all ? 0x80 : 0));
+          //rWrite(0x323, get_dsp_chan_index(c.chan) | (dsp.reset_all ? 0x80 : 0));
+          rWrite(0x323, get_dsp_chan_index(c.chan));
 
           chan[c.chan].state_ym2609dsp.lpf_on = dsp.lpf_on;
           chan[c.chan].state_ym2609dsp.hpf_on = dsp.hpf_on;
