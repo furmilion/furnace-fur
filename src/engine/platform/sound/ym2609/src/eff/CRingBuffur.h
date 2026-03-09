@@ -7,13 +7,13 @@
 
 class CRingBuffur
 {
-    private:
+    //private:
+    public:
         int rpos; // 読み込み位置
         int wpos; // 書き込み位置
         float* buf = NULL;// RB_SIZE]; // 内部バッファ
         int RB_SIZE = 48000 * 4;
-
-    public:
+    
         CRingBuffur(int clock, float RB = 4.0f)
         {
             // 初期化を行う
@@ -22,6 +22,11 @@ class CRingBuffur
             wpos = (int)(RB_SIZE / 2.0); // とりあえずバッファサイズの半分ぐらいにしておく
 
             buf = new float[RB_SIZE];
+
+            for(int i = 0; i < RB_SIZE; i++)
+            {
+                buf[i] = 0.0f;
+            }
         }
 
         ~CRingBuffur()

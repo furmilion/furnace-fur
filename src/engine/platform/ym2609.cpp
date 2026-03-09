@@ -1085,6 +1085,16 @@ static int get_dsp_chan_index(int ch)
   return 0;
 }
 
+//0-11:SSG 12-23:FM 24-29:Rhythm 30-35:ADPCM-A 36-38:ADPCM-B
+static int get_phase_inv_chan_index(int ch)
+{
+  if(ch < 12) return ch + 12; //fm
+  if(ch >= 12 && ch < 12 + 12) return (ch - 12); //psg
+  if(ch >= 12 + 12 && ch < 12 + 12 + 6 + 6 + 3) return ch; //rhythm, ADPCM-A, ADPCM-B
+
+  return 0;
+}
+
 int DivPlatformYM2609::dispatch(DivCommand c) {
   if (c.chan>YM2609_NUM_CHANNELS - 1) return 0;
 
@@ -1095,6 +1105,19 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
       if(ins->ym2609.ym2609dsp.enable)
       {
         DivInstrumentYM2609DSP& dsp = ins->ym2609.ym2609dsp;
+
+        if (dsp.phase_inv_right != chan[c.chan].state_ym2609dsp.phase_inv_right || chan[c.chan].state_ym2609dsp.phase_inv_left != dsp.phase_inv_left)
+        {
+          int phase_inv_chan = get_phase_inv_chan_index(c.chan);
+          int our_base_chan = c.chan - c.chan % 3;
+
+          chan[c.chan].state_ym2609dsp.phase_inv_left = dsp.phase_inv_left;
+          chan[c.chan].state_ym2609dsp.phase_inv_right = dsp.phase_inv_right;
+
+          rWrite(0xCC + phase_inv_chan / 3, ((chan[our_base_chan].state_ym2609dsp.phase_inv_left ? 1 : 0) << 1) | (chan[our_base_chan].state_ym2609dsp.phase_inv_right ? 1 : 0) |
+            ((chan[our_base_chan + 1].state_ym2609dsp.phase_inv_left ? 1 : 0) << 3) | ((chan[our_base_chan + 1].state_ym2609dsp.phase_inv_right ? 1 : 0) << 2) |
+            ((chan[our_base_chan + 2].state_ym2609dsp.phase_inv_left ? 1 : 0) << 5) | ((chan[our_base_chan + 2].state_ym2609dsp.phase_inv_right ? 1 : 0) << 4));
+        }
         
         if(dsp.lpf_on || dsp.hpf_on || dsp.chorus_enable || dsp.ins_compressor_on || dsp.distortion_enable)
         {
@@ -1103,6 +1126,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
           chan[c.chan].state_ym2609dsp.lpf_on = dsp.lpf_on;
           chan[c.chan].state_ym2609dsp.hpf_on = dsp.hpf_on;
           chan[c.chan].state_ym2609dsp.distortion_enable = dsp.distortion_enable;
+          chan[c.chan].state_ym2609dsp.chorus_enable = dsp.chorus_enable;
 
           if(dsp.lpf_on)
           {
@@ -1153,6 +1177,23 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
           else
           {
             rWrite(0x325, chan[c.chan].state_ym2609dsp.distortion_output_level);
+          }
+
+          if(dsp.chorus_enable)
+          {
+            rWrite(0x328, 0x80 | (dsp.chorus_mixlevel));
+            rWrite(0x329, dsp.chorus_rate);
+            rWrite(0x32A, dsp.chorus_depth);
+            rWrite(0x32B, dsp.chorus_feedback);
+
+            chan[c.chan].state_ym2609dsp.chorus_mixlevel = dsp.chorus_mixlevel;
+            chan[c.chan].state_ym2609dsp.chorus_rate = dsp.chorus_rate;
+            chan[c.chan].state_ym2609dsp.chorus_depth = dsp.chorus_depth;
+            chan[c.chan].state_ym2609dsp.chorus_feedback = dsp.chorus_feedback;
+          }
+          else
+          {
+            rWrite(0x328, chan[c.chan].state_ym2609dsp.chorus_mixlevel);
           }
         }
         else
@@ -1798,8 +1839,14 @@ void DivPlatformYM2609::reset() {
 
     chan[i].sample = -1;
 
+    chan[i].state = DivInstrumentFM();
+    chan[i].state_ym2609fm = DivInstrumentYM2609FM();
+    chan[i].state_ym2609dsp = DivInstrumentYM2609DSP();
+
     for(int j = 0; j < 4; j++)
     {
+      chan[i].op_ym2609[j] = DivPlatformYM2609::Channel::Operator_YM2609();
+
       chan[i].op_ym2609[j].ws.setEngine(parent);
       chan[i].op_ym2609[j].ws.init(NULL,1024,8191,false);
     }
@@ -1870,6 +1917,18 @@ void DivPlatformYM2609::reset() {
   {
     immWrite(0x113, i);
     immWrite(0x115, 0);
+  }
+
+  //DSP reset
+  for(int i = 0; i < 39; i++)
+  {
+    immWrite(0x323, i | 0x80); //reset chorus, reverb, LPF&HPF, channel compressors
+  }
+  
+  //DSP reset
+  for(int i = 0; i < 13; i++)
+  {
+    immWrite(0xCC + i, 0); //reset phase inversion
   }
 }
 
@@ -2125,8 +2184,8 @@ int DivPlatformYM2609::init(DivEngine* p, int channels, int sugRate, const DivCo
   extMode = false;
 
   rev = new reverb(YM2609_DSP_RATE * 4, 39);
-  dist = new distortion(YM2609_CLOCK, 39);
-  chor = new chorus(YM2609_CLOCK, 39);
+  dist = new distortion(YM2609_DSP_RATE, 39);
+  chor = new chorus(YM2609_DSP_RATE, 39);
   eq = new eq3band(YM2609_DSP_RATE);
   filt = new HPFLPF(YM2609_DSP_RATE * 2, 39); //so that filter doesn't glitch out on highest cutoffs
   reph = new ReversePhase();
