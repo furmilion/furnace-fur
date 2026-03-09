@@ -320,6 +320,78 @@ bool DivInstrument::compileMacros(SafeWriter* w, std::initializer_list<DivCompil
   return true;
 }
 
+bool DivInstrument::compileWaveSynth(SafeWriter* w) {
+  w->writeC((ws.enabled?1:0)|(ws.global?64:0));
+  w->writeC(ws.effect);
+  w->writeS(ws.wave1);
+  w->writeS(ws.wave2);
+  w->writeC(ws.rateDivider);
+  w->writeC(ws.speed);
+  w->writeC(ws.param1);
+  w->writeC(ws.param2);
+  return true;
+}
+
+bool DivInstrument::compileSampleMap(SafeWriter* w, bool nes) {
+  // don't compile sample map if disabled
+  if (!amiga.useNoteMap) return false;
+
+  int low=120;
+  int high=0;
+
+  // find lower/upper boundaries
+  for (int i=0; i<120; i++) {
+    if (amiga.noteMap[i].map!=-1) {
+      low=i;
+      break;
+    }
+  }
+  for (int i=119; i>=0; i--) {
+    if (amiga.noteMap[i].map!=-1) {
+      high=i;
+      break;
+    }
+  }
+
+  // write pointers
+  int count=high-low+1;
+  int ptrCount=nes?8:6;
+
+  w->writeS(w->tell()+ptrCount); // map low
+  w->writeS(w->tell()+ptrCount-2+count); // map high
+  w->writeS(w->tell()+ptrCount-4+count*2); // note
+  if (nes) {
+    w->writeS(w->tell()+ptrCount-6+count*3); // DPCM delta
+  }
+
+  // write tables
+  // map low
+  for (int i=low; i<=high; i++) {
+    w->writeC(amiga.noteMap[i].map&0xff);
+  }
+  // map high
+  for (int i=low; i<=high; i++) {
+    w->writeC((amiga.noteMap[i].map>>8)&0xff);
+  }
+  if (nes) {
+    // DPCM freq
+    for (int i=low; i<=high; i++) {
+      w->writeC(amiga.noteMap[i].dpcmFreq);
+    }
+    // DPCM delta
+    for (int i=low; i<=high; i++) {
+      w->writeC(amiga.noteMap[i].dpcmDelta);
+    }
+  } else {
+    // note
+    for (int i=low; i<=high; i++) {
+      w->writeC(amiga.noteMap[i].freq);
+    }
+  }
+
+  return true;
+}
+
 bool DivInstrument::compile(SafeWriter* w, DivInstrumentType insType) {
   switch (insType) {
     case DIV_INS_C64:
@@ -370,11 +442,131 @@ bool DivInstrument::compile(SafeWriter* w, DivInstrumentType insType) {
         DivCompileMacroDef(DIV_MACRO_EX8,DIV_COMPILED_MACRO_U4,0,15) // release
       },0);
       break;
+    case DIV_INS_SNES: {
+      // SNES data
+      size_t specialPtrLoc=0;
+      size_t specialPtr=0;
+      w->writeC(
+        (snes.useEnv?0x80:0x00)|
+        ((snes.d&7)<<4)|
+        (snes.d&15)
+      );
+      if (snes.sus) {
+        w->writeC(
+          ((snes.s&7)<<4)|
+          (snes.d2&31)
+        );
+      } else {
+        w->writeC(
+          ((snes.s&7)<<4)|
+          (snes.r&31)
+        );
+      }
+      switch (snes.gainMode) {
+        case DivInstrumentSNES::GAIN_MODE_DIRECT:
+          w->writeC(snes.gain&127);
+          break;
+        case DivInstrumentSNES::GAIN_MODE_DEC_LINEAR:
+          w->writeC(0x80|(snes.gain&31));
+          break;
+        case DivInstrumentSNES::GAIN_MODE_INC_LINEAR:
+          w->writeC(0xc0|(snes.gain&31));
+          break;
+        case DivInstrumentSNES::GAIN_MODE_DEC_LOG:
+          w->writeC(0xa0|(snes.gain&31));
+          break;
+        case DivInstrumentSNES::GAIN_MODE_INC_INVLOG:
+          w->writeC(0xe0|(snes.gain&31));
+          break;
+      }
+      if (snes.sus) {
+        w->writeC((snes.sus&3)|(snes.r<<2));
+      } else {
+        w->writeC(0);
+      }
+      // sample data
+      if (amiga.useWave) {
+        w->writeC(2);
+        w->writeS(amiga.waveLen+1);
+        // pointer
+        specialPtrLoc=w->tell();
+        w->writeS(0);
+      } else if (amiga.useNoteMap) {
+        w->writeC(1);
+        // pointer
+        specialPtrLoc=w->tell();
+        w->writeS(0);
+        w->writeS(0);
+      } else {
+        w->writeC(0);
+        w->writeS(amiga.initSample);
+        w->writeS(0);
+      }
+      // macros
+      compileMacros(w,{
+        DivCompileMacroDef(DIV_MACRO_VOL,DIV_COMPILED_MACRO_U8,0,127),
+        DivCompileMacroDef(DIV_MACRO_ARP,DIV_COMPILED_MACRO_BIT30,-256,256),
+        DivCompileMacroDef(DIV_MACRO_DUTY,DIV_COMPILED_MACRO_U8,0,31),
+        DivCompileMacroDef(DIV_MACRO_WAVE,DIV_COMPILED_MACRO_U16,0,32767),
+        DivCompileMacroDef(DIV_MACRO_PAN_LEFT,DIV_COMPILED_MACRO_U8,0,127),
+        DivCompileMacroDef(DIV_MACRO_PAN_RIGHT,DIV_COMPILED_MACRO_U8,0,127),
+        DivCompileMacroDef(DIV_MACRO_PITCH,DIV_COMPILED_MACRO_S16,-2048,2047),
+        DivCompileMacroDef(DIV_MACRO_EX1,DIV_COMPILED_MACRO_U8,0,31), // special
+        DivCompileMacroDef(DIV_MACRO_EX2,DIV_COMPILED_MACRO_U8,0,255), // gain
+      },0);
+      // wave synth and sample map
+      if (amiga.useWave) {
+        if (ws.enabled) {
+          specialPtr=w->tell();
+          compileWaveSynth(w);
+          w->seek(specialPtrLoc,SEEK_SET);
+          w->writeS(specialPtr);
+          w->seek(0,SEEK_END);
+        }
+      } else if (amiga.useNoteMap) {
+        specialPtr=w->tell();
+        compileSampleMap(w,false);
+        w->seek(specialPtrLoc,SEEK_SET);
+        w->writeS(specialPtr);
+        w->seek(0,SEEK_END);
+      }
+      break;
+    }
     default:
       logE("compile(): not implemented!");
       return false;
   }
   return true;
+}
+
+SafeWriter* DivEngine::compileAllIns(int insType) {
+  SafeWriter* w=new SafeWriter;
+  w->init();
+
+  std::vector<unsigned short> ptrs;
+
+  // pointers
+  for (size_t i=0; i<song.ins.size(); i++) {
+    w->writeS(0);
+  }
+
+  // compile instruments
+  for (DivInstrument* i: song.ins) {
+    ptrs.push_back(w->tell());
+    if (!i->compile(w,(DivInstrumentType)insType)) {
+      logE("Compilation Error. Prepare for unforeseen consequences...");
+      delete w;
+      return NULL;
+    }
+  }
+
+  w->seek(0,SEEK_SET);
+  for (unsigned short i: ptrs) {
+    w->writeS(i);
+  }
+  w->seek(0,SEEK_END);
+
+  return w;
 }
 
 /// the rest
@@ -707,6 +899,77 @@ bool DivInstrumentYM2609FM::operator==(const DivInstrumentYM2609FM& other) {
     _C(op[1]) &&
     _C(op[2]) &&
     _C(op[3])
+  );
+}
+
+bool DivInstrumentYM2609DSP::operator==(const DivInstrumentYM2609DSP& other) {
+  return (
+    _C(phase_inv_left) &&
+    _C(phase_inv_right) &&
+
+    _C(reverb_enable) &&
+    _C(reverb_send_level) &&
+
+    _C(distortion_enable) &&
+    _C(distortion_output_level) &&
+    _C(distortion_gain) &&
+    _C(distortion_cutoff) &&
+
+    _C(chorus_enable) &&
+    _C(chorus_mixlevel) &&
+    _C(chorus_rate) &&
+    _C(chorus_depth) &&
+    _C(chorus_feedback) &&
+
+    _C(lpf_on) &&
+    _C(lpf_init) &&
+    _C(lpf_cutoff) &&
+    _C(lpf_q) &&
+
+    _C(hpf_on) &&
+    _C(hpf_init) &&
+    _C(hpf_cutoff) &&
+    _C(hpf_q) &&
+
+    _C(ins_compressor_on) &&
+    _C(ins_compressor_volume) &&
+    _C(ins_compressor_threshold) &&
+    _C(ins_compressor_ratio) &&
+    _C(ins_compressor_env_freq) &&
+    _C(ins_compressor_env_q) &&
+    _C(ins_compressor_gain_freq) &&
+    _C(ins_compressor_gain_q) &&
+
+    _C(eq_on) &&
+    _C(eq_low_on) &&
+    _C(eq_mid_on) &&
+    _C(eq_high_on) &&
+    _C(eq_low_freq) &&
+    _C(eq_low_gain) &&
+    _C(eq_low_q) &&
+    _C(eq_mid_freq) &&
+    _C(eq_mid_gain) &&
+    _C(eq_mid_q) &&
+    _C(eq_high_freq) &&
+    _C(eq_high_gain) &&
+    _C(eq_high_q) &&
+
+    _C(compressor_on) &&
+    _C(compressor_volume) &&
+    _C(compressor_threshold) &&
+    _C(compressor_ratio) &&
+    _C(compressor_env_freq) &&
+    _C(compressor_env_q) &&
+    _C(compressor_gain_freq) &&
+    _C(compressor_gain_q) &&
+
+    _C(reverb_delta) &&
+
+    _C(enable) &&
+    _C(enable_global) &&
+    _C(enable_macros) &&
+    _C(enable_global_macros) &&
+    _C(reset_all)
   );
 }
 
@@ -1919,6 +2182,7 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
         feature9D=true;
         break;
       case DIV_INS_YM2609_ADPCM_A:
+      case DIV_INS_YM2609_ADPCM_B:
         featureSM=true;
         featureSL=true;
         feature9D=true;

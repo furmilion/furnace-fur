@@ -32,6 +32,7 @@ class DivPlatformYM2609: public DivDispatch {
   struct Channel: public SharedChannel<signed short> {
     DivInstrumentFM state;
     DivInstrumentYM2609FM state_ym2609fm;
+    DivInstrumentYM2609DSP state_ym2609dsp;
     unsigned char opMask;
     unsigned char panLeft, panRight; //soft pan
     unsigned char pan; //hard pan
@@ -199,6 +200,8 @@ class DivPlatformYM2609: public DivDispatch {
   const unsigned short LFOBase_ofsets[2]={ 0xE0, 0x2E0 };
   const unsigned short LFOSettings_ofsets[2]={ 0, 5 };
 
+  const unsigned short adpcmb_offsets[3] = { 0x100, 0x300, 0x311 };
+
   double fmFreqBase;
 
   unsigned char writeOscBuf;
@@ -240,7 +243,7 @@ class DivPlatformYM2609: public DivDispatch {
   friend void putDispatchChip(void*,int);
   friend void putDispatchChan(void*,int,int);
 
-  double NOTE_ADPCMB(int note);
+  double NOTE_ADPCMB(int ch, int note);
 
   public:
     void acquire(short** buf, size_t len);

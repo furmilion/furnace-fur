@@ -7,16 +7,12 @@ float* QTable = NULL;
 
 float convInt = 21474.83647f;
 
-int pmtable[2][8][FM_LFOENTS];
-uint32_t amtable[2][4][FM_LFOENTS];
-bool tablemade = false;
-
 float panTable_opna[4] = { 1.0f, 0.7512f, 0.4512f, 0.0500f };
 //uint32_t sinetable_opna[12][4][1024];
 
-int amtable_opna[FM_LFOENTS];
-int pmtable_opna[FM_LFOENTS];
 int tltable_opna[FM_TLENTS + FM_TLPOS];
+
+uint8_t ym2609_noisetable[noisetablesize];
 
 void CMyFilter::makeTable()
 {

@@ -388,6 +388,7 @@ enum FurnaceGUIColors {
   GUI_COLOR_INSTR_YM2609_SSG,
   GUI_COLOR_INSTR_YM2609_RSS,
   GUI_COLOR_INSTR_YM2609_ADPCM_A,
+  GUI_COLOR_INSTR_YM2609_ADPCM_B,
   GUI_COLOR_INSTR_UNKNOWN,
 
   GUI_COLOR_CHANNEL_BG,
@@ -649,6 +650,8 @@ enum FurnaceGUIFileDialogs {
   GUI_FILE_EXPORT_CMDSTREAM,
   GUI_FILE_EXPORT_TEXT,
   GUI_FILE_EXPORT_ROM,
+  GUI_FILE_EXPORT_COMPILED_INS,
+  GUI_FILE_EXPORT_COMPILED_INS_ONE,
   GUI_FILE_LOAD_MAIN_FONT,
   GUI_FILE_LOAD_HEAD_FONT,
   GUI_FILE_LOAD_PAT_FONT,
@@ -2602,7 +2605,7 @@ class FurnaceGUI {
   int macroLoopDragLen;
   bool macroLoopDragActive;
 
-  FurnaceGUIMacroEditState macroEditStateFM, macroEditStateOP[4], macroEditStateMacros;
+  FurnaceGUIMacroEditState macroEditStateFM, macroEditStateOP[4], macroEditStateMacros, macroEditStateYM2609DSPChan, macroEditStateYM2609DSPGlobal;
 
   ImVec2 waveDragStart;
   ImVec2 waveDragAreaSize;
@@ -2940,6 +2943,7 @@ class FurnaceGUI {
   DivROMExport* pendingExport;
   bool romExportAvail[DIV_ROM_MAX];
   bool romExportExists;
+  int insCompileType;
 
   // user presets window
   std::vector<int> selectedUserPreset;
@@ -3093,6 +3097,7 @@ class FurnaceGUI {
   void drawInsEdit();
   void drawInsSID3(DivInstrument* ins);
   void drawInsYM2609FM(DivInstrument* ins);
+  void drawInsYM2609DSP(DivInstrument* ins);
   void drawWaveList(bool asChild=false);
   void drawWaveEdit();
   void drawSampleList(bool asChild=false);

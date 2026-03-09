@@ -39,7 +39,7 @@ class Compressor
                 float gainQ = 1.0f;
         };
 
-        int samplerate = 44100;
+        int samplerate = 48000;
         int currentCh = 0;
         int maxCh;
         ChInfo* chInfo = NULL;
@@ -202,7 +202,8 @@ class Compressor
                 return;
             }
 
-            ChInfo info = sysInfo;
+            ChInfo& info = sysInfo;
+
             if (!isSysIns)
             {
                 info = chInfo[currentCh];

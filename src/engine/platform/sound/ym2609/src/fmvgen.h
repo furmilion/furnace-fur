@@ -8,12 +8,6 @@
 
 //	Chip resource
 
-//int*** pmtable = NULL;
-//uint32_t*** amtable = NULL;
-extern int pmtable[2][8][FM_LFOENTS];
-extern uint32_t amtable[2][4][FM_LFOENTS];
-extern bool tablemade;
-
 static int sine_table_lfo[1024] = { 0 };
 
 enum OpType : int
@@ -79,42 +73,9 @@ class Chip
             }
         }
 
-        // ---------------------------------------------------------------------------
-        //	AM のレベルを設定
-        void SetAML(uint32_t l)
-        {
-            aml_ = l & (FM_LFOENTS - 1);
-        }
-
-        //	PM のレベルを設定
-        void SetPML(uint32_t l)
-        {
-            pml_ = l & (FM_LFOENTS - 1);
-        }
-
-        void SetPMV(int pmv)
-        {
-            pmv_ = pmv;
-        }
-
         uint32_t GetMulValue(uint32_t dt2, uint32_t mul)
         {
             return multable_[dt2][mul];
-        }
-
-        uint32_t GetAML()
-        {
-            return aml_;
-        }
-
-        uint32_t GetPML()
-        {
-            return pml_;
-        }
-
-        int GetPMV()
-        {
-            return pmv_;
         }
 
         uint32_t GetRatio()
@@ -140,58 +101,6 @@ class fmvgen /*: public fmgen*/
         static int Limit(int v, int max, int min)
         {
             return v > max ? max : (v < min ? min : v);
-        }
-
-        static void MakeLFOTable()
-        {
-            if (tablemade)
-                return;
-
-            tablemade = true;
-
-            int i;
-
-            double pms[2][8] =  {
-            {  0, 1/360.0, 2/360.0, 3/360.0,  4/360.0,  6/360.0, 12/360.0,  24/360.0, },	// OPNA
-            //		{ 0, 1/240., 2/240., 4/240., 10/240., 20/240., 80/240., 140/240., },	// OPM
-            { 0, 1/480.0, 2/480.0, 4/480.0, 10/480.0, 20/480.0, 80/480.0, 140/480.0, }    // OPM
-            //		{ 0, 1/960., 2/960., 4/960., 10/960., 20/960., 80/960., 140/960., },	// OPM
-            };
-            //		 3		 6,      12      30       60       240      420		/ 720
-            //	1.000963
-            //	lfofref[level * max * wave];
-            //	pre = lfofref[level][pms * wave >> 8];
-            uint8_t amt[2][4] = {
-                { 31, 6, 4, 3 }, // OPNA
-                { 31, 2, 1, 0 }, //	OPM
-            };
-
-            for (int type = 0; type < 2; type++)
-            {
-                for (i = 0; i < 8; i++)
-                {
-                    double pmb = pms[type][i];
-                    for (int j = 0; j < FM_LFOENTS; j++)
-                    {
-                        double v = pow(2.0, pmb * (2 * j - FM_LFOENTS + 1) / (FM_LFOENTS - 1));
-                        double w = 0.6 * pmb * sin(2 * j * 3.14159265358979323846 / FM_LFOENTS) + 1;
-                        //				pmtable[type][i][j] = int(0x10000 * (v - 1));
-                        //				if (type == 0)
-                        pmtable[type][i][j] = (int)(0x10000 * (w - 1));
-                        //				else
-                        //					pmtable[type][i][j] = int(0x10000 * (v - 1));
-
-                        //				printf("pmtable[%d][%d][%.2x] = %5d  %7.5f %7.5f\n", type, i, j, pmtable[type][i][j], v, w);
-                    }
-                }
-                for (i = 0; i < 4; i++)
-                {
-                    for (int j = 0; j < FM_LFOENTS; j++)
-                    {
-                        amtable[type][i][j] = (uint32_t)(((j * 4) >> amt[type][i]) * 2) << 2;
-                    }
-                }
-            }
         }
 
         class Channel4_LFO
@@ -457,7 +366,6 @@ class fmvgen /*: public fmgen*/
 
                     // EG Part
                     ar_ = dr_ = sr_ = rr_ = key_scale_rate_ = 0;
-                    ams_ = amtable[0][0];
                     mute_ = false;
                     keyon_ = false;
                     //tl_out_ = false;
@@ -543,8 +451,6 @@ class fmvgen /*: public fmgen*/
                     }
                     //}
 
-                    fmvgen::MakeLFOTable();
-
                     //tablehasmade = true;
                 }
 
@@ -586,8 +492,6 @@ class fmvgen /*: public fmgen*/
                                 SetEGRate(my_min(63, rr_ + key_scale_rate_));
                                 break;
                         }
-                        // LFO
-                        ams_ = amtable[(int)type_][amon_ ? ((ms_ >> 4) & 3) : 0];
                         EGUpdate();
 
                         dbgopout_ = 0;
@@ -1203,7 +1107,6 @@ class fmvgen /*: public fmgen*/
 
                 uint32_t key_scale_rate_;       // key scale rate
                 EGPhase eg_phase_;
-                uint32_t* ams_;
                 
 
                 uint32_t tl_;           // Total Level	 (0-127)
@@ -1309,7 +1212,6 @@ class fmvgen /*: public fmgen*/
                     MakeTable();
 
                 SetAlgorithm(0);
-                pms = pmtable[0][0];
 
                 for (int i = 0; i < 4; i++)
                 {
@@ -1367,7 +1269,6 @@ class fmvgen /*: public fmgen*/
                 op[2].Prepare();
                 op[3].Prepare();
 
-                pms = pmtable[(int)op[0].type_][op[0].ms_ & 7];
                 int key = (op[0].IsOn() | op[1].IsOn() | op[2].IsOn() | op[3].IsOn()) != 0 ? 1 : 0;
                 int lfo = (op[0].ms_ & ((op[0].amon_ | op[1].amon_ | op[2].amon_ | op[3].amon_) ? 0x37 : 7)) != 0 ? 2 : 0;
 
@@ -1508,8 +1409,6 @@ class fmvgen /*: public fmgen*/
             //  合成
             int CalcL()
             {
-                //chip_.SetPMV(pms[chip_.GetPML()]);
-
                 lfo[0].clock();
                 lfo[1].clock();
 
@@ -1614,7 +1513,6 @@ class fmvgen /*: public fmgen*/
             //  合成
             int CalcLN(uint32_t noise)
             {
-                chip_.SetPMV(pms[chip_.GetPML()]);
                 buf[1] = buf[2] = buf[3] = 0;
 
                 buf[0] = op[0].out_; op[0].CalcFBL(ch, fb);
@@ -1711,7 +1609,6 @@ class fmvgen /*: public fmgen*/
             int buf[4];
             int In[3];          // 各 OP の入力ポインタ
             int Out[3];         // 各 OP の出力ポインタ
-            int* pms;
             int algo_;
             Chip chip_;
             bool ac = false;

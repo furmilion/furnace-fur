@@ -39,10 +39,15 @@
 //		各音源の音量を調節する
 //		単位は約 1/2 dB
 //
+
+// ←メモリ使用量を減らしたいなら減らして
+#define noisetablesize (1 << 18)
+extern uint8_t ym2609_noisetable[];
+
 class PSG
 {
     public:
-        static const int noisetablesize = 1 << 17;   // ←メモリ使用量を減らしたいなら減らして
+        //static const int noisetablesize = 1 << 18;   // ←メモリ使用量を減らしたいなら減らして
         static const int toneshift = 24;
         static const int envshift = 22;
         static const int noiseshift = 14;
@@ -81,7 +86,7 @@ class PSG
         {
             tperiodbase = (uint32_t)((1 << toneshift) / 4.0 * clock / rate);
             eperiodbase = (uint32_t)((1 << envshift) / 4.0 * clock / rate);
-            nperiodbase = (uint32_t)((1 << noiseshift) * 4.0 * clock / rate);
+            nperiodbase = (uint32_t)((1 << noiseshift) * 2.0 * clock / rate);
 
             // 各データの更新
             speriod[0] = (uint32_t)(tperiodbase);
@@ -113,7 +118,7 @@ class PSG
                 noise ^= (bitfield(noise, 0) ^ bitfield(noise, 3)) << 17;
 		            noise >>= 1;
                 //}
-                noisetable[i] = noise & 1;
+                ym2609_noisetable[i] = noise & 1;
             }
         }
 
@@ -303,7 +308,7 @@ class PSG
                             sample = 0;
                             for (int j = 0; j < (1 << oversampling); j++)
                             {
-                                noise = (int)noisetable[(ncount >> (noiseshift + oversampling + 6)) & (noisetablesize - 1)]
+                                noise = (int)ym2609_noisetable[(ncount >> (noiseshift + oversampling + 6)) & (noisetablesize - 1)]
                                         >> (int)(ncount >> (noiseshift + oversampling + 1) & 31);
                                 ncount += nperiod;
 
@@ -361,7 +366,7 @@ class PSG
                                 ecount &= (1 << (envshift + 6 + oversampling)) - 1;
                             }
                             
-                            noise = (int)noisetable[(ncount >> (noiseshift + oversampling + 6)) & (noisetablesize - 1)]
+                            noise = (int)ym2609_noisetable[(ncount >> (noiseshift + oversampling + 6)) & (noisetablesize - 1)]
                                 >> (int)(ncount >> (noiseshift + oversampling + 1) & 31);
                             ncount += nperiod;
 
@@ -413,7 +418,7 @@ class PSG
 
         uint32_t enveloptable[16][64];
 
-        uint8_t noisetable[noisetablesize];
+        //uint8_t ym2609_noisetable[noisetablesize];
         int EmitTable[32] = { -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 };

@@ -82,6 +82,7 @@
 #define ICON_FUR_INS_YM2609_SSG u8"\ue167"
 #define ICON_FUR_INS_YM2609_RSS u8"\ue168"
 #define ICON_FUR_INS_YM2609_ADPCM_A u8"\ue169"
+#define ICON_FUR_INS_YM2609_ADPCM_B u8"\ue16A"
 
 // sample editor
 #define ICON_FUR_SAMPLE_APPLY_SILENCE u8"\ue136"

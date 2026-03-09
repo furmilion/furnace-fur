@@ -31,10 +31,12 @@ class ADPCMB
         uint32_t adplbase;      // adpld の元
         int adpcmx;         // ADPCM 合成用 x
         int adpcmd;         // ADPCM 合成用 ⊿
-        int shiftBit = 6;    //メモリ
+        int shiftBit = 9;    //メモリ
 
-        bool adpcmmask_;
+        bool adpcmmask_ = false;
         bool adpcmplay;     // ADPCM 再生中
+
+        int chan_output[2];
 
         ADPCMB(int num = 0, reverb* reverb = NULL, distortion* distortion = NULL, chorus* chorus = NULL, HPFLPF* hpflpf = NULL, ReversePhase* reversePhase = NULL, Compressor* compressor = NULL, int efcCh = 0)
         {
@@ -83,6 +85,10 @@ class ADPCMB
 
                         sL = (int)(sL * panL) * reversePhase->Adpcm[num][0];
                         sR = (int)(sR * panR) * reversePhase->Adpcm[num][1];
+
+                        chan_output[0] = sL;
+                        chan_output[1] = sR;
+
                         int revSampleL = (int)(sL * reverb->SendLevel[efcCh]);
                         int revSampleR = (int)(sR * reverb->SendLevel[efcCh]);
                         fmvgen::StoreSample(dest[0][ptrDest], sL);
@@ -111,6 +117,10 @@ class ADPCMB
 
                         sL = (int)(sL * panL) * reversePhase->Adpcm[num][0];
                         sR = (int)(sR * panR) * reversePhase->Adpcm[num][1];
+
+                        chan_output[0] = sL;
+                        chan_output[1] = sR;
+
                         int revSampleL = (int)(sL * reverb->SendLevel[efcCh]);
                         int revSampleR = (int)(sR * reverb->SendLevel[efcCh]);
                         fmvgen::StoreSample(dest[0][ptrDest], sL);
@@ -147,6 +157,10 @@ class ADPCMB
 
                         sL = (int)(sL * panL) * reversePhase->Adpcm[num][0];
                         sR = (int)(sR * panR) * reversePhase->Adpcm[num][1];
+
+                        chan_output[0] = sL;
+                        chan_output[1] = sR;
+                        
                         int revSampleL = (int)(sL * reverb->SendLevel[efcCh]);
                         int revSampleR = (int)(sR * reverb->SendLevel[efcCh]);
                         fmvgen::StoreSample(dest[0][ptrDest], sL);
@@ -255,7 +269,7 @@ class ADPCMB
             }
         }
 
-    protected:
+    //protected:
         uint32_t startaddr;     // Start address
         uint32_t stopaddr;      // Stop address
         uint32_t limitaddr;     // Limit address/mask
@@ -266,7 +280,7 @@ class ADPCMB
         uint32_t adpcmreadbuf;  // ADPCM リード用バッファ
         int8_t granuality;
         uint8_t control1;     // ADPCM コントロールレジスタ１
-        uint8_t adpcmreg[8];  // ADPCM レジスタの一部分
+        uint32_t adpcmreg[8];  // ADPCM レジスタの一部分
         //protected float[] panTable = new float[4] { 1.0f, 0.5012f, 0.2512f, 0.1000f };
         float panL = 1.0f;
         float panR = 1.0f;

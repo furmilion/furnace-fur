@@ -102,6 +102,7 @@ class OPNA2 /*: public OPNABase*/
                 adpcmb[i].adpcmvol = 0;
                 adpcmb[i].control2 = 0;
                 adpcmb[i].shiftBit = (i == 0) ? 6 : 9;
+                adpcmb[i].limitaddr = (uint32_t)((i == 0) ? ((0x3ffff + 1) * 2) : ((0xffffff + 1) * 2));
                 //adpcmb[i].parent = this;
             }
 
@@ -230,19 +231,6 @@ class OPNA2 /*: public OPNABase*/
             for (int i = -FM_TLPOS; i < FM_TLENTS; i++)
             {
                 tltable_opna[i + FM_TLPOS] = (int)((uint32_t)(65536.0 * pow(2.0, i * -16.0 / FM_TLENTS))) - 1;
-            }
-
-            for (int c = 0; c < 256; c++)
-            {
-                int v;
-                if (c < 0x40) v = c * 2 + 0x80;
-                else if (c < 0xc0) v = 0x7f - (c - 0x40) * 2 + 0x80;
-                else v = (c - 0xc0) * 2;
-                pmtable_opna[c] = c;
-
-                if (c < 0x80) v = 0xff - c * 2;
-                else v = (c - 0x80) * 2;
-                amtable_opna[c] = v & ~3;
             }
 
             SetVolumeFM(-12);
@@ -395,7 +383,7 @@ class OPNA2 /*: public OPNABase*/
         {
             //reg29 = 0x1f;
             rhythmkey = 0;
-            limitaddr = 0x3ffff;
+            //limitaddr = 0x3ffff;
             //OPNABase::Reset();
 
             SetPrescaler(0);
@@ -832,7 +820,7 @@ class OPNA2 /*: public OPNABase*/
         uint32_t psgrate;           // FMGen  出力レート
         uint32_t status;
 
-        uint32_t limitaddr;
+        //uint32_t limitaddr;
 
         int rhythmmask_;
 
