@@ -7573,6 +7573,27 @@ void FurnaceGUI::drawInsYM2609DSP(DivInstrument* ins)
 
         ImGui::Checkbox(_("Enable channel compressor##enchcomp"), &dsp.ins_compressor_on);
 
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Volume")).x);
+        CWSliderScalar(_("Volume##INSCOMP_VOLUME"),ImGuiDataType_U8,&dsp.ins_compressor_volume,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Threshold")).x);
+        CWSliderScalar(_("Threshold##INSCOMP_THRESHOLD"),ImGuiDataType_U8,&dsp.ins_compressor_threshold,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Ratio")).x);
+        CWSliderScalar(_("Ratio##INSCOMP_RATIO"),ImGuiDataType_U8,&dsp.ins_compressor_ratio,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Env. Freq.")).x);
+        CWSliderScalar(_("Env. Freq.##INSCOMP_ENVFREQ"),ImGuiDataType_U8,&dsp.ins_compressor_env_freq,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Env. Q")).x);
+        CWSliderScalar(_("Env. Q##INSCOMP_ENVQ"),ImGuiDataType_U8,&dsp.ins_compressor_env_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Gain Freq.")).x);
+        CWSliderScalar(_("Gain Freq.##INSCOMP_GAINFREQ"),ImGuiDataType_U8,&dsp.ins_compressor_gain_freq,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Gain Q")).x);
+        CWSliderScalar(_("Gain Q##INSCOMP_ENVQ"),ImGuiDataType_U8,&dsp.ins_compressor_gain_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
         ImGui::EndTable();
       }
     }

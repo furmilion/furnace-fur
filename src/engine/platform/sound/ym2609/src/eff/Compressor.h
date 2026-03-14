@@ -111,7 +111,7 @@ class Compressor
             if (ch >= maxCh) return;
             if (chInfo == NULL) return;
             if (!chInfo[ch].sw) return;
-            ChInfo info = chInfo[ch];
+            ChInfo* info = &chInfo[ch];
 
             fbuf[0] = inL / 21474.83647f;
             fbuf[1] = inR / 21474.83647f;
@@ -121,39 +121,38 @@ class Compressor
 
             // 入力信号にエフェクトをかける
             // 入力信号の絶対値をとったものをローパスフィルタにかけて音圧を検知する
-            float tmpL = info.envfilterL.Process(fabs(fbuf[0]));
-            float tmpR = info.envfilterR.Process(fabs(fbuf[1]));
+            float tmpL = info->envfilterL.Process(fabs(fbuf[0]));
+            float tmpR = info->envfilterR.Process(fabs(fbuf[1]));
 
             // 音圧をもとに音量(ゲイン)を調整(左)
             float gainL = 1.0f;
 
-            if (tmpL > info.threshold)
+            if (tmpL > info->threshold)
             {
                 // スレッショルドを超えたので音量(ゲイン)を調節(圧縮)
-                gainL = info.threshold + (tmpL - info.threshold) / info.ratio;
+                gainL = info->threshold + (tmpL - info->threshold) / info->ratio;
             }
             // 音量(ゲイン)が急激に変化しないようローパスフィルタを通す
-            gainL = info.gainfilterL.Process(gainL);
+            gainL = info->gainfilterL.Process(gainL);
 
             // 左と同様に右も音圧をもとに音量(ゲイン)を調整
             float gainR = 1.0f;
-            if (tmpR > info.threshold)
+            if (tmpR > info->threshold)
             {
-                gainR = info.threshold + (tmpR - info.threshold) / info.ratio;
+                gainR = info->threshold + (tmpR - info->threshold) / info->ratio;
             }
-            gainR = info.gainfilterR.Process(gainR);
+            gainR = info->gainfilterR.Process(gainR);
 
 
             // 入力信号に音量(ゲイン)をかけ、さらに最終的な音量を調整し出力する
-            fbuf[0] = info.volume * gainL * fbuf[0];
-            fbuf[1] = info.volume * gainR * fbuf[1];
+            fbuf[0] = info->volume * gainL * fbuf[0];
+            fbuf[1] = info->volume * gainR * fbuf[1];
             inL = (int)(fbuf[0] * 21474.83647f);
             inR = (int)(fbuf[1] * 21474.83647f);
         }
 
         void Mix(int** buffer, int nsamples)
         {
-
             if (!sysInfo.sw) return;
 
             for (int i = 0; i < nsamples; i++)
@@ -202,49 +201,49 @@ class Compressor
                 return;
             }
 
-            ChInfo& info = sysInfo;
+            ChInfo* info = &sysInfo;
 
             if (!isSysIns)
             {
-                info = chInfo[currentCh];
+                info = &chInfo[currentCh];
             }
 
             if (adr == 1)
             {
-                info.sw = ((data & 0x80) != 0);
-                info.volume = (data & 0x7f) / (127.0f / 4.0f);
+                info->sw = ((data & 0x80) != 0);
+                info->volume = (data & 0x7f) / (127.0f / 4.0f);
             }
             else if (adr == 2)
             {
-                info.threshold = my_max(data / 255.0f, 0.1f);
+                info->threshold = my_max(data / 255.0f, 0.1f);
             }
             else if (adr == 3)
             {
-                info.ratio = my_max(data / (255.0f / 10.0f), 1.0f);
+                info->ratio = my_max(data / (255.0f / 10.0f), 1.0f);
             }
             else if (adr == 4)
             {
-                info.envFreq = data / (255.0f / 80.0f);
-                info.envfilterL.LowPass(info.envFreq, info.envQ, samplerate);
-                info.envfilterR.LowPass(info.envFreq, info.envQ, samplerate);
+                info->envFreq = data / (255.0f / 80.0f);
+                info->envfilterL.LowPass(info->envFreq, info->envQ, samplerate);
+                info->envfilterR.LowPass(info->envFreq, info->envQ, samplerate);
             }
             else if (adr == 5)
             {
-                info.envQ = QTable[data];
-                info.envfilterL.LowPass(info.envFreq, info.envQ, samplerate);
-                info.envfilterR.LowPass(info.envFreq, info.envQ, samplerate);
+                info->envQ = QTable[data];
+                info->envfilterL.LowPass(info->envFreq, info->envQ, samplerate);
+                info->envfilterR.LowPass(info->envFreq, info->envQ, samplerate);
             }
             else if (adr == 6)
             {
-                info.gainFreq = data / (255.0f / 80.0f);
-                info.gainfilterL.LowPass(info.gainFreq, info.gainQ, samplerate);
-                info.gainfilterR.LowPass(info.gainFreq, info.gainQ, samplerate);
+                info->gainFreq = data / (255.0f / 80.0f);
+                info->gainfilterL.LowPass(info->gainFreq, info->gainQ, samplerate);
+                info->gainfilterR.LowPass(info->gainFreq, info->gainQ, samplerate);
             }
             else if (adr == 7)
             {
-                info.gainQ = QTable[data];
-                info.gainfilterL.LowPass(info.gainFreq, info.gainQ, samplerate);
-                info.gainfilterR.LowPass(info.gainFreq, info.gainQ, samplerate);
+                info->gainQ = QTable[data];
+                info->gainfilterL.LowPass(info->gainFreq, info->gainQ, samplerate);
+                info->gainfilterR.LowPass(info->gainFreq, info->gainQ, samplerate);
             }
     }
 
