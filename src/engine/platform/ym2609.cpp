@@ -1119,8 +1119,8 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
             ((chan[our_base_chan + 2].state_ym2609dsp.phase_inv_left ? 1 : 0) << 5) | ((chan[our_base_chan + 2].state_ym2609dsp.phase_inv_right ? 1 : 0) << 4));
         }
         
-        if(dsp.lpf_on || dsp.hpf_on || dsp.chorus_enable || dsp.ins_compressor_on || dsp.distortion_enable)
-        {
+        //if(dsp.lpf_on || dsp.hpf_on || dsp.chorus_enable || dsp.ins_compressor_on || dsp.distortion_enable)
+        //{
           //rWrite(0x323, get_dsp_chan_index(c.chan) | (dsp.reset_all ? 0x80 : 0));
           rWrite(0x323, get_dsp_chan_index(c.chan));
 
@@ -1128,6 +1128,7 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
           chan[c.chan].state_ym2609dsp.hpf_on = dsp.hpf_on;
           chan[c.chan].state_ym2609dsp.distortion_enable = dsp.distortion_enable;
           chan[c.chan].state_ym2609dsp.chorus_enable = dsp.chorus_enable;
+          chan[c.chan].state_ym2609dsp.ins_compressor_on = dsp.ins_compressor_on;
 
           if(dsp.lpf_on)
           {
@@ -1196,11 +1197,30 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
           {
             rWrite(0x328, chan[c.chan].state_ym2609dsp.chorus_mixlevel);
           }
-        }
-        else
-        {
-          rWrite(0x323, get_dsp_chan_index(c.chan) | 0x80); //reset all?
-        }
+
+          if(dsp.ins_compressor_on)
+          {
+            rWrite(0x3C6, chan[c.chan].state_ym2609dsp.ins_compressor_volume | 0x80);
+            rWrite(0x3C7, chan[c.chan].state_ym2609dsp.ins_compressor_threshold);
+            rWrite(0x3C8, chan[c.chan].state_ym2609dsp.ins_compressor_ratio);
+            rWrite(0x3C9, chan[c.chan].state_ym2609dsp.ins_compressor_env_freq);
+            rWrite(0x3CA, chan[c.chan].state_ym2609dsp.ins_compressor_env_q);
+            rWrite(0x3CB, chan[c.chan].state_ym2609dsp.ins_compressor_gain_freq);
+            rWrite(0x3CC, chan[c.chan].state_ym2609dsp.ins_compressor_gain_q);
+
+            chan[c.chan].state_ym2609dsp.ins_compressor_volume = dsp.ins_compressor_volume;
+            chan[c.chan].state_ym2609dsp.ins_compressor_threshold = dsp.ins_compressor_threshold;
+            chan[c.chan].state_ym2609dsp.ins_compressor_ratio = dsp.ins_compressor_ratio;
+            chan[c.chan].state_ym2609dsp.ins_compressor_env_freq = dsp.ins_compressor_env_freq;
+            chan[c.chan].state_ym2609dsp.ins_compressor_env_q = dsp.ins_compressor_env_q;
+            chan[c.chan].state_ym2609dsp.ins_compressor_gain_freq = dsp.ins_compressor_gain_freq;
+            chan[c.chan].state_ym2609dsp.ins_compressor_gain_q = dsp.ins_compressor_gain_q;
+          }
+          else
+          {
+            rWrite(0x3C6, chan[c.chan].state_ym2609dsp.ins_compressor_volume);
+          }
+        //}
       }
 
       if(c.chan < psg_offset) //FM
