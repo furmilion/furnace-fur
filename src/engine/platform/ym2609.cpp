@@ -1119,8 +1119,8 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
             ((chan[our_base_chan + 2].state_ym2609dsp.phase_inv_left ? 1 : 0) << 5) | ((chan[our_base_chan + 2].state_ym2609dsp.phase_inv_right ? 1 : 0) << 4));
         }
         
-        //if(dsp.lpf_on || dsp.hpf_on || dsp.chorus_enable || dsp.ins_compressor_on || dsp.distortion_enable)
-        //{
+        if(dsp.enable)
+        {
           //rWrite(0x323, get_dsp_chan_index(c.chan) | (dsp.reset_all ? 0x80 : 0));
           rWrite(0x323, get_dsp_chan_index(c.chan));
 
@@ -1220,7 +1220,92 @@ int DivPlatformYM2609::dispatch(DivCommand c) {
           {
             rWrite(0x3C6, chan[c.chan].state_ym2609dsp.ins_compressor_volume);
           }
-        //}
+        }
+      }
+
+      if(ins->ym2609.ym2609dsp.enable_global)
+      {
+        DivInstrumentYM2609DSP& dsp = ins->ym2609.ym2609dsp;
+
+        if(dsp.eq_on)
+        {
+          if(dsp.eq_low_on)
+          {
+            rWrite(0xC0, 1);
+            rWrite(0xC1, dsp.eq_low_freq);
+            rWrite(0xC2, dsp.eq_low_gain);
+            rWrite(0xC3, dsp.eq_low_q);
+
+            chan[c.chan].state_ym2609dsp.eq_low_freq = dsp.eq_low_freq;
+            chan[c.chan].state_ym2609dsp.eq_low_gain = dsp.eq_low_gain;
+            chan[c.chan].state_ym2609dsp.eq_low_q = dsp.eq_low_q;
+          }
+          else
+          {
+            rWrite(0xC0, 0);
+          }
+
+          if(dsp.eq_mid_on)
+          {
+            rWrite(0xC4, 1);
+            rWrite(0xC5, dsp.eq_mid_freq);
+            rWrite(0xC6, dsp.eq_mid_gain);
+            rWrite(0xC7, dsp.eq_mid_q);
+
+            chan[c.chan].state_ym2609dsp.eq_mid_freq = dsp.eq_mid_freq;
+            chan[c.chan].state_ym2609dsp.eq_mid_gain = dsp.eq_mid_gain;
+            chan[c.chan].state_ym2609dsp.eq_mid_q = dsp.eq_mid_q;
+          }
+          else
+          {
+            rWrite(0xC4, 0);
+          }
+
+          if(dsp.eq_high_on)
+          {
+            rWrite(0xC8, 1);
+            rWrite(0xC9, dsp.eq_high_freq);
+            rWrite(0xCA, dsp.eq_high_gain);
+            rWrite(0xCB, dsp.eq_high_q);
+
+            chan[c.chan].state_ym2609dsp.eq_high_freq = dsp.eq_high_freq;
+            chan[c.chan].state_ym2609dsp.eq_high_gain = dsp.eq_high_gain;
+            chan[c.chan].state_ym2609dsp.eq_high_q = dsp.eq_high_q;
+          }
+          else
+          {
+            rWrite(0xC8, 0);
+          }
+        }
+        else
+        {
+          rWrite(0xC0, 0);
+          rWrite(0xC4, 0);
+          rWrite(0xC8, 0);
+        }
+
+        if(dsp.compressor_on)
+        {
+          chan[c.chan].state_ym2609dsp.compressor_volume = dsp.compressor_volume;
+          chan[c.chan].state_ym2609dsp.compressor_threshold = dsp.compressor_threshold;
+          chan[c.chan].state_ym2609dsp.compressor_ratio = dsp.compressor_ratio;
+          chan[c.chan].state_ym2609dsp.compressor_env_freq = dsp.compressor_env_freq;
+          chan[c.chan].state_ym2609dsp.compressor_env_q = dsp.compressor_env_q;
+          chan[c.chan].state_ym2609dsp.compressor_gain_freq = dsp.compressor_gain_freq;
+          chan[c.chan].state_ym2609dsp.compressor_gain_q = dsp.compressor_gain_q;
+          
+          rWrite(0x1C0, chan[c.chan].state_ym2609dsp.compressor_volume | 0x80);
+          rWrite(0x1C1, chan[c.chan].state_ym2609dsp.compressor_threshold);
+          rWrite(0x1C2, chan[c.chan].state_ym2609dsp.compressor_ratio);
+          rWrite(0x1C3, chan[c.chan].state_ym2609dsp.compressor_env_freq);
+          rWrite(0x1C4, chan[c.chan].state_ym2609dsp.compressor_env_q);
+          rWrite(0x1C5, chan[c.chan].state_ym2609dsp.compressor_gain_freq);
+          rWrite(0x1C6, chan[c.chan].state_ym2609dsp.compressor_gain_q);
+        }
+        else
+        {
+          rWrite(0x1C0, chan[c.chan].state_ym2609dsp.compressor_volume);
+        }
       }
 
       if(c.chan < psg_offset) //FM
@@ -1870,6 +1955,8 @@ void DivPlatformYM2609::reset() {
 
       chan[i].op_ym2609[j].ws.setEngine(parent);
       chan[i].op_ym2609[j].ws.init(NULL,1024,8191,false);
+
+      chan[i].op_ym2609[j].wave_type = j;
     }
   }
 

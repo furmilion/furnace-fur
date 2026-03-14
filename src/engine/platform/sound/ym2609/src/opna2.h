@@ -406,6 +406,9 @@ class OPNA2 /*: public OPNABase*/
                 adpcmb[i].adplc = 0;
                 adpcmb[i].adpld = 0x100;
             }
+
+            chorus->Init();
+            ep3band->Init();
         }
 
         void SetPrescaler(uint32_t p)

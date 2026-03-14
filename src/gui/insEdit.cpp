@@ -7600,20 +7600,92 @@ void FurnaceGUI::drawInsYM2609DSP(DivInstrument* ins)
 
     ImGui::Checkbox(_("Use global DSP effects"), &dsp.enable_global);
 
-    if (ImGui::BeginTable("globaldsp",2,ImGuiTableFlags_Borders)) 
+    if(dsp.enable_global)
     {
-      ImGui::TableNextRow();
-      ImGui::TableNextColumn();
+      if (ImGui::BeginTable("globaldsp",2,ImGuiTableFlags_Borders)) 
+      {
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
 
-      CENTER_TEXT(_("3-band equalizer"));
-      ImGui::TextUnformatted(_("3-band equalizer"));
-      
-      ImGui::TableNextColumn();
+        CENTER_TEXT(_("3-band equalizer"));
+        ImGui::TextUnformatted(_("3-band equalizer"));
+        
+        ImGui::TableNextColumn();
 
-      CENTER_TEXT(_("Chip compressor"));
-      ImGui::TextUnformatted(_("Chip compressor"));
+        CENTER_TEXT(_("Chip compressor"));
+        ImGui::TextUnformatted(_("Chip compressor"));
 
-      ImGui::EndTable();
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+
+        ImGui::Checkbox(_("Enable equalizer##en3bandeq"), &dsp.eq_on);
+
+        ImGui::Separator();
+
+        ImGui::Checkbox(_("Low on##en3bandeqlow"), &dsp.eq_low_on);
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Freq")).x);
+        CWSliderScalar(_("Freq##EQ_LOW_FREQ"),ImGuiDataType_U8,&dsp.eq_low_freq,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Gain")).x);
+        CWSliderScalar(_("Gain##EQ_LOW_GAIN"),ImGuiDataType_U8,&dsp.eq_low_gain,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Q")).x);
+        CWSliderScalar(_("Q##EQ_LOW_Q"),ImGuiDataType_U8,&dsp.eq_low_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::Separator();
+
+        ImGui::Checkbox(_("Mid on##en3bandeqmid"), &dsp.eq_mid_on);
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Freq")).x);
+        CWSliderScalar(_("Freq##EQ_MID_FREQ"),ImGuiDataType_U8,&dsp.eq_mid_freq,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Gain")).x);
+        CWSliderScalar(_("Gain##EQ_MID_GAIN"),ImGuiDataType_U8,&dsp.eq_mid_gain,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Q")).x);
+        CWSliderScalar(_("Q##EQ_MID_Q"),ImGuiDataType_U8,&dsp.eq_mid_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::Separator();
+
+        ImGui::Checkbox(_("High on##en3bandeqhigh"), &dsp.eq_high_on);
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Freq")).x);
+        CWSliderScalar(_("Freq##EQ_HIGH_FREQ"),ImGuiDataType_U8,&dsp.eq_high_freq,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Gain")).x);
+        CWSliderScalar(_("Gain##EQ_HIGH_GAIN"),ImGuiDataType_U8,&dsp.eq_high_gain,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Q")).x);
+        CWSliderScalar(_("Q##EQ_HIGH_Q"),ImGuiDataType_U8,&dsp.eq_high_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::TableNextColumn();
+
+        ImGui::Checkbox(_("Enable compressor##enchipcomp"), &dsp.compressor_on);
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Volume")).x);
+        CWSliderScalar(_("Volume##COMP_VOLUME"),ImGuiDataType_U8,&dsp.compressor_volume,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Threshold")).x);
+        CWSliderScalar(_("Threshold##COMP_THRESHOLD"),ImGuiDataType_U8,&dsp.compressor_threshold,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Ratio")).x);
+        CWSliderScalar(_("Ratio##COMP_RATIO"),ImGuiDataType_U8,&dsp.compressor_ratio,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Env. Freq.")).x);
+        CWSliderScalar(_("Env. Freq.##COMP_ENVFREQ"),ImGuiDataType_U8,&dsp.compressor_env_freq,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Env. Q")).x);
+        CWSliderScalar(_("Env. Q##COMP_ENVQ"),ImGuiDataType_U8,&dsp.compressor_env_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Gain Freq.")).x);
+        CWSliderScalar(_("Gain Freq.##COMP_GAINFREQ"),ImGuiDataType_U8,&dsp.compressor_gain_freq,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(_("Gain Q")).x);
+        CWSliderScalar(_("Gain Q##COMP_ENVQ"),ImGuiDataType_U8,&dsp.compressor_gain_q,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE); rightClickable
+
+        ImGui::EndTable();
+      }
     }
 
     ImGui::Checkbox(_("Use per-channel DSP macros"), &dsp.enable_macros);
