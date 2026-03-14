@@ -68,6 +68,16 @@ class eq3band
         updateParam();
     }
 
+    void Init()
+    {
+        lowL = CMyFilter();
+        lowR = CMyFilter();
+        midL = CMyFilter();
+        midR = CMyFilter();
+        highL = CMyFilter();
+        highR = CMyFilter();
+    }
+
     void Mix(int** buffer, int nsamples)
     {
         for (int i = 0; i < nsamples; i++)
