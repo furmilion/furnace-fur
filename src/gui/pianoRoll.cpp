@@ -81,7 +81,6 @@ static bool  prNoteTooltip=false;
 static int   prLoopR0=-1, prLoopR1=-1;
 static bool  prLoopDragging=false;
 static int   prLoopDragStart=-1;
-static const char* const PR_NOTE_LBL[12]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
 
 struct PrClipEntry { int rowOff; short note; short ins; short vol; };
 static std::vector<PrClipEntry> prClipboard;
