@@ -662,7 +662,7 @@ void FurnaceGUI::drawPianoRoll() {
   int selN0=ImMin(prSelN0,prSelN1),    selN1=ImMax(prSelN0,prSelN1);
   bool hasSel=(prSelRow0>=0&&prSelRow1>=0&&prSelN0>=0&&prSelN1>=0);
 
-  ImU32 cBg      =ImGui::ColorConvertFloat4ToU32(uiColors[GUI_COLOR_PIANO_ROLL_BG]);
+
   ImU32 cKeyW    =ImGui::ColorConvertFloat4ToU32(uiColors[GUI_COLOR_PIANO_ROLL_KEY_WHITE]);
   ImU32 cKeyB    =ImGui::ColorConvertFloat4ToU32(uiColors[GUI_COLOR_PIANO_ROLL_KEY_BLACK]);
   ImU32 cKeyBrd  =ImGui::ColorConvertFloat4ToU32(uiColors[GUI_COLOR_PIANO_ROLL_KEY_BORDER]);
