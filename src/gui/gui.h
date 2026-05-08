@@ -647,6 +647,7 @@ enum FurnaceGUIFileDialogs {
   GUI_FILE_EXPORT_ROM,
   GUI_FILE_EXPORT_COMPILED_INS,
   GUI_FILE_EXPORT_COMPILED_INS_ONE,
+  GUI_FILE_EXPORT_COMPILED_SAMPLE,
   GUI_FILE_LOAD_MAIN_FONT,
   GUI_FILE_LOAD_HEAD_FONT,
   GUI_FILE_LOAD_PAT_FONT,
@@ -854,6 +855,8 @@ enum FurnaceGUIActions {
   GUI_ACTION_PAT_NEXT_ORDER,
   GUI_ACTION_PAT_PREV_ORDER,
   GUI_ACTION_PAT_COLLAPSE,
+  GUI_ACTION_PAT_COLLAPSE_SELECTED,
+  GUI_ACTION_PAT_EXPAND_SELECTED,
   GUI_ACTION_PAT_INCREASE_COLUMNS,
   GUI_ACTION_PAT_DECREASE_COLUMNS,
   GUI_ACTION_PAT_INTERPOLATE,
@@ -2779,6 +2782,9 @@ class FurnaceGUI {
   float xyOscIntensity;
   float xyOscThickness;
 
+  // register view
+  int regViewColumns;
+
   // spectrum and tuner
   double* tunerFFTInBuf;
   fftw_complex* tunerFFTOutBuf;
@@ -2939,6 +2945,9 @@ class FurnaceGUI {
   bool romExportAvail[DIV_ROM_MAX];
   bool romExportExists;
   int insCompileType;
+  int sampleCompileDispatch;
+  int sampleCompileIndex;
+  size_t sampleCompileSize;
 
   // user presets window
   std::vector<int> selectedUserPreset;
