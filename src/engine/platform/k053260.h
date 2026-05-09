@@ -48,6 +48,7 @@ class DivPlatformK053260: public DivDispatch, public k053260_intf {
   unsigned char curChan;
   unsigned int* sampleOff;
   bool* sampleLoaded;
+  DivPitchTableManager samplePitchTable;
 
   unsigned char* sampleMem;
   size_t sampleMemLen;

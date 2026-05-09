@@ -86,6 +86,7 @@ class DivPlatformGBAMinMod: public DivDispatch {
   DivMemoryComposition romMemCompo;
   DivMemoryComposition mixMemCompo;
   DivMemoryComposition wtMemCompo;
+  DivPitchTableManager samplePitchTable;
 
   friend void putDispatchChip(void*,int);
   friend void putDispatchChan(void*,int,int);

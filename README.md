@@ -1,17 +1,19 @@
-This fork of Furnace Tracker exists only to automatically build Release versions of dev versions and for merging pull requests from the upstream repo.
+This is a fork of Furnace made made mainly to merge other forks or pull requests
+before the upstream does.
 
+Here's jumpers to branches:
 
-![screenshot](papers/screenshot3.png)
+[Namco Pole Position WSG](https://github.com/furmilion/furnace-fur/tree/polepos_wsg) (from [#2851](https://github.com/tildearrow/furnace/pull/2851), Furnace, tildearrow)
 
-the biggest multi-system chiptune tracker ever made!
+[YM26609](https://github.com/furmilion/furnace-fur/tree/ym2609) (from [Furnace-B, YM2609 branch](https://github.com/LTVA1/furnace/tree/YM2609), LTVA)
 
-[mini-site](https://tildearrow.org/furnace/) | [downloads](#downloads) | [installation](#installation) | [Unix/Linux packages](#packages)
+[Piano Roll](https://github.com/furmilion/furnace-fur/tree/piano-roll) (from [Furnace](https://github.com/rorobonez911/furnace-piano-roll), rednoobmusic)
 
-[documentation/discussion/help](#quick-references) | [developer info](#developer-info)
+[SGU-1](https://github.com/furmilion/furnace-fur/tree/sgu4furnace) (from [Furnace](https://github.com/X65/furnace/tree/sgu4furnace), smokku, X65) (commits up to 5b07826)
 
----
-## downloads
+[SGU-1](https://github.com/furmilion/furnace-fur/tree/sgu_new) (from [Furnace](https://github.com/X65/furnace/tree/sgu4furnace), smokku, X65) (post 5b07826)
 
+<<<<<<< HEAD
 check out the [Releases](https://github.com/tildearrow/furnace/releases) page. available for Windows, macOS and Linux.
 
 for other operating systems, you may [build the source](#developer-info).
@@ -525,3 +527,6 @@ You should have received a copy of the GNU General Public License along with thi
 
 Furnace is NOT affiliated with Delek or DefleMask in any form, regardless of its ability to load and save the .dmf, .dmp and .dmw file formats.
 additionally, Furnace does not intend to replace DefleMask, nor any other program.
+=======
+All of these are accessible via nightly.link, with the following pattern: `https://nightly.link/furmilion/furnace-fur/workflows/build/<branch>`
+>>>>>>> 3d65571b58ac9c45341093da261d868618a5d99c

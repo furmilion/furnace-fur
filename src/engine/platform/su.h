@@ -89,6 +89,8 @@ class DivPlatformSoundUnit: public DivDispatch {
     QueuedWrite(unsigned char a, unsigned char v): addr(a), val(v) {}
   };
   FixedQueue<QueuedWrite,512> writes;
+  DivPitchTable pitchTable;
+  DivPitchTableManager samplePitchTable;
   unsigned char lastPan;
   bool sampleMemSize;
   unsigned char ilCtrl, ilSize, fil1;

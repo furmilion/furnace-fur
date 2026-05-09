@@ -43,6 +43,7 @@ class DivPlatformYMZ280B: public DivDispatch {
   Channel chan[8];
   DivDispatchOscBuffer* oscBuf[8];
   bool isMuted[8];
+  DivPitchTableManager samplePitchTable;
   int chipType;
   unsigned int* sampleOff;
   bool* sampleLoaded;

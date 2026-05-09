@@ -46,6 +46,7 @@ class DivPlatformQSound: public DivDispatch {
   };
   Channel chan[19];
   DivDispatchOscBuffer* oscBuf[19];
+  DivPitchTableManager samplePitchTable;
   int echoDelay;
   int echoFeedback;
 

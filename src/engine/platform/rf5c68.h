@@ -42,6 +42,7 @@ class DivPlatformRF5C68: public DivDispatch {
   Channel chan[8];
   DivDispatchOscBuffer* oscBuf[8];
   bool isMuted[8];
+  DivPitchTableManager samplePitchTable;
   int chipType;
   unsigned char curChan;
   unsigned int* sampleOffRFC;

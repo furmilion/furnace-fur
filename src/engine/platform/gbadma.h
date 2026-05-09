@@ -64,6 +64,7 @@ class DivPlatformGBADMA: public DivDispatch {
   signed char wtMem[256*2];
   DivMemoryComposition romMemCompo;
   DivMemoryComposition wtMemCompo;
+  DivPitchTableManager samplePitchTable;
 
   friend void putDispatchChip(void*,int);
   friend void putDispatchChan(void*,int,int);

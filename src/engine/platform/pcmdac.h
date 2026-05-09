@@ -56,6 +56,7 @@ class DivPlatformPCMDAC: public DivDispatch {
   bool* isMuted;
   int chans;
   DivDispatchOscBuffer* oscBuf;
+  DivPitchTableManager samplePitchTable;
   int outDepth;
   // valid values:
   // - 0: none

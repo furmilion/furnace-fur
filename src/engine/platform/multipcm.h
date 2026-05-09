@@ -74,6 +74,7 @@ class DivPlatformMultiPCM: public DivDispatch {
       QueuedWrite(unsigned int a, unsigned char v): addr(a), val(v), addrOrVal(false) {}
     };
     FixedQueue<QueuedWrite,4096> writes;
+    DivPitchTableManager samplePitchTable;
 
     unsigned char* pcmMem;
     size_t pcmMemLen;

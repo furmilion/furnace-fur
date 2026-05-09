@@ -63,6 +63,7 @@ class DivPlatformK007232: public DivDispatch, public k007232_intf {
       val(v) {}
   };
   FixedQueue<QueuedWrite,256> writes;
+  DivPitchTableManager samplePitchTable;
   unsigned int* sampleOffK007232;
   bool* sampleLoaded;
 
