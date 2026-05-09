@@ -164,6 +164,7 @@ the following feature codes are recognized:
 - `PN`: PowerNoise ins data
 - `S2`: SID2 ins data
 - `S3`: SID3 ins data
+- `SC`: SCSP ins data
 - `EN`: end of features
   - if you find this feature code, stop reading the instrument.
   - it will usually appear only when there are sample/wave lists.
@@ -470,7 +471,7 @@ size | description
      | - bit 1: use sample
      | - bit 0: use sample map
   1  | waveform length
- 4?? | sample map... (120 entries)
+ 4?? | sample map... (120 entries (<246) or 180 entries (>=246))
      | - only read if sample map is enabled
 ```
 
@@ -480,6 +481,8 @@ the sample map format:
 size | description
 -----|------------------------------------
   2  | note to play (>=152) or reserved
+     | - (<246) 0 is C-0 and 119 is B-9
+     | - (>=246) 0 is C-(-5), 60 is C-0 and 179 is B-9
   2  | sample to play
 ```
 
@@ -729,7 +732,7 @@ size | description
 size | description
 -----|------------------------------------
   1  | use sample map
- 2?? | DPCM sample map... (120 entries)
+ 2?? | DPCM sample map... (120 entries (<246) or 180 entries (>=246))
      | - only read if sample map is enabled
 ```
 
@@ -763,6 +766,70 @@ size | description
      | - bit 4-5: wave mix mode
      | - bit 0-3: volume
 ```
+
+# SCSP data (SC)
+
+per-instrument SCSP fields. emitted whenever the instrument has FM mode set, a non-default mode, or any per-op data.
+
+```
+size | description
+-----|------------------------------------
+  1  | mode
+     | - 0: PCM
+     | - 1: FM
+  1  | TL (slot total level)
+  1  | DL (decay level, 0..31)
+  1  | AR (attack rate, 0..31)
+  1  | D1R (decay 1 rate, 0..31)
+  1  | D2R (decay 2 rate, 0..31)
+  1  | RR (release rate, 0..31)
+  1  | KRS (key-rate scaling, 0..15)
+  1  | LPCTL (loop control: 0=off, 1=fwd, 2=rev, 3=alt)
+  1  | misc flags
+     | - bit 0: EGHOLD
+     | - bit 1: LPSLNK
+     | - bit 2: SDIR
+     | - bit 3: STWINH
+     | - bit 4: LFO reset on key-on
+  1  | LFOF (LFO frequency, 0..31)
+  1  | PLFOWS (pitch LFO waveform)
+  1  | PLFOS (pitch LFO scale, 0..7)
+  1  | ALFOWS (amp LFO waveform)
+  1  | ALFOS (amp LFO scale, 0..7)
+  1  | ISEL (DSP input bus select)
+  1  | IMXL (DSP send level, 0..7)
+  1  | EFSDL (effect register send level, 0..7)
+  1  | EFPAN (effect register pan, 0..31)
+  1  | DISDL (direct send level, 0..7)
+  1  | DIPAN (direct pan, 0..31)
+  1  | op count (1..6)
+```
+
+then 6 operator records follow (always 6, even if op count is lower — unused ops are zeroed):
+
+```
+size | description
+-----|------------------------------------
+  2  | freq ratio (Q8.8 fixed point: ratio × 256)
+  2  | freq fixed (Hz, 0 = use ratio)
+  1  | level (0..127)
+  1  | AR (per-op attack rate, 0..31)
+  1  | D1R (per-op decay 1 rate, 0..31)
+  1  | DL (per-op decay level, 0..31)
+  1  | D2R (per-op decay 2 rate, 0..31)
+  1  | RR (per-op release rate, 0..31)
+  1  | MDL (modulation depth, 0..15)
+  1  | mod source (signed: -1 = no source, 0..5 = op index)
+  1  | feedback (self-modulation, 0..127)
+  1  | is carrier (0 = modulator, 1 = carrier)
+  1  | waveform (built-in index, 0..9)
+  2  | loop start (samples)
+  2  | loop end (samples)
+  1  | LPCTL (per-op loop control override)
+  2  | sample ID (signed: -1 = use built-in waveform, ≥0 = song.sample index)
+```
+
+each operator record is 22 bytes; the SC feature is `24 + 6×22 = 156` bytes.
 
 # SID3 data (S3)
 

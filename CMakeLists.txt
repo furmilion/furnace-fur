@@ -593,6 +593,11 @@ extern/vgsound_emu-modified/vgsound_emu/src/vrcvi/vrcvi.cpp
 
 extern/vgsound_emu-modified/vgsound_emu/src/x1_010/x1_010.cpp
 
+extern/scsp/scsp.c
+extern/scsp/scspdsp.c
+extern/scsp/scsp_waveforms.c
+extern/scsp/scsp_bridge.c
+
 extern/adpcm/bs_codec.c
 extern/adpcm/oki_codec.c
 extern/adpcm/yma_codec.c
@@ -794,6 +799,8 @@ src/engine/export.cpp
 src/engine/exportDef.cpp
 src/engine/fileOpsIns.cpp
 src/engine/fileOpsSample.cpp
+src/engine/fileOpsTON.cpp
+src/engine/scspdspasm.cpp
 src/engine/filePlayer.cpp
 src/engine/filter.cpp
 src/engine/instrument.cpp
@@ -886,6 +893,7 @@ src/engine/platform/sid2.cpp
 src/engine/platform/sid3.cpp
 src/engine/platform/multipcm.cpp
 src/engine/platform/pcmdac.cpp
+src/engine/platform/scsp.cpp
 src/engine/platform/dummy.cpp
 
 src/engine/export/abstract.cpp
@@ -972,6 +980,7 @@ src/gui/about.cpp
 src/gui/channels.cpp
 src/gui/chanOsc.cpp
 src/gui/clock.cpp
+src/gui/dspEdit.cpp
 src/gui/commandPalette.cpp
 src/gui/compatFlags.cpp
 src/gui/csPlayer.cpp
@@ -1317,6 +1326,14 @@ elseif(WIN32 AND NOT CONSOLE_SUBSYSTEM)
 else()
   add_executable(${FURNACE} ${USED_SOURCES})
 endif()
+
+# Standalone unit-test runner for the SCSP DSP assembler. Pure-function
+# port; no DivEngine dep, so it links against just the assembler TU.
+add_executable(scspdspasm_test
+  tools/scspdspasm_test.cpp
+  src/engine/scspdspasm.cpp
+)
+target_compile_features(scspdspasm_test PRIVATE cxx_std_17)
 
 if (MAKE_BUNDLE AND NOT FORCE_APPLE_BIN)
   set_target_properties(${FURNACE} PROPERTIES

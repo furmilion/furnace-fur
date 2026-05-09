@@ -320,6 +320,78 @@ bool DivInstrument::compileMacros(SafeWriter* w, std::initializer_list<DivCompil
   return true;
 }
 
+bool DivInstrument::compileWaveSynth(SafeWriter* w) {
+  w->writeC((ws.enabled?1:0)|(ws.global?64:0));
+  w->writeC(ws.effect);
+  w->writeS(ws.wave1);
+  w->writeS(ws.wave2);
+  w->writeC(ws.rateDivider);
+  w->writeC(ws.speed);
+  w->writeC(ws.param1);
+  w->writeC(ws.param2);
+  return true;
+}
+
+bool DivInstrument::compileSampleMap(SafeWriter* w, bool nes) {
+  // don't compile sample map if disabled
+  if (!amiga.useNoteMap) return false;
+
+  int low=180;
+  int high=0;
+
+  // find lower/upper boundaries
+  for (int i=0; i<180; i++) {
+    if (amiga.noteMap[i].map!=-1) {
+      low=i;
+      break;
+    }
+  }
+  for (int i=179; i>=0; i--) {
+    if (amiga.noteMap[i].map!=-1) {
+      high=i;
+      break;
+    }
+  }
+
+  // write pointers
+  int count=high-low+1;
+  int ptrCount=nes?8:6;
+
+  w->writeS(w->tell()+ptrCount); // map low
+  w->writeS(w->tell()+ptrCount-2+count); // map high
+  w->writeS(w->tell()+ptrCount-4+count*2); // note
+  if (nes) {
+    w->writeS(w->tell()+ptrCount-6+count*3); // DPCM delta
+  }
+
+  // write tables
+  // map low
+  for (int i=low; i<=high; i++) {
+    w->writeC(amiga.noteMap[i].map&0xff);
+  }
+  // map high
+  for (int i=low; i<=high; i++) {
+    w->writeC((amiga.noteMap[i].map>>8)&0xff);
+  }
+  if (nes) {
+    // DPCM freq
+    for (int i=low; i<=high; i++) {
+      w->writeC(amiga.noteMap[i].dpcmFreq);
+    }
+    // DPCM delta
+    for (int i=low; i<=high; i++) {
+      w->writeC(amiga.noteMap[i].dpcmDelta);
+    }
+  } else {
+    // note
+    for (int i=low; i<=high; i++) {
+      w->writeC(amiga.noteMap[i].freq);
+    }
+  }
+
+  return true;
+}
+
 bool DivInstrument::compile(SafeWriter* w, DivInstrumentType insType) {
   switch (insType) {
     case DIV_INS_C64:
@@ -370,11 +442,131 @@ bool DivInstrument::compile(SafeWriter* w, DivInstrumentType insType) {
         DivCompileMacroDef(DIV_MACRO_EX8,DIV_COMPILED_MACRO_U4,0,15) // release
       },0);
       break;
+    case DIV_INS_SNES: {
+      // SNES data
+      size_t specialPtrLoc=0;
+      size_t specialPtr=0;
+      w->writeC(
+        (snes.useEnv?0x80:0x00)|
+        ((snes.d&7)<<4)|
+        (snes.d&15)
+      );
+      if (snes.sus) {
+        w->writeC(
+          ((snes.s&7)<<4)|
+          (snes.d2&31)
+        );
+      } else {
+        w->writeC(
+          ((snes.s&7)<<4)|
+          (snes.r&31)
+        );
+      }
+      switch (snes.gainMode) {
+        case DivInstrumentSNES::GAIN_MODE_DIRECT:
+          w->writeC(snes.gain&127);
+          break;
+        case DivInstrumentSNES::GAIN_MODE_DEC_LINEAR:
+          w->writeC(0x80|(snes.gain&31));
+          break;
+        case DivInstrumentSNES::GAIN_MODE_INC_LINEAR:
+          w->writeC(0xc0|(snes.gain&31));
+          break;
+        case DivInstrumentSNES::GAIN_MODE_DEC_LOG:
+          w->writeC(0xa0|(snes.gain&31));
+          break;
+        case DivInstrumentSNES::GAIN_MODE_INC_INVLOG:
+          w->writeC(0xe0|(snes.gain&31));
+          break;
+      }
+      if (snes.sus) {
+        w->writeC((snes.sus&3)|(snes.r<<2));
+      } else {
+        w->writeC(0);
+      }
+      // sample data
+      if (amiga.useWave) {
+        w->writeC(2);
+        w->writeS(amiga.waveLen+1);
+        // pointer
+        specialPtrLoc=w->tell();
+        w->writeS(0);
+      } else if (amiga.useNoteMap) {
+        w->writeC(1);
+        // pointer
+        specialPtrLoc=w->tell();
+        w->writeS(0);
+        w->writeS(0);
+      } else {
+        w->writeC(0);
+        w->writeS(amiga.initSample);
+        w->writeS(0);
+      }
+      // macros
+      compileMacros(w,{
+        DivCompileMacroDef(DIV_MACRO_VOL,DIV_COMPILED_MACRO_U8,0,127),
+        DivCompileMacroDef(DIV_MACRO_ARP,DIV_COMPILED_MACRO_BIT30,-256,256),
+        DivCompileMacroDef(DIV_MACRO_DUTY,DIV_COMPILED_MACRO_U8,0,31),
+        DivCompileMacroDef(DIV_MACRO_WAVE,DIV_COMPILED_MACRO_U16,0,32767),
+        DivCompileMacroDef(DIV_MACRO_PAN_LEFT,DIV_COMPILED_MACRO_U8,0,127),
+        DivCompileMacroDef(DIV_MACRO_PAN_RIGHT,DIV_COMPILED_MACRO_U8,0,127),
+        DivCompileMacroDef(DIV_MACRO_PITCH,DIV_COMPILED_MACRO_S16,-2048,2047),
+        DivCompileMacroDef(DIV_MACRO_EX1,DIV_COMPILED_MACRO_U8,0,31), // special
+        DivCompileMacroDef(DIV_MACRO_EX2,DIV_COMPILED_MACRO_U8,0,255), // gain
+      },0);
+      // wave synth and sample map
+      if (amiga.useWave) {
+        if (ws.enabled) {
+          specialPtr=w->tell();
+          compileWaveSynth(w);
+          w->seek(specialPtrLoc,SEEK_SET);
+          w->writeS(specialPtr);
+          w->seek(0,SEEK_END);
+        }
+      } else if (amiga.useNoteMap) {
+        specialPtr=w->tell();
+        compileSampleMap(w,false);
+        w->seek(specialPtrLoc,SEEK_SET);
+        w->writeS(specialPtr);
+        w->seek(0,SEEK_END);
+      }
+      break;
+    }
     default:
       logE("compile(): not implemented!");
       return false;
   }
   return true;
+}
+
+SafeWriter* DivEngine::compileAllIns(int insType) {
+  SafeWriter* w=new SafeWriter;
+  w->init();
+
+  std::vector<unsigned short> ptrs;
+
+  // pointers
+  for (size_t i=0; i<song.ins.size(); i++) {
+    w->writeS(0);
+  }
+
+  // compile instruments
+  for (DivInstrument* i: song.ins) {
+    ptrs.push_back(w->tell());
+    if (!i->compile(w,(DivInstrumentType)insType)) {
+      logE("Compilation Error. Prepare for unforeseen consequences...");
+      delete w;
+      return NULL;
+    }
+  }
+
+  w->seek(0,SEEK_SET);
+  for (unsigned short i: ptrs) {
+    w->writeS(i);
+  }
+  w->seek(0,SEEK_END);
+
+  return w;
 }
 
 /// the rest
@@ -575,6 +767,35 @@ bool DivInstrumentES5506::operator==(const DivInstrumentES5506& other) {
     _C(envelope.k1Slow) &&
     _C(envelope.k2Slow)
   );
+}
+
+bool DivInstrumentSCSP::Op::operator==(const DivInstrumentSCSP::Op& other) {
+  return (
+    _C(freqRatio) &&
+    _C(freqFixed) &&
+    _C(level) &&
+    _C(ar) && _C(d1r) && _C(dl) && _C(d2r) && _C(rr) &&
+    _C(mdl) &&
+    _C(modSource) &&
+    _C(feedback) &&
+    _C(isCarrier) &&
+    _C(waveform) &&
+    _C(loopStart) && _C(loopEnd) &&
+    _C(lpctlOp) &&
+    _C(sampleId)
+  );
+}
+
+bool DivInstrumentSCSP::operator==(const DivInstrumentSCSP& other) {
+  if (!(_C(mode) && _C(tl) && _C(dl) && _C(ar) && _C(d1r) && _C(d2r) && _C(rr) &&
+        _C(krs) && _C(lpctl) && _C(eghold) && _C(lpslnk) && _C(sdir) && _C(stwinh) &&
+        _C(lfof) && _C(plfows) && _C(plfos) && _C(alfows) && _C(alfos) && _C(lforeset) &&
+        _C(isel) && _C(imxl) && _C(efsdl) && _C(efpan) && _C(disdl) && _C(dipan) &&
+        _C(opCount))) return false;
+  for (int i=0; i<6; i++) {
+    if (!(ops[i]==other.ops[i])) return false;
+  }
+  return true;
 }
 
 bool DivInstrumentSNES::operator==(const DivInstrumentSNES& other) {
@@ -1106,7 +1327,7 @@ void DivInstrument::writeFeatureSM(SafeWriter* w) {
   w->writeC(amiga.waveLen);
 
   if (amiga.useNoteMap) {
-    for (int note=0; note<120; note++) {
+    for (int note=0; note<180; note++) {
       w->writeS(amiga.noteMap[note].freq);
       w->writeS(amiga.noteMap[note].map);
     }
@@ -1249,7 +1470,7 @@ size_t DivInstrument::writeFeatureLS(SafeWriter* w, std::vector<int>& list, cons
   }
 
   if (amiga.useNoteMap) {
-    for (int i=0; i<120; i++) {
+    for (int i=0; i<180; i++) {
       if (amiga.noteMap[i].map>=0 && amiga.noteMap[i].map<(int)song->sample.size()) {
         sampleUsed[amiga.noteMap[i].map]=true;
       }
@@ -1406,7 +1627,7 @@ void DivInstrument::writeFeatureNE(SafeWriter* w) {
   w->writeC(amiga.useNoteMap?1:0);
 
   if (amiga.useNoteMap) {
-    for (int note=0; note<120; note++) {
+    for (int note=0; note<180; note++) {
       w->writeC(amiga.noteMap[note].dpcmFreq);
       w->writeC(amiga.noteMap[note].dpcmDelta);
     }
@@ -1521,6 +1742,63 @@ void DivInstrument::writeFeatureS3(SafeWriter* w) {
   FEATURE_END;
 }
 
+void DivInstrument::writeFeatureSC(SafeWriter* w) {
+  FEATURE_BEGIN("SC");
+
+  w->writeC(scsp.mode);
+  w->writeC(scsp.tl);
+  w->writeC(scsp.dl);
+  w->writeC(scsp.ar);
+  w->writeC(scsp.d1r);
+  w->writeC(scsp.d2r);
+  w->writeC(scsp.rr);
+  w->writeC(scsp.krs);
+  w->writeC(scsp.lpctl);
+  w->writeC(
+    (scsp.eghold?1:0)|
+    (scsp.lpslnk?2:0)|
+    (scsp.sdir?4:0)|
+    (scsp.stwinh?8:0)|
+    (scsp.lforeset?16:0)
+  );
+  w->writeC(scsp.lfof);
+  w->writeC(scsp.plfows);
+  w->writeC(scsp.plfos);
+  w->writeC(scsp.alfows);
+  w->writeC(scsp.alfos);
+  w->writeC(scsp.isel);
+  w->writeC(scsp.imxl);
+  w->writeC(scsp.efsdl);
+  w->writeC(scsp.efpan);
+  w->writeC(scsp.disdl);
+  w->writeC(scsp.dipan);
+
+  // FM operator data
+  w->writeC(scsp.opCount);
+  for (int i=0; i<6; i++) {
+    DivInstrumentSCSP::Op& op=scsp.ops[i];
+    w->writeS(op.freqRatio);
+    w->writeS(op.freqFixed);
+    w->writeC(op.level);
+    w->writeC(op.ar);
+    w->writeC(op.d1r);
+    w->writeC(op.dl);
+    w->writeC(op.d2r);
+    w->writeC(op.rr);
+    w->writeC(op.mdl);
+    w->writeC((unsigned char)op.modSource);
+    w->writeC(op.feedback);
+    w->writeC(op.isCarrier?1:0);
+    w->writeC(op.waveform);
+    w->writeS(op.loopStart);
+    w->writeS(op.loopEnd);
+    w->writeC(op.lpctlOp);
+    w->writeS((unsigned short)op.sampleId);
+  }
+
+  FEATURE_END;
+}
+
 void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bool insName) {
   size_t blockStartSeek=0;
   size_t blockEndSeek=0;
@@ -1568,6 +1846,7 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
   bool featurePN=false;
   bool featureS2=false;
   bool featureS3=false;
+  bool featureSC=false;
 
   bool checkForWL=false;
 
@@ -1771,6 +2050,11 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
         featureSM=true;
         featureSL=true;
         break;
+      case DIV_INS_YMF292:
+        featureSM=true;
+        featureSL=true;
+        featureSC=true;
+        break;
       case DIV_INS_TED:
         break;
       case DIV_INS_C140:
@@ -1882,6 +2166,9 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
     }
     if (sid3!=defaultIns.sid3) {
       featureS3=true;
+    }
+    if (scsp!=defaultIns.scsp) {
+      featureSC=true;
     }
   }
 
@@ -2038,6 +2325,9 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
   }
   if (featureS3) {
     writeFeatureS3(w);
+  }
+  if (featureSC) {
+    writeFeatureSC(w);
   }
 
   if (fui && (featureSL || featureWL)) {
@@ -2413,13 +2703,15 @@ void DivInstrument::readFeatureSM(SafeReader& reader, short version) {
   amiga.waveLen=(unsigned char)reader.readC();
 
   if (amiga.useNoteMap) {
-    for (int note=0; note<120; note++) {
+    int noteLow=(version>=246)?0:60;
+    for (int note=noteLow; note<180; note++) {
       amiga.noteMap[note].freq=reader.readS();
+      if (version<246) amiga.noteMap[note].freq+=60;
       amiga.noteMap[note].map=reader.readS();
     }
 
     if (version<152) {
-      for (int note=0; note<120; note++) {
+      for (int note=0; note<180; note++) {
         amiga.noteMap[note].freq=note;
       }
     }
@@ -2707,7 +2999,7 @@ void DivInstrument::readFeatureSL(SafeReader& reader, DivSong* song, short versi
   }
 
   if (amiga.useNoteMap) {
-    for (int i=0; i<120; i++) {
+    for (int i=0; i<180; i++) {
       if (amiga.noteMap[i].map>=0) {
         amiga.noteMap[i].map=sampleRemap[amiga.noteMap[i].map];
       }
@@ -2842,7 +3134,7 @@ void DivInstrument::readFeatureLS(SafeReader& reader, DivSong* song, short versi
   }
 
   if (amiga.useNoteMap) {
-    for (int i=0; i<120; i++) {
+    for (int i=0; i<180; i++) {
       if (amiga.noteMap[i].map>=0) {
         amiga.noteMap[i].map=sampleRemap[amiga.noteMap[i].map];
       }
@@ -2986,6 +3278,67 @@ void DivInstrument::readFeatureES(SafeReader& reader, short version) {
   READ_FEAT_END;
 }
 
+void DivInstrument::readFeatureSC(SafeReader& reader, short version) {
+  READ_FEAT_BEGIN;
+
+  scsp.mode=(DivInstrumentSCSP::SynthMode)reader.readC();
+  scsp.tl=reader.readC();
+  scsp.dl=reader.readC();
+  scsp.ar=reader.readC();
+  scsp.d1r=reader.readC();
+  scsp.d2r=reader.readC();
+  scsp.rr=reader.readC();
+  scsp.krs=reader.readC();
+  scsp.lpctl=reader.readC();
+  unsigned char bits=reader.readC();
+  scsp.eghold  =bits&1;
+  scsp.lpslnk  =bits&2;
+  scsp.sdir    =bits&4;
+  scsp.stwinh  =bits&8;
+  scsp.lforeset=bits&16;
+  scsp.lfof=reader.readC();
+  scsp.plfows=reader.readC();
+  scsp.plfos=reader.readC();
+  scsp.alfows=reader.readC();
+  scsp.alfos=reader.readC();
+  scsp.isel=reader.readC();
+  scsp.imxl=reader.readC();
+  scsp.efsdl=reader.readC();
+  scsp.efpan=reader.readC();
+  scsp.disdl=reader.readC();
+  scsp.dipan=reader.readC();
+
+  scsp.opCount=reader.readC();
+  // Each op's payload is followed (since the per-op-sample extension) by
+  // a trailing sampleId short. Detect using the remaining feature length:
+  // 22 bytes/op × 6 = 132 → has sampleId; 120 = old layout.
+  bool hasOpSampleId=((endOfFeat-reader.tell())>=132);
+  for (int i=0; i<6; i++) {
+    DivInstrumentSCSP::Op& op=scsp.ops[i];
+    op.freqRatio=reader.readS();
+    op.freqFixed=reader.readS();
+    op.level=reader.readC();
+    op.ar=reader.readC();
+    op.d1r=reader.readC();
+    op.dl=reader.readC();
+    op.d2r=reader.readC();
+    op.rr=reader.readC();
+    op.mdl=reader.readC();
+    op.modSource=(signed char)reader.readC();
+    op.feedback=reader.readC();
+    op.isCarrier=reader.readC();
+    op.waveform=reader.readC();
+    op.loopStart=reader.readS();
+    op.loopEnd=reader.readS();
+    op.lpctlOp=reader.readC();
+    if (hasOpSampleId) {
+      op.sampleId=(signed short)reader.readS();
+    }
+  }
+
+  READ_FEAT_END;
+}
+
 void DivInstrument::readFeatureX1(SafeReader& reader, short version) {
   READ_FEAT_BEGIN;
 
@@ -3000,7 +3353,8 @@ void DivInstrument::readFeatureNE(SafeReader& reader, short version) {
   amiga.useNoteMap=reader.readC();
 
   if (amiga.useNoteMap) {
-    for (int note=0; note<120; note++) {
+    int noteLow=(version>=246)?0:60;
+    for (int note=noteLow; note<180; note++) {
       amiga.noteMap[note].dpcmFreq=reader.readC();
       amiga.noteMap[note].dpcmDelta=reader.readC();
     }
@@ -3211,6 +3565,8 @@ DivDataErrors DivInstrument::readInsDataNew(SafeReader& reader, short version, b
       readFeatureS2(reader,version);
     } else if (memcmp(featCode,"S3",2)==0) { // SID3
       readFeatureS3(reader,version);
+    } else if (memcmp(featCode,"SC",2)==0) { // SCSP
+      readFeatureSC(reader,version);
     } else {
       if (song==NULL && (memcmp(featCode,"SL",2)==0 || (memcmp(featCode,"WL",2)==0) || (memcmp(featCode,"LS",2)==0) || (memcmp(featCode,"LW",2)==0))) {
         // nothing
@@ -3668,15 +4024,15 @@ DivDataErrors DivInstrument::readInsDataOld(SafeReader &reader, short version) {
   if (version>=67) {
     amiga.useNoteMap=reader.readC();
     if (amiga.useNoteMap) {
-      for (int note=0; note<120; note++) {
+      for (int note=60; note<180; note++) {
         amiga.noteMap[note].freq=reader.readI();
       }
-      for (int note=0; note<120; note++) {
+      for (int note=60; note<180; note++) {
         amiga.noteMap[note].map=reader.readS();
       }
 
       if (version<152) {
-        for (int note=0; note<120; note++) {
+        for (int note=0; note<180; note++) {
           amiga.noteMap[note].freq=note;
         }
       }
