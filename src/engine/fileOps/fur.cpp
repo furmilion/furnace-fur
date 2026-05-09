@@ -19,42 +19,6 @@
 
 #include "fileOpsCommon.h"
 
-short newFormatNotes[180]={
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, // -5
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, // -4
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, // -3
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, // -2
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, // -1
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, //  0
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, //  1
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, //  2
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, //  3
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, //  4
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, //  5
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, //  6
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, //  7
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, //  8
-  12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11  //  9
-};
-
-short newFormatOctaves[180]={
-  250, 251, 251, 251, 251, 251, 251, 251, 251, 251, 251, 251, // -5
-  251, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, 252, // -4
-  252, 253, 253, 253, 253, 253, 253, 253, 253, 253, 253, 253, // -3
-  253, 254, 254, 254, 254, 254, 254, 254, 254, 254, 254, 254, // -2
-  254, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, // -1
-  255,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, //  0
-    0,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1, //  1
-    1,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, //  2
-    2,   3,   3,   3,   3,   3,   3,   3,   3,   3,   3,   3, //  3
-    3,   4,   4,   4,   4,   4,   4,   4,   4,   4,   4,   4, //  4
-    4,   5,   5,   5,   5,   5,   5,   5,   5,   5,   5,   5, //  5
-    5,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6,   6, //  6
-    6,   7,   7,   7,   7,   7,   7,   7,   7,   7,   7,   7, //  7
-    7,   8,   8,   8,   8,   8,   8,   8,   8,   8,   8,   8, //  8
-    8,   9,   9,   9,   9,   9,   9,   9,   9,   9,   9,   9, //  9
-};
-
 struct PatToWrite {
   unsigned short subsong, chan, pat;
   PatToWrite(unsigned short s, unsigned short c, unsigned short p):
@@ -1165,7 +1129,10 @@ bool DivEngine::loadFur(unsigned char* file, size_t len, int variantID) {
       }
       if (tchans>DIV_MAX_CHANS) {
         tchans=DIV_MAX_CHANS;
-        logW("too many channels!");
+        logE("too many channels!");
+        lastError="too many channels!";
+        delete[] file;
+        return false;
       }
       logV("system len: %d",ds.systemLen);
       if (ds.systemLen<1) {
@@ -1773,6 +1740,16 @@ bool DivEngine::loadFur(unsigned char* file, size_t len, int variantID) {
       for (int i=0; i<ds.systemLen; i++) {
         convertOldFlags(sysFlagsPtr[i],ds.systemFlags[i],ds.system[i]);
       }
+    }
+
+    // SCSP DSP source — restore from systemFlags into the DivSong cache
+    // fields the editor binds to. Source of truth is systemFlags; this is
+    // just a working copy for the GUI to bind InputTextMultiline to.
+    for (int i=0; i<ds.systemLen; i++) {
+      if (ds.system[i]!=DIV_SYSTEM_SCSP) continue;
+      ds.scspDspSource=ds.systemFlags[i].getString("dspSource","");
+      ds.scspDspRBL=(unsigned char)(ds.systemFlags[i].getInt("dspRBL",2)&0x3);
+      break;  // SCSP is single-instance
     }
 
     // read asset directories
@@ -2687,7 +2664,7 @@ SafeWriter* DivEngine::saveFur(bool notPrimary) {
       w->writeI(0);
     }
   }
-  
+
   w->writeC(0);
 
   blockEndSeek=w->tell();
@@ -2703,6 +2680,19 @@ SafeWriter* DivEngine::saveFur(bool notPrimary) {
   }
 
   /// CHIP FLAGS
+  // Sync SCSP DSP source into the SCSP chip's systemFlags so it gets
+  // serialized as part of the existing per-chip flags block — no song
+  // format change needed.
+  for (int i=0; i<song.systemLen; i++) {
+    if (song.system[i]!=DIV_SYSTEM_SCSP) continue;
+    if (song.scspDspSource.empty()) {
+      song.systemFlags[i].remove("dspSource");
+      song.systemFlags[i].remove("dspRBL");
+    } else {
+      song.systemFlags[i].set("dspSource",song.scspDspSource);
+      song.systemFlags[i].set("dspRBL",(int)(song.scspDspRBL&0x3));
+    }
+  }
   sysFlagsPtr.reserve(song.systemLen);
   for (int i=0; i<song.systemLen; i++) {
     String data=song.systemFlags[i].toString();
@@ -2744,6 +2734,7 @@ SafeWriter* DivEngine::saveFur(bool notPrimary) {
     w->writeI(blockEndSeek-blockStartSeek-4);
     w->seek(0,SEEK_END);
   }
+
 
   /// ASSET DIRECTORIES
   assetDirPtr[0]=w->tell();

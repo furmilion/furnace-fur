@@ -2743,6 +2743,41 @@ void DivEngine::registerSystems() {
     DivChanDefFunc(stockChanDef<DIV_CH_NOISE,DIV_INS_STD>)
   );
 
+  EffectHandlerMap scspEffectHandlerMap={
+    {0x11, {DIV_CMD_SCSP_LFO_FREQ,    _("11xx: Set LFO frequency (00 to 1F)"),    effectValAnd<0x1f>}},
+    {0x12, {DIV_CMD_SCSP_PLFO_DEPTH,  _("12xx: Set pitch LFO depth (00 to 07)"),  effectValAnd<0x07>}},
+    {0x13, {DIV_CMD_SCSP_ALFO_DEPTH,  _("13xx: Set amp LFO depth (00 to 07)"),    effectValAnd<0x07>}},
+    {0x14, {DIV_CMD_SCSP_KRS,         _("14xx: Set key-rate scaling (00 to 0F)"), effectValAnd<0x0f>}},
+    {0x16, {DIV_CMD_SCSP_DSP_SEND,    _("16xx: Set DSP send level (00 to 07)"),   effectValAnd<0x07>}},
+    {0x17, {DIV_CMD_SCSP_DSP_PAN,     _("17xx: Set DSP pan (00 to 1F)"),          effectValAnd<0x1f>}},
+    {0x18, {DIV_CMD_SCSP_DIRECT_SEND, _("18xx: Set direct send level (00 to 07)"),effectValAnd<0x07>}},
+    {0x19, {DIV_CMD_SCSP_DIRECT_PAN,  _("19xx: Set direct pan (00 to 1F)"),       effectValAnd<0x1f>}},
+    // FM-mode performance tweaks (Furnace-only — not preserved by SEQ export).
+    {0x20, {DIV_CMD_SCSP_OP_TL,       _("20xx: Set op 1 TL (0=loudest, FF=silent)"), constVal<0>, effectVal}},
+    {0x21, {DIV_CMD_SCSP_OP_TL,       _("21xx: Set op 2 TL"), constVal<1>, effectVal}},
+    {0x22, {DIV_CMD_SCSP_OP_TL,       _("22xx: Set op 3 TL"), constVal<2>, effectVal}},
+    {0x23, {DIV_CMD_SCSP_OP_TL,       _("23xx: Set op 4 TL"), constVal<3>, effectVal}},
+    {0x24, {DIV_CMD_SCSP_OP_TL,       _("24xx: Set op 5 TL"), constVal<4>, effectVal}},
+    {0x25, {DIV_CMD_SCSP_OP_TL,       _("25xx: Set op 6 TL"), constVal<5>, effectVal}},
+    {0x30, {DIV_CMD_SCSP_OP_MDL,      _("30xx: Set op 1 mod depth (00 to 0F)"), constVal<0>, effectValAnd<0x0f>}},
+    {0x31, {DIV_CMD_SCSP_OP_MDL,      _("31xx: Set op 2 mod depth"), constVal<1>, effectValAnd<0x0f>}},
+    {0x32, {DIV_CMD_SCSP_OP_MDL,      _("32xx: Set op 3 mod depth"), constVal<2>, effectValAnd<0x0f>}},
+    {0x33, {DIV_CMD_SCSP_OP_MDL,      _("33xx: Set op 4 mod depth"), constVal<3>, effectValAnd<0x0f>}},
+    {0x34, {DIV_CMD_SCSP_OP_MDL,      _("34xx: Set op 5 mod depth"), constVal<4>, effectValAnd<0x0f>}},
+    {0x35, {DIV_CMD_SCSP_OP_MDL,      _("35xx: Set op 6 mod depth"), constVal<5>, effectValAnd<0x0f>}},
+    {0x40, {DIV_CMD_SCSP_CARRIER_WAVE, _("40xx: Set carrier waveform (0 sine, 1 saw, 2 sq, 3 tri, 4-9 organ/brass/strings/piano/flute/bass)"), effectValAnd<0x0f>}},
+    {0x41, {DIV_CMD_SCSP_MOD_WAVE,    _("41xx: Set modulator waveform (same indices as 40xx)"), effectValAnd<0x0f>}},
+    {0x43, {DIV_CMD_SCSP_FEEDBACK,    _("43xx: Set self-feedback amount (00 to 7F)"), effectValAnd<0x7f>}},
+  };
+
+  sysDefs[DIV_SYSTEM_SCSP]=new DivSysDef(
+    _("Yamaha YMF292 (SCSP)"), NULL, 0xda, 0, 8, 1, 8,
+    false, true, 0, false, (1U<<DIV_SAMPLE_DEPTH_16BIT)|(1U<<DIV_SAMPLE_DEPTH_8BIT), 0, 0,
+    _("the Saturn Custom Sound Processor. 32 slots, sample-based with FM synthesis via wavetable RAM and an on-chip programmable DSP. used in the Sega Saturn."),
+    DivChanDefFunc(stockChanDef<DIV_CH_PCM,DIV_INS_YMF292,DIV_INS_AMIGA>),
+    scspEffectHandlerMap
+  );
+
   for (int i=0; i<DIV_MAX_CHIP_DEFS; i++) {
     if (sysDefs[i]==NULL) continue;
     if (sysDefs[i]->id!=0) {
