@@ -16,7 +16,7 @@ uint8_t ym2609_noisetable[noisetablesize];
 
 void CMyFilter::makeTable()
 {
-    if(freqTable != NULL || freqTable != NULL || freqTable != NULL) return;
+    if(freqTable != NULL || gainTable != NULL || QTable != NULL) return;
 
     freqTable = new float[256];
     gainTable = new float[256];
