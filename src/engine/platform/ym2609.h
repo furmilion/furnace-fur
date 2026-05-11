@@ -29,7 +29,7 @@
 #define YM2609_NUM_REGISTERS 0x400
 
 class DivPlatformYM2609: public DivDispatch {
-  struct Channel: public SharedChannel<signed short> {
+  struct Channel: public SharedChannel {
     DivInstrumentFM state;
     DivInstrumentYM2609FM state_ym2609fm;
     DivInstrumentYM2609DSP state_ym2609dsp;
@@ -94,8 +94,8 @@ class DivPlatformYM2609: public DivDispatch {
 
     uint8_t lfoShape[2];
 
-    Channel():
-      SharedChannel<signed short>(0xff),
+    Channel(bool linear = true):
+      SharedChannel(0, linear),
       opMask(15),
       panLeft(0), //0 = max vol, 3(FM/ADPCM-B) 7(PSG) = min vol
       panRight(0), //0 = max vol, 3(FM/ADPCM-B) 7(PSG) = min vol
@@ -249,7 +249,7 @@ class DivPlatformYM2609: public DivDispatch {
     void acquire(short** buf, size_t len);
     void commitState(int ch, DivInstrument* ins);
     int dispatch(DivCommand c);
-    void* getChanState(int chan);
+    SharedChannel* getChanState(int chan);
     DivDispatchOscBuffer* getOscBuffer(int chan);
     unsigned char* getRegisterPool();
     int getRegisterPoolSize();

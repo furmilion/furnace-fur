@@ -1869,7 +1869,7 @@ void DivPlatformYM2609::notifyInsDeletion(void* ins) {
   }
 }
 
-void* DivPlatformYM2609::getChanState(int ch) {
+SharedChannel* DivPlatformYM2609::getChanState(int ch) {
   return &chan[ch];
 }
 

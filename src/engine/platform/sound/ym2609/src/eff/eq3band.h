@@ -166,7 +166,7 @@ class eq3band
         lowR.LowShelf(lowfreq, lowQ, lowgain, samplerate);
         // 中音域を持ち上げる(ピーキング)フィルタ設定(左右分)
         midL.Peaking(midfreq, midQ, midgain, samplerate);
-        midL.Peaking(midfreq, midQ, midgain, samplerate);
+        midR.Peaking(midfreq, midQ, midgain, samplerate);
         // 高音域を持ち上げる(ローシェルフ)フィルタ設定(左右分)
         highL.HighShelf(highfreq, highQ, highgain, samplerate);
         highR.HighShelf(highfreq, highQ, highgain, samplerate);
