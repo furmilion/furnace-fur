@@ -406,7 +406,8 @@ void FurnaceGUI::drawWaveEdit() {
           if (wave->len>DIV_WAVETABLE_MAX_WIDTH) wave->len=DIV_WAVETABLE_MAX_WIDTH;
           if (wave->len<1) wave->len=1;
           e->notifyWaveChange(curWave);
-          if (wavePreviewOn) e->previewWave(curWave,wavePreviewNote);
+          // if the user is playing this wave while changing the length, retrigger it.
+          if (wavePreviewOn) e->previewWave(curWave,wavePreviewNote+60);
           MARK_MODIFIED;
         }
         ImGui::SameLine();
