@@ -4758,7 +4758,7 @@ bool FurnaceGUI::loop() {
     }
 
 #ifndef NO_INTRO
-    if (firstFrame && !safeMode && renderBackend!=GUI_BACKEND_SOFTWARE) {
+    if (!recoveringGraphics && firstFrame && !safeMode && renderBackend!=GUI_BACKEND_SOFTWARE) {
       if (!tutorial.introPlayed || settings.alwaysPlayIntro==3 || (settings.alwaysPlayIntro==2 && curFileName.empty())) {
         unsigned char* introTemp=new unsigned char[intro_fur_len];
         memcpy(introTemp,intro_fur,intro_fur_len);
@@ -4798,9 +4798,11 @@ bool FurnaceGUI::loop() {
       }
     }
 
+    recoveringGraphics=false;
     // recover from dead graphics
     if (rend->isDead() || killGraphics) {
       killGraphics=false;
+      recoveringGraphics=true;
 
       logW("graphics are dead! restarting...");
       
@@ -8945,6 +8947,7 @@ FurnaceGUI::FurnaceGUI():
   orderLock(false),
   mobileEdit(false),
   killGraphics(false),
+  recoveringGraphics(false),
   safeMode(false),
   midiWakeUp(true),
   makeDrumkitMode(false),

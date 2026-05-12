@@ -1762,6 +1762,7 @@ class FurnaceGUI {
   bool orderLock;
   bool mobileEdit;
   bool killGraphics;
+  bool recoveringGraphics;
   bool safeMode;
   bool midiWakeUp;
   bool makeDrumkitMode;
