@@ -9154,7 +9154,6 @@ FurnaceGUI::FurnaceGUI():
   patManagerOpen(false),
   sysManagerOpen(false),
   clockOpen(false),
-  scspDspOpen(false),
   speedOpen(true),
   groovesOpen(false),
   xyOscOpen(false),
@@ -9527,7 +9526,8 @@ FurnaceGUI::FurnaceGUI():
   sampleCompileDispatch(0),
   sampleCompileIndex(0),
   sampleCompileSize(0),
-  warnIsOpen(false) {
+  warnIsOpen(false),
+  scspDspOpen(false) {
   // value keys
   valueKeys[SDLK_0]=0;
   valueKeys[SDLK_1]=1;
