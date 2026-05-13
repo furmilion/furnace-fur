@@ -93,9 +93,9 @@ static void ResetInterrupts(struct _SCSP *SCSP)
 {
 	UINT32 reset = SCSP->udata.data[0x22/2];
 	if (reset & 0x40)
-		SCSP->Int68kCB( (-(int32_t)SCSP)->IrqTimA);
+		SCSP->Int68kCB(-(int)SCSP->IrqTimA);
 	if (reset & 0x180)
-		SCSP->Int68kCB( (-(int32_t)SCSP)->IrqTimBC);
+		SCSP->Int68kCB(-(int)SCSP->IrqTimBC);
 }
 
 static void CheckPendingIRQ(struct _SCSP *SCSP)
