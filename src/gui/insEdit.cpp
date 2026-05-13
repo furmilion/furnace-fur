@@ -7776,7 +7776,8 @@ void FurnaceGUI::drawInsEdit() {
             ins->type==DIV_INS_NDS ||
             ins->type==DIV_INS_GBA_DMA ||
             ins->type==DIV_INS_GBA_MINMOD ||
-            ins->type==DIV_INS_SUPERVISION) {
+            ins->type==DIV_INS_SUPERVISION ||
+            ins->type==DIV_INS_YMF292) {
           insTabSample(ins);
         }
         if (ins->type==DIV_INS_N163) if (ImGui::BeginTabItem("Namco 163")) {
@@ -8089,14 +8090,19 @@ void FurnaceGUI::drawInsEdit() {
             ImGui::EndTable();
           }
           if (ins->scsp.mode==DivInstrumentSCSP::SCSP_MODE_FM) {
-            static const char* scspWaveNames[]={ "Sine","Saw","Square","Tri","Organ","Brass","Strings","Piano","Flute","Bass" };
-            static const char* scspModSourceOptions[]={ "None","Op 1","Op 2","Op 3","Op 4","Op 5","Op 6" };
+            static const char* scspModSourceOptions[]={
+              "None",
+              "Op 1","Op 2","Op 3","Op 4","Op 5","Op 6","Op 7","Op 8",
+              "Op 9","Op 10","Op 11","Op 12","Op 13","Op 14","Op 15","Op 16",
+              "Op 17","Op 18","Op 19","Op 20","Op 21","Op 22","Op 23","Op 24",
+              "Op 25","Op 26","Op 27","Op 28","Op 29","Op 30","Op 31","Op 32"
+            };
 
             ImGui::SeparatorText(_("FM Operators"));
             int opCountInt=ins->scsp.opCount;
             if (opCountInt<1) opCountInt=1;
-            if (opCountInt>6) opCountInt=6;
-            if (ImGui::SliderInt(_("Operator Count"),&opCountInt,1,6)) {
+            if (opCountInt>32) opCountInt=32;
+            if (ImGui::SliderInt(_("Operator Count"),&opCountInt,1,32)) {
               ins->scsp.opCount=(unsigned char)opCountInt;
               MARK_MODIFIED;
             }
@@ -8111,36 +8117,23 @@ void FurnaceGUI::drawInsEdit() {
                     ImGui::TableSetupColumn("c0",ImGuiTableColumnFlags_WidthStretch,0.0);
                     ImGui::TableSetupColumn("c1",ImGuiTableColumnFlags_WidthStretch,0.0);
 
-                    // Carrier / Source
+                    // Carrier flag + sample source. The SCSP doesn't have
+                    // built-in operator waveforms — every slot reads from
+                    // sound RAM, whether it's a PCM voice or an FM op. So
+                    // FM ops just point at a regular sample like PCM does.
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
                     if (ImGui::Checkbox(_("Carrier"),&op.isCarrier)) MARK_MODIFIED;
                     ImGui::TableNextColumn();
-                    bool useSample=(op.sampleId>=0);
-                    if (ImGui::Checkbox(_("Use sample"),&useSample)) {
-                      if (useSample) {
-                        // Default to sample 0 if any exist; otherwise stay built-in.
-                        op.sampleId=(e->song.sampleLen>0)?0:-1;
-                      } else {
-                        op.sampleId=-1;
-                      }
-                      MARK_MODIFIED;
-                    }
-                    // Waveform / sample picker
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    if (op.sampleId<0) {
-                      int waveIdx=op.waveform;
-                      if (waveIdx<0 || waveIdx>9) waveIdx=0;
-                      if (ImGui::Combo(_("Waveform"),&waveIdx,scspWaveNames,10)) {
-                        op.waveform=(unsigned char)waveIdx;
-                        MARK_MODIFIED;
-                      }
-                    } else {
-                      const char* curName=(op.sampleId<e->song.sampleLen)?
+                    {
+                      const char* curName=(op.sampleId>=0 && op.sampleId<e->song.sampleLen)?
                                           e->song.sample[op.sampleId]->name.c_str():
-                                          "<invalid>";
+                                          "<none>";
                       if (ImGui::BeginCombo(_("Sample"),curName)) {
+                        if (ImGui::Selectable("<none>", op.sampleId<0)) {
+                          op.sampleId=-1;
+                          MARK_MODIFIED;
+                        }
                         for (int si=0; si<e->song.sampleLen; si++) {
                           char tmp[256];
                           snprintf(tmp,sizeof(tmp),"%d: %s##scsp_op_sample_%d",
@@ -8153,8 +8146,6 @@ void FurnaceGUI::drawInsEdit() {
                         ImGui::EndCombo();
                       }
                     }
-                    ImGui::TableNextColumn();
-                    // (column 2 left empty in this row to keep two-column layout)
 
                     // Frequency: ratio (Q8.8) or fixed Hz
                     ImGui::TableNextRow();
@@ -8193,7 +8184,7 @@ void FurnaceGUI::drawInsEdit() {
                     ImGui::TableNextColumn();
                     P(CWSliderScalar(_("Level"),ImGuiDataType_U8,&op.level,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN)); rightClickable
                     ImGui::TableNextColumn();
-                    P(CWSliderScalar(_("Feedback"),ImGuiDataType_U8,&op.feedback,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN)); rightClickable
+                    P(CWSliderScalar(_("Feedback"),ImGuiDataType_U8,&op.feedback,&_ZERO,&_FIFTEEN)); rightClickable
 
                     // Mod source / Mod depth
                     ImGui::TableNextRow();
