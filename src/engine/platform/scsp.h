@@ -85,7 +85,7 @@ class DivPlatformSCSP: public DivDispatch {
     size_t sampleMemLen;
     DivMemoryComposition memCompo;
 
-    static const unsigned int RAM_SIZE = 512*1024;
+    static const unsigned int RAM_SIZE = 512*2048;
 
     // regPool layout (snapshot, refreshed lazily on getRegisterPool):
     //   0x000..0x3FF (1024)   32 slots × 16 regs × 2 bytes (BE)
