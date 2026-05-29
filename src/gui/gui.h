@@ -384,6 +384,7 @@ enum FurnaceGUIColors {
   GUI_COLOR_INSTR_SUPERVISION,
   GUI_COLOR_INSTR_UPD1771C,
   GUI_COLOR_INSTR_SID3,
+  GUI_COLOR_INSTR_SGU,
   GUI_COLOR_INSTR_UNKNOWN,
 
   GUI_COLOR_CHANNEL_BG,
@@ -645,6 +646,9 @@ enum FurnaceGUIFileDialogs {
   GUI_FILE_EXPORT_CMDSTREAM,
   GUI_FILE_EXPORT_TEXT,
   GUI_FILE_EXPORT_ROM,
+  GUI_FILE_EXPORT_COMPILED_INS,
+  GUI_FILE_EXPORT_COMPILED_INS_ONE,
+  GUI_FILE_EXPORT_COMPILED_SAMPLE,
   GUI_FILE_LOAD_MAIN_FONT,
   GUI_FILE_LOAD_HEAD_FONT,
   GUI_FILE_LOAD_PAT_FONT,
@@ -852,6 +856,8 @@ enum FurnaceGUIActions {
   GUI_ACTION_PAT_NEXT_ORDER,
   GUI_ACTION_PAT_PREV_ORDER,
   GUI_ACTION_PAT_COLLAPSE,
+  GUI_ACTION_PAT_COLLAPSE_SELECTED,
+  GUI_ACTION_PAT_EXPAND_SELECTED,
   GUI_ACTION_PAT_INCREASE_COLUMNS,
   GUI_ACTION_PAT_DECREASE_COLUMNS,
   GUI_ACTION_PAT_INTERPOLATE,
@@ -1792,6 +1798,7 @@ class FurnaceGUI {
   void* fmPreviewOPZ;
   void* fmPreviewOPZInterface;
   void* fmPreviewESFM;
+  void* fmPreviewSGU;
   String* editString;
   SDL_Event userEvent;
 
@@ -2093,6 +2100,7 @@ class FurnaceGUI {
     int s3mOPL3;
     int songNotesWrap;
     int rackShowLEDs;
+    int warnNotePassthrough;
     int sampleImportInstDetune;
     int mixerStyle;
     int mixerLayout;
@@ -2347,6 +2355,7 @@ class FurnaceGUI {
       s3mOPL3(1),
       songNotesWrap(0),
       rackShowLEDs(1),
+      warnNotePassthrough(0),
       sampleImportInstDetune(0),
       mixerStyle(1),
       mixerLayout(0),
@@ -2934,14 +2943,31 @@ class FurnaceGUI {
   DivROMExport* pendingExport;
   bool romExportAvail[DIV_ROM_MAX];
   bool romExportExists;
+  int insCompileType;
+  int sampleCompileDispatch;
+  int sampleCompileIndex;
+  size_t sampleCompileSize;
 
   // user presets window
   std::vector<int> selectedUserPreset;
 
   std::vector<String> randomDemoSong;
 
+  // used for storing warning dialog options, when appliable
+  struct WarnChoice {
+    const char* name;
+    String nameHint; // for key hint
+    int key;
+    std::function<void ()> action;
+    bool destructive;
+
+    WarnChoice(const char* name, int key, std::function<void ()> action, bool destructive=false);
+  };
+  bool warnIsOpen; // workaround for ImGui::IsPopupOpen crashing if not used in the right place
+  std::vector<WarnChoice> warnChoices;
+
   void commandExportOptions();
-  
+
   void drawExportAudio(bool onWindow=false);
   void drawExportVGM(bool onWindow=false);
   void drawExportROM(bool onWindow=false);
@@ -2951,6 +2977,7 @@ class FurnaceGUI {
 
   void drawSSGEnv(unsigned char type, const ImVec2& size);
   void drawWaveform(unsigned char type, bool opz, const ImVec2& size);
+  void drawWaveformSGU(unsigned char type, const ImVec2& size, int sampleIdx=-1);
   void drawWaveformSID3(unsigned char type, const ImVec2& size);
   void drawAlgorithm(unsigned char alg, FurnaceGUIFMAlgs algType, const ImVec2& size);
   void drawESFMAlgorithm(DivInstrumentESFM& esfm, const ImVec2& size);
@@ -2967,6 +2994,7 @@ class FurnaceGUI {
   void renderFMPreviewOPL(const DivInstrumentFM& params, int pos=0);
   void renderFMPreviewOPZ(const DivInstrumentFM& params, int pos=0);
   void renderFMPreviewESFM(const DivInstrumentFM& params, const DivInstrumentESFM& esfmParams, int pos=0);
+  void renderFMPreviewSGU(const DivInstrumentFM& params, const DivInstrumentESFM& esfmParams, const DivInstrumentSGU& sguParams, int sampleIdx, int pos=0);
 
   void VerticalText(const char* fmt, ...);
   void VerticalText(float maxSize, bool centered, const char* fmt, ...);
@@ -3271,8 +3299,8 @@ class FurnaceGUI {
 
   public:
     void editStr(String* which);
-    void showWarning(String what, FurnaceGUIWarnings type);
     void showError(String what);
+    void showWarning(String what, FurnaceGUIWarnings type);
     String getLastError();
     const char* noteNameNormal(short note);
     const char* noteName(short note);
