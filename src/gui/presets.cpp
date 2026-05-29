@@ -1061,6 +1061,7 @@ void FurnaceGUI::initSystemPresets() {
         CH(DIV_SYSTEM_PCSPKR, 1.0f, 0, "clockSel=1")
       }
     );
+    // note: PC-9801-86 has no ADPCM-B RAM
     SUB_ENTRY(
       _("NEC PC-98 (with PC-9801-86)"), { // -73 also has OPNA
         CH(DIV_SYSTEM_YM2608, 1.0f, 0, "clockSel=1\nssgVol=64"),
@@ -1145,6 +1146,7 @@ void FurnaceGUI::initSystemPresets() {
         CH(DIV_SYSTEM_PCSPKR, 1.0f, 0, "clockSel=1")
       }
     );
+    // note: PC-9801-73 has ADPCM-B RAM, PCM DAC AND DSP
     SUB_ENTRY(
       _("NEC PC-98 (with PC-9801-73)"), {
         CH(DIV_SYSTEM_YM2608, 1.0f, 0, "clockSel=1\nssgVol=64"),
@@ -3882,6 +3884,11 @@ void FurnaceGUI::initSystemPresets() {
   ENTRY(
     _("tildearrow Sound Unit"), {
       CH(DIV_SYSTEM_SOUND_UNIT, 1.0f, 0, "")
+    }
+  );
+  ENTRY(
+    _("SGU-1"), {
+      CH(DIV_SYSTEM_SGU, 1.0f, 0, "")
     }
   );
   ENTRY(

@@ -44,6 +44,10 @@ const bool isTopKey[12]={
   false, true, false, true, false, false, true, false, true, false, true, false
 };
 
+const char* baseNoteNames[12]={
+  "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+};
+
 const char* noteNames[180]={
   "c_5", "c+5", "d_5", "d+5", "e_5", "f_5", "f+5", "g_5", "g+5", "a_5", "a+5", "b_5",
   "c_4", "c+4", "d_4", "d+4", "e_4", "f_4", "f+4", "g_4", "g+4", "a_4", "a+4", "b_4",
@@ -203,6 +207,7 @@ const char* insTypes[DIV_INS_MAX+1][3]={
   {"Watara Supervision",ICON_FA_GAMEPAD,ICON_FUR_INS_SUPERVISION},
   {"NEC μPD1771C",ICON_FA_BAR_CHART,ICON_FUR_INS_UPD1771C},
   {"SID3",ICON_FA_KEYBOARD_O,ICON_FUR_INS_SID3},
+  {"SGU-1",ICON_FA_AREA_CHART,ICON_FUR_INS_SGU},
   {NULL,ICON_FA_QUESTION,ICON_FA_QUESTION}
 };
 
@@ -735,6 +740,8 @@ const FurnaceGUIActionDef guiActions[GUI_ACTION_MAX]={
   D("PAT_NEXT_ORDER", _N("Go to next order"), 0),
   D("PAT_PREV_ORDER", _N("Go to previous order"), 0),
   D("PAT_COLLAPSE", _N("Collapse channel at cursor"), 0),
+  D("PAT_COLLAPSE_SELECTED", _N("Minimize channels"), 0),
+  D("PAT_EXPAND_SELECTED", _N("Maximize channels"), 0),
   D("PAT_INCREASE_COLUMNS", _N("Increase effect columns"), 0),
   D("PAT_DECREASE_COLUMNS", _N("Decrease effect columns"), 0),
   D("PAT_INTERPOLATE", _N("Interpolate"), 0),
@@ -1102,6 +1109,7 @@ const FurnaceGUIColorDef guiColors[GUI_COLOR_MAX]={
   D(GUI_COLOR_INSTR_SUPERVISION,"",ImVec4(0.52f,1.0f,0.6f,1.0f)),
   D(GUI_COLOR_INSTR_UPD1771C,"",ImVec4(0.94f,0.52f,0.6f,1.0f)),
   D(GUI_COLOR_INSTR_SID3,"",ImVec4(0.6f,0.75f,0.6f,1.0f)),
+  D(GUI_COLOR_INSTR_SGU,"",ImVec4(0.55f,0.45f,0.85f,1.0f)),
   D(GUI_COLOR_INSTR_UNKNOWN,"",ImVec4(0.3f,0.3f,0.3f,1.0f)),
 
   D(GUI_COLOR_CHANNEL_BG,"",ImVec4(0.4f,0.6f,0.8f,1.0f)),
@@ -1293,6 +1301,7 @@ const int availableSystems[]={
   DIV_SYSTEM_YMU759,
   DIV_SYSTEM_DUMMY,
   DIV_SYSTEM_SOUND_UNIT,
+  DIV_SYSTEM_SGU,
   DIV_SYSTEM_YM2203,
   DIV_SYSTEM_YM2203_EXT,
   DIV_SYSTEM_YM2203_CSM,
@@ -1450,6 +1459,7 @@ const int chipsSpecial[]={
   DIV_SYSTEM_SFX_BEEPER_QUADTONE,
   DIV_SYSTEM_DUMMY,
   DIV_SYSTEM_SOUND_UNIT,
+  DIV_SYSTEM_SGU,
   DIV_SYSTEM_TIA,
   DIV_SYSTEM_AY8930,
   DIV_SYSTEM_POKEY,
@@ -1485,6 +1495,7 @@ const int chipsSample[]={
   DIV_SYSTEM_K007232,
   DIV_SYSTEM_GA20,
   DIV_SYSTEM_PCM_DAC,
+  DIV_SYSTEM_SGU,
   DIV_SYSTEM_ES5506,
   DIV_SYSTEM_K053260,
   DIV_SYSTEM_C140,
