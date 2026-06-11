@@ -104,6 +104,8 @@ const char* FurnaceGUI::noteName(short note) {
     return noteRelLabel;
   } else if (note==DIV_MACRO_REL) { // envelope release only
     return macroRelLabel;
+  } else if (note==DIV_NOTE_RAW) { // this shouldn't be normally visible, but is here just in case
+    return "RAW";
   } else if (note==-1) {
     return emptyLabel;
   } else if (note==DIV_NOTE_NULL_PAT) {
@@ -140,6 +142,11 @@ bool FurnaceGUI::decodeNote(const char* what, short& note) {
   }
   if (strcmp(what,"REL")==0) {
     note=DIV_MACRO_REL;
+    return true;
+  }
+  if (strcmp(what,"RAW")==0) {
+    // TODO: how are we gonna handle this raw frequency?
+    note=DIV_NOTE_RAW;
     return true;
   }
   for (int i=0; i<180; i++) {
@@ -558,10 +565,13 @@ bool FurnaceGUI::InvCheckbox(const char* label, bool* value) {
   return false;
 }
 
+// TODO: an input field for raw frequency?
 bool FurnaceGUI::NoteSelector(int* value, bool showOffRel, int octaveMin, int octaveMax) {
   bool ret=false, calcNote=false;
   char tempID[64];
-  if (*value==DIV_MACRO_REL) {
+  if (*value==DIV_NOTE_RAW) {
+    snprintf(tempID,64,"RawFreq##NRAW");
+  } else if (*value==DIV_MACRO_REL) {
     snprintf(tempID,64,"%s##MREL",macroRelLabel);
   } else if (*value==DIV_NOTE_REL) {
     snprintf(tempID,64,"%s##NREL",noteRelLabel);
@@ -602,7 +612,11 @@ bool FurnaceGUI::NoteSelector(int* value, bool showOffRel, int octaveMin, int oc
         *value=DIV_MACRO_REL;
         ret=true;
       }
-      if (*value>=DIV_NOTE_OFF && *value<=DIV_MACRO_REL) ImGui::SetItemDefaultFocus();
+      if (ImGui::Selectable("RawFreq",*value==DIV_NOTE_RAW)) {
+        *value=DIV_NOTE_RAW;
+        ret=true;
+      }
+      if (*value>=DIV_NOTE_OFF && *value<=DIV_NOTE_RAW) ImGui::SetItemDefaultFocus();
     }
     ImGui::EndCombo();
   }
@@ -1446,6 +1460,7 @@ void FurnaceGUI::noteInput(int num, int key, int vol, int chanOff) {
 
   DivPattern* pat=e->curPat[ch].getPattern(e->curOrders->ord[ch][ord],true);
   bool removeIns=false;
+  bool doNotAdvance=false;
 
   prepareUndo(GUI_UNDO_PATTERN_EDIT,UndoRegion(ord,ch,y,ord,ch,y));
 
@@ -1458,6 +1473,16 @@ void FurnaceGUI::noteInput(int num, int key, int vol, int chanOff) {
   } else if (key==GUI_NOTE_RELEASE) { // env release only
     pat->newData[y][DIV_PAT_NOTE]=DIV_MACRO_REL;
     removeIns=true;
+  } else if (key==GUI_NOTE_RAW) { // raw frequency (toggle)
+    if (pat->newData[y][DIV_PAT_NOTE]==DIV_NOTE_RAW) {
+      // restore previous note
+      pat->newData[y][DIV_PAT_NOTE]=pat->newData[y][DIV_PAT_NOTE_BUFFER];
+    } else {
+      // store note in buffer and set raw frequency
+      pat->newData[y][DIV_PAT_NOTE_BUFFER]=pat->newData[y][DIV_PAT_NOTE];
+      pat->newData[y][DIV_PAT_NOTE]=DIV_NOTE_RAW;
+    }
+    doNotAdvance=true;
   } else {
     pat->newData[y][DIV_PAT_NOTE]=num;
     if (latchIns==-2) {
@@ -1485,7 +1510,7 @@ void FurnaceGUI::noteInput(int num, int key, int vol, int chanOff) {
       pat->newData[y][DIV_PAT_VOL]=-1;
     }
   }
-  if ((!e->isPlaying() || !followPattern) && (chanOff<1 || noteInputMode!=GUI_NOTE_INPUT_CHORD)) {
+  if ((!e->isPlaying() || !followPattern) && (chanOff<1 || noteInputMode!=GUI_NOTE_INPUT_CHORD) && !doNotAdvance) {
     editAdvance();
   }
   makeUndo(GUI_UNDO_PATTERN_EDIT,UndoRegion(ord,ch,y,ord,ch,y));
@@ -1726,7 +1751,7 @@ void FurnaceGUI::keyDown(SDL_Event& ev) {
           if (it!=valueKeys.cend()) {
             int num=it->second;
             if (num<10) {
-              alterSampleMap(0,num+60);
+              alterSampleMap(0,num);
               return;
             }
           }
@@ -2018,6 +2043,7 @@ void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
           if (!instruments.empty()) {
             if (e->song.sampleLen!=sampleCountBefore) {
               e->renderSamplesP();
+              e->notifyPitchTable();
             }
             if (curFileDialog==GUI_FILE_INS_OPEN_REPLACE) {
               if (prevIns==-3) {
@@ -3137,14 +3163,6 @@ void FurnaceGUI::showWarning(String what, FurnaceGUIWarnings type) {
         }},
       };
       break;
-    case GUI_WARN_NPR:
-      warnChoices={
-        {tGotIt,kGotIt,[this]{
-          tutorial.nprFieldTrial=true;
-          commitTutorial();
-        }},
-      };
-      break;
     case GUI_WARN_GENERIC:
       warnChoices={
         {tOk,kOk,[]{}},
@@ -4256,6 +4274,7 @@ bool FurnaceGUI::loop() {
   DECLARE_METRIC(userPresets)
   DECLARE_METRIC(refPlayer)
   DECLARE_METRIC(multiInsSetup)
+  DECLARE_METRIC(backupsManager)
   DECLARE_METRIC(popup)
 
 #ifdef IS_MOBILE
@@ -4459,6 +4478,7 @@ bool FurnaceGUI::loop() {
             if (!instruments.empty()) {
               if (e->song.sampleLen!=sampleCountBefore) {
                 e->renderSamplesP();
+                e->notifyPitchTable();
               }
               if (!e->getWarnings().empty()) {
                 showWarning(e->getWarnings(),GUI_WARN_GENERIC);
@@ -4913,6 +4933,7 @@ bool FurnaceGUI::loop() {
         IMPORT_CLOSE(userPresetsOpen);
         IMPORT_CLOSE(refPlayerOpen);
         IMPORT_CLOSE(multiInsSetupOpen);
+        IMPORT_CLOSE(backupsManagerOpen);
       } else if (pendingLayoutImportStep==1) {
         // let the UI settle
       } else if (pendingLayoutImportStep==2) {
@@ -5229,6 +5250,9 @@ bool FurnaceGUI::loop() {
         if (ImGui::MenuItem(_("user systems..."),BIND_FOR(GUI_ACTION_WINDOW_USER_PRESETS))) {
           userPresetsOpen=true;
         }
+        if (ImGui::MenuItem(_("backup management..."),BIND_FOR(GUI_ACTION_WINDOW_BACKUPS_MANAGER))) {
+          backupsManagerOpen=true;
+        }
         if (ImGui::MenuItem(_("settings..."),BIND_FOR(GUI_ACTION_WINDOW_SETTINGS))) {
           syncSettings();
           settingsOpen=true;
@@ -5315,12 +5339,6 @@ bool FurnaceGUI::loop() {
         }
         ImGui::EndMenu();
       }
-      pushToggleColors(newPatternRenderer);
-      if (ImGui::SmallButton("NPR")) {
-        newPatternRenderer=!newPatternRenderer;
-      }
-      ImGui::SetItemTooltip(_("New Pattern Renderer"));
-      popToggleColors();
       ImGui::SameLine();
       ImGui::PushStyleColor(ImGuiCol_Text,uiColors[GUI_COLOR_PLAYBACK_STAT]);
       if (e->isPlaying() && settings.playbackTime) {
@@ -5374,6 +5392,8 @@ bool FurnaceGUI::loop() {
                   info=fmt::sprintf(_("Note off (release)"));
                 } else if (p->newData[cursor.y][DIV_PAT_NOTE]==DIV_MACRO_REL) {
                   info=fmt::sprintf(_("Macro release only"));
+                } else if (p->newData[cursor.y][DIV_PAT_NOTE]==DIV_NOTE_RAW) {
+                  info=fmt::sprintf(_("Raw frequency/period"));
                 } else {
                   info=fmt::sprintf(_("Note on: %s"),noteName(p->newData[cursor.y][DIV_PAT_NOTE]));
                 }
@@ -5511,6 +5531,7 @@ bool FurnaceGUI::loop() {
       MEASURE(patManager,drawPatManager());
       MEASURE(tuner,drawTuner());
       MEASURE(spectrum,drawSpectrum());
+      MEASURE(backupsManager,drawBackupsManager());
     } else {
       globalWinFlags=0;
       ImGui::DockSpaceOverViewport(0,NULL,lockLayout?(ImGuiDockNodeFlags_NoWindowMenuButton|ImGuiDockNodeFlags_NoMove|ImGuiDockNodeFlags_NoResize|ImGuiDockNodeFlags_NoCloseButton|ImGuiDockNodeFlags_NoDocking|ImGuiDockNodeFlags_NoDockingSplit|ImGuiDockNodeFlags_NoDockingSplitOther):0);
@@ -5558,6 +5579,7 @@ bool FurnaceGUI::loop() {
       MEASURE(userPresets,drawUserPresets());
       MEASURE(refPlayer,drawRefPlayer());
       MEASURE(multiInsSetup,drawMultiInsSetup());
+      MEASURE(backupsManager,drawBackupsManager());
 
     }
 
@@ -6112,6 +6134,7 @@ bool FurnaceGUI::loop() {
               }
               if (e->song.sampleLen!=sampleCountBefore) {
                 e->renderSamplesP();
+                e->notifyPitchTable();
               }
               if (warn) {
                 if (instruments.empty()) {
@@ -6152,6 +6175,7 @@ bool FurnaceGUI::loop() {
               if (!instruments.empty()) {
                 if (e->song.sampleLen!=sampleCountBefore) {
                   e->renderSamplesP();
+                  e->notifyPitchTable();
                 }
                 if (!e->getWarnings().empty()) {
                   showWarning(e->getWarnings(),GUI_WARN_GENERIC);
@@ -7834,21 +7858,12 @@ bool FurnaceGUI::init() {
   syncSettings();
   syncTutorial();
 
-  if (!tutorial.nprFieldTrial && newPatternRenderer) {
-    showWarning(_("welcome to the New Pattern Renderer!\nit should be lighter on your CPU.\n\nif you find an issue, you can go back to the old pattern renderer by clicking the NPR button (next to Help).\nmake sure to report it!\n\nthank you!"),GUI_WARN_NPR);
-  }
-
   recentFile.clear();
   for (int i=0; i<settings.maxRecentFile; i++) {
     String r=e->getConfString(fmt::sprintf("recentFile%d",i),"");
     if (!r.empty()) {
       recentFile.push_back(r);
     }
-  }
-
-  if (!settings.persistFadeOut) {
-    audioExportOptions.loops=settings.exportLoops;
-    audioExportOptions.fadeOut=settings.exportFadeOut;
   }
 
   initSystemPresets();
@@ -8424,6 +8439,8 @@ bool FurnaceGUI::init() {
   audioLoadFormats.push_back(_("all files"));
   audioLoadFormats.push_back("*");
 
+  initSettings();
+
   logI("done!");
   return true;
 }
@@ -8490,6 +8507,7 @@ void FurnaceGUI::syncState() {
   userPresetsOpen=e->getConfBool("userPresetsOpen",false);
   refPlayerOpen=e->getConfBool("refPlayerOpen",false);
   multiInsSetupOpen=e->getConfBool("multiInsSetupOpen",false);
+  backupsManagerOpen=e->getConfBool("backupsManagerOpen",false);
 
   insListDir=e->getConfBool("insListDir",false);
   waveListDir=e->getConfBool("waveListDir",false);
@@ -8673,6 +8691,7 @@ void FurnaceGUI::commitState(DivConfig& conf) {
   conf.set("userPresetsOpen",userPresetsOpen);
   conf.set("refPlayerOpen",refPlayerOpen);
   conf.set("multiInsSetupOpen",multiInsSetupOpen);
+  conf.set("backupsManagerOpen",backupsManagerOpen);
 
   // commit dir state
   conf.set("insListDir",insListDir);
@@ -8707,10 +8726,8 @@ void FurnaceGUI::commitState(DivConfig& conf) {
   conf.set("orderEditMode",orderEditMode);
   conf.set("noteInputMode",(int)noteInputMode);
   conf.set("filePlayerSync",filePlayerSync);
-  if (settings.persistFadeOut) {
-    conf.set("exportLoops",audioExportOptions.loops);
-    conf.set("exportFadeOut",audioExportOptions.fadeOut);
-  }
+  conf.set("exportLoops",audioExportOptions.loops);
+  conf.set("exportFadeOut",audioExportOptions.fadeOut);
 
   // commit oscilloscope state
   conf.set("oscZoom",oscZoom);
@@ -8869,6 +8886,9 @@ bool FurnaceGUI::finish(bool saveConfig) {
     }
   }
 
+  for (size_t i=0; i<allSettings.size(); i++)
+    allSettings[i].deleteRecursive();
+
   return true;
 }
 
@@ -8941,7 +8961,6 @@ FurnaceGUI::FurnaceGUI():
   replacePendingSample(false),
   displayExportingROM(false),
   displayExportingCS(false),
-  newPatternRenderer(true),
   quitNoSave(false),
   changeCoarse(false),
   orderLock(false),
@@ -9031,6 +9050,8 @@ FurnaceGUI::FurnaceGUI():
   totalLength(0.0),
   curProgress(0.0f),
   totalFiles(0),
+  curCategory(NULL),
+  settingsShowItemResults(true),
   localeRequiresJapanese(false),
   localeRequiresChinese(false),
   localeRequiresChineseTrad(false),
@@ -9128,6 +9149,7 @@ FurnaceGUI::FurnaceGUI():
   userPresetsOpen(false),
   refPlayerOpen(false),
   multiInsSetupOpen(false),
+  backupsManagerOpen(false),
   cvNotSerious(false),
   shortIntro(false),
   insListDir(false),

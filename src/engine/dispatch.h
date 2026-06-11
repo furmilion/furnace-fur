@@ -520,7 +520,7 @@ struct SharedChannel {
    *   chan[i].handleArp();
    * } else if (chan[i].std.arp.had) {
    *   if (!chan[i].inPorta) {
-   *     chan[i].baseFreq=NOTE_PERIODIC(parent->calcArp(chan[i].note,chan[i].std.arp.val));
+   *     chan[i].baseFreq=chan[i].calcBaseFreq(parent->calcArp(chan[i].note,chan[i].std.arp.val));
    *   }
    *   chan[i].freqChanged=true;
    * }
@@ -1624,9 +1624,6 @@ class DivDispatch {
   }
 
 // NOTE: these definitions are deprecated. see DivPitchTable.
-#define NOTE_PERIODIC(x) round(parent->calcBaseFreq(chipClock,CHIP_DIVIDER,x,true))
-#define NOTE_PERIODIC_NOROUND(x) parent->calcBaseFreq(chipClock,CHIP_DIVIDER,x,true)
-#define NOTE_FREQUENCY(x) parent->calcBaseFreq(chipClock,CHIP_FREQBASE,x,false)
 #define NOTE_FNUM_BLOCK(x,bits,blk) parent->calcBaseFreqFNumBlock(chipClock,CHIP_FREQBASE,x,bits,blk)
 
 // this is for volume scaling calculation.
@@ -1652,6 +1649,7 @@ class DivDispatch {
 #define NEW_ARP_STRAT (parent->song.compatFlags.linearPitch && !parent->song.compatFlags.oldArpStrategy)
 
 // this is used by DIV_CMD_LEGATO handling code in some dispatches for compatibility.
-#define HACKY_LEGATO_MESS chan[c.chan].std.arp.will && !chan[c.chan].std.arp.mode && !NEW_ARP_STRAT
+// it checks whether the current arp macro step is relative. if so, the arp macro value must be applied.
+#define HACKY_LEGATO_MESS (chan[c.chan].std.arp.will && ((chan[c.chan].std.arp.val&0xc0000000)==0 || (chan[c.chan].std.arp.val&0xc0000000)==0xc0000000) && !NEW_ARP_STRAT)
 
 #endif
