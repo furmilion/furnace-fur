@@ -1955,13 +1955,28 @@ void FurnaceGUI::initSettings() {
         &settings.headFontSize,
         {3,96,1,3}
       ),
+      SettingEntry::InputInt(
+        _N("Header font size (2nd level)"),"headFontSize2",
+        &settings.headFontSize2,
+        {3,96,1,3}
+      ),
+      SettingEntry::InputInt(
+        _N("Header font size (3rd level)"),"headFontSize3",
+        &settings.headFontSize3,
+        {3,96,1,3}
+      ),
+      SettingEntry::InputInt(
+        _N("Header font size (4th level)"),"headFontSize4",
+        &settings.headFontSize4,
+        {3,96,1,3}
+      ),
       SettingEntry::ComboInt(
         _N("Pattern font"),"patFont",
         &settings.patFont,{
-          {"IBM Plex Sans",0},
-          {"Liberation Sans",1},
-          {"Mononoki",2},
-          {"PT Mono",3},
+          {"IBM Plex Mono",0},
+          {"Mononoki",1},
+          {"PT Mono",2},
+          {"Proggy Clean",3},
           {"GNU Unifont",4},
           {_N("<Use system font>"),5},
           {_N("<Custom...>"),6}
@@ -2983,9 +2998,14 @@ void FurnaceGUI::initSettings() {
             ImGui::SameLine();
             ImGui::Text("%s",SDL_GetScancodeName((SDL_Scancode)i.scan));
             ImGui::TableNextColumn();
-            if (i.val==102) {
-              if (ImGui::Button(_("Macro release##SNType"))) {
+            if (i.val==103) {
+              if (ImGui::Button(_("Toggle raw note##SNType"))) {
                 i.val=0;
+                ret=true;
+              }
+            } else if (i.val==102) {
+              if (ImGui::Button(_("Macro release##SNType"))) {
+                i.val=103;
                 ret=true;
               }
             } else if (i.val==101) {

@@ -569,6 +569,10 @@ struct SharedChannel {
    * @param note the note.
    */
   int calcBaseFreq(int note) {
+    rawFreq=note&DIV_NOTE_RAW_FLAG;
+    if (rawFreq) {
+      return note&(~DIV_NOTE_RAW_FLAG);
+    }
     if (pitchTable==NULL) return 0;
     return pitchTable->getBase(note);
   }
@@ -1391,6 +1395,13 @@ class DivDispatch {
      * @return output gain fron 0.0 to 1.0.
      */
     virtual float getGain(int ch, int vol);
+
+    /**
+     * get the highest period or frequency a channel is capable of.
+     * @param ch the chip channel.
+     * @return the maximum period/frequency. 0 if the frequency is fixed.
+     */
+    virtual unsigned int getMaxFreq(int ch);
 
     /**
      * get the lowest note in a portamento.
