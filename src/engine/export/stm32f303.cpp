@@ -201,6 +201,8 @@ void write_command(int chan, DivRegWrite& w, std::vector<uint8_t>& our_data)
     }
     case WRITE_FRAME_DELAY:
     {
+      if(w.val == 0) break;
+      
       if(w.val < 16)
       {
         WRITE_8BITS(CMD_WAIT_SHORT | (w.val & 0xf));
@@ -363,10 +365,18 @@ void DivExportF303::run()
 
     int curr_order = 0;
 
-    int frame_delay[F303_NUM_CHANNELS] = { 1 };
+    int frame_delay[F303_NUM_CHANNELS];
+    bool written_one_tick_delay[F303_NUM_CHANNELS];
 
-    while (!done) {
-      if (e->nextTick(false,true) || !e->playing) {
+    for (int i = 0; i < F303_NUM_CHANNELS; i++)
+    {
+      frame_delay[i] = 1;
+      written_one_tick_delay[i] = false;
+    }
+
+    while (!done) 
+    {
+      if (e->nextTick() || !e->playing) {
         done=true;
         for (int i=0; i<e->song.systemLen; i++) {
           e->disCont[i].dispatch->getRegisterWrites().clear();
@@ -393,43 +403,54 @@ void DivExportF303::run()
 
           int channel = ((w.addr >> 8) & 0xFF);
 
-          if(channel < F303_NUM_CHANNELS && !has_writes[channel])
+          if(channel < F303_NUM_CHANNELS)
           {
             has_writes[channel] = true;
           }
         }
       }
 
-      for(int i = 0; i < F303_NUM_CHANNELS; i++)
-      {
-        int patt_index = s->orders.ord[i][curr_order];
-
-        if(has_writes[i] && !pattern_written[i][patt_index])
-        {
-          patterns[i][patt_index].data.push_back(DivRegWrite(WRITE_FRAME_DELAY, frame_delay[i])); //write delay
-        }
-
-        if(has_writes[i])
-        {
-          frame_delay[i] = 1;
-        }
-        else
-        {
-          frame_delay[i]++;
-        }
-      }
-
-      if(curr_order != order)
+      if(curr_order != order && row == 1) //why the fuck row needs to shift by 1????
       {
         for(int i = 0; i < F303_NUM_CHANNELS; i++)
         {
           int patt_index = s->orders.ord[i][curr_order];
-          patterns[i][patt_index].data.push_back(DivRegWrite(WRITE_END, 0)); //write pattern end marker
+
+          if(!pattern_written[i][patt_index])
+          {
+            if((frame_delay[i] > 1 && written_one_tick_delay[i] == false) || (frame_delay[i] > 2 && written_one_tick_delay[i] == true))
+            {
+              patterns[i][patt_index].data.push_back(DivRegWrite(WRITE_FRAME_DELAY, (written_one_tick_delay[i] ? (frame_delay[i] - 1) : frame_delay[i]))); //write delay
+            }
+            
+            written_one_tick_delay[i] = false;
+            patterns[i][patt_index].data.push_back(DivRegWrite(WRITE_END, 0)); //write pattern end marker
+          }
+
           pattern_written[i][patt_index] = true; //so we do not write duplicates
+
+          frame_delay[i] = 1;
         }
 
         curr_order = order;
       }
+
+      for(int i = 0; i < F303_NUM_CHANNELS; i++)
+      {
+        int patt_index = s->orders.ord[i][curr_order];
+
+        if(!pattern_written[i][patt_index])
+        {
+          if(has_writes[i] && frame_delay[i] > 1)
+          {
+            patterns[i][patt_index].data.push_back(DivRegWrite(WRITE_FRAME_DELAY, (written_one_tick_delay[i] ? (frame_delay[i] - 1) : frame_delay[i]))); //write delay
+            written_one_tick_delay[i] = false;
+            frame_delay[i] = 1;
+          }
+        }
+      }
+
+      
 
       if (writes.size() > 0) 
       {
@@ -534,6 +555,29 @@ void DivExportF303::run()
         }
 
         writes.clear();
+      }
+
+      for(int i = 0; i < F303_NUM_CHANNELS; i++)
+      {
+        int patt_index = s->orders.ord[i][curr_order];
+
+        if(!pattern_written[i][patt_index])
+        {
+          if(has_writes[i])
+          {
+            if(frame_delay[i] == 1)
+            {
+              patterns[i][patt_index].data.push_back(DivRegWrite(WRITE_FRAME_DELAY, frame_delay[i])); //write delay
+              written_one_tick_delay[i] = true;
+            }
+            
+            frame_delay[i] = 1;
+          }
+          else
+          {
+            frame_delay[i]++;
+          }
+        }
       }
     }
 

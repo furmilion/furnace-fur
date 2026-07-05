@@ -462,7 +462,10 @@ void DivPlatformF303::tick(bool sysTick)
             rWrite((i << 8) | WRITE_NOISE_LFSR_BITS, chan[i].lfsr_bits);
           }
           
-          rWrite((i << 8) | WRITE_NOISE_LFSR_VALUE, chan[i].lfsr);
+          if(!chan[i].std.phaseReset.will)
+          {
+            rWrite((i << 8) | WRITE_NOISE_LFSR_VALUE, chan[i].lfsr);
+          }
         }
       }
       if (chan[i].keyOff)
