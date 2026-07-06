@@ -19,6 +19,9 @@ void f303_reset(STM32F303* stm)
     for(int i = 0; i < F303_NUM_CHANNELS - 1; i++)
     {
         muted[i] = stm->chan[i].muted;
+
+        stm->chan[i].pan_left = 0xff;
+        stm->chan[i].pan_right = 0xff;
     }
 
     noise_muted = stm->noise.muted;
@@ -34,6 +37,9 @@ void f303_reset(STM32F303* stm)
 
     stm->noise.lfsr = 0x3fffffff;
     stm->noise.lfsr_taps = 1 | (1 << 23) | (1 << 25) | (1 << 29); //https://docs.amd.com/v/u/en-US/xapp052 for 30 bits: 30, 6, 4, 1; but inverted since our LFSR is moving in different direction
+
+    stm->noise.pan_left = 0xff;
+    stm->noise.pan_right = 0xff;
 }
 
 void f303_clock(STM32F303* stm)
@@ -76,6 +82,8 @@ void f303_clock(STM32F303* stm)
 
         if(!stm->chan[i].muted && stm->chan[i].freq > 0)
         {
+            //stm->output_l += (int)(((int)stm->chan[i].chan_output) * (int)stm->chan[i].pan_left / 256) * 32;
+            //stm->output_r += (int)(((int)stm->chan[i].chan_output) * (int)stm->chan[i].pan_right / 256) * 32;
             stm->output_l += (int)(((int)stm->chan[i].chan_output) * (int)stm->chan[i].pan_left / 256) * 32;
             stm->output_r += (int)(((int)stm->chan[i].chan_output) * (int)stm->chan[i].pan_right / 256) * 32;
         }
