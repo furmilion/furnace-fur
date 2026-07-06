@@ -565,7 +565,7 @@ void DivExportF303::run()
         {
           if(has_writes[i])
           {
-            if(frame_delay[i] == 1)
+            if(frame_delay[i] == 1 && (curr_order != order && row == 0))
             {
               patterns[i][patt_index].data.push_back(DivRegWrite(WRITE_FRAME_DELAY, frame_delay[i])); //write delay
               written_one_tick_delay[i] = true;
