@@ -283,7 +283,7 @@ void DivExportF303::run()
 
   for(int i = 0; i < F303_NUM_CHANNELS; i++)
   {
-    for(int j = 0; j < F303_NUM_CHANNELS; j++)
+    for(int j = 0; j < 256; j++)
     {
       pattern_written[i][j] = false;
     }
@@ -705,6 +705,7 @@ void DivExportF303::run()
           if(s->orders.ord[i][o] == j)
           {
             WRITE_32BITS_AT(ord_addr + i * 4 * s->ordersLen + o * 4, (uint32_t)our_data.size());
+            logAppend(fmt::sprintf("ch %d ord %d pattern data offset %08X", i+1, o, (uint32_t)our_data.size()));
 
             if(patterns[i][j].data.size() == 0) //empty pattern but is used
             //write one END command
