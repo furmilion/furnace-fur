@@ -1227,8 +1227,8 @@ const DivMemoryComposition* DivPlatformSCSP::getMemCompo(int index) {
 void DivPlatformSCSP::renderSamples(int sysID) {
   if (sampleMem==NULL) return;
   memset(sampleMem,0,RAM_SIZE);
-  memset(sampleOff,0,65536*sizeof(unsigned short));
-  memset(sampleStored,0,65536*sizeof(unsigned short));
+  memset(sampleOff,0,65536*sizeof(unsigned int));
+  memset(sampleStored,0,65536*sizeof(unsigned int));
   memset(sampleLoaded,0,65536*sizeof(bool));
   sampleMemLen=0;
 
@@ -1262,7 +1262,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
       logW("SCSP RAM nearly full: truncating sample %d (%s) from %d to %d frames",
            i,s->name.c_str(),sampleLength,(avail&~1)/2);
       byteLength=avail&~1;  // even byte count
-      sampleLength=byteLength/2;
+      sampleLength=byteLength;
     }
     memcpy(sampleMem+memPos,src,byteLength);
     sampleOff[i]=(unsigned int)memPos;
