@@ -1227,8 +1227,8 @@ const DivMemoryComposition* DivPlatformSCSP::getMemCompo(int index) {
 void DivPlatformSCSP::renderSamples(int sysID) {
   if (sampleMem==NULL) return;
   memset(sampleMem,0,RAM_SIZE);
-  memset(sampleOff,0,65536*sizeof(unsigned int));
-  memset(sampleStored,0,65536*sizeof(unsigned int));
+  memset(sampleOff,0,65536*sizeof(unsigned short));
+  memset(sampleStored,0,65536*sizeof(unsigned short));
   memset(sampleLoaded,0,65536*sizeof(bool));
   sampleMemLen=0;
 
