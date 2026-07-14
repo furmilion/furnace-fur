@@ -80,10 +80,10 @@ void DivPlatformSegaPCM::tick(bool sysTick) {
 
     if (NEW_ARP_STRAT) {
       chan[i].handleArp();
-      if (chan[i].std.arp.had) {
+      if (chan[i].std.arp.had && !chan[i].rawFreq) {
         if (chan[i].freqChanged) chan[i].pcm.freq=-1;
       }
-    } else if (chan[i].std.arp.had) {
+    } else if (chan[i].std.arp.had && !chan[i].rawFreq) {
       if (!chan[i].inPorta) {
         chan[i].baseFreq=chan[i].calcBaseFreq(parent->calcArp(chan[i].note,chan[i].std.arp.val));
       }
@@ -124,6 +124,7 @@ void DivPlatformSegaPCM::tick(bool sysTick) {
       // TODO: consider oldSlides
       chan[i].freq=chan[i].calcFreq();
 
+      // TODO: convert 20xx effect to raw frequency notes?
       if (chan[i].pcm.freq==-1) {
         chan[i].pcm.freq=chan[i].freq;
         rWrite(7+(i<<3),chan[i].pcm.freq);
