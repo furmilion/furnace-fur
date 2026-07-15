@@ -1245,7 +1245,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
     }
     // store as 16-bit signed PCM (SCSP native format)
     int sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT);
-    int byteLength=sampleLength*2;
+    int byteLength=sampleLength;
     if (byteLength<2) continue;
     short* src=s->data16;
     if (src==NULL) continue;
@@ -1260,15 +1260,15 @@ void DivPlatformSCSP::renderSamples(int sysID) {
       // hardware, so a sample too large for SCSP RAM was never going
       // to play back in full anyway. Loud warning so the user knows.
       logW("SCSP RAM nearly full: truncating sample %d (%s) from %d to %d frames",
-           i,s->name.c_str(),sampleLength,(avail&~1)/2);
+           i,s->name.c_str(),sizeof(src),(avail&~1)/2);
       byteLength=avail&~1;  // even byte count
       sampleLength=byteLength;
     }
-    memcpy(sampleMem+memPos,src,byteLength);
+    memcpy(sampleMem+memPos,src,sizeof(src));
     sampleOff[i]=(unsigned short)memPos;
     sampleStored[i]=(unsigned short)sampleLength;
     sampleLoaded[i]=true;
-    memCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"Sample",i,memPos,memPos+byteLength));
+    memCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"Sample",i,memPos,memPos+sizeof(src)));
     memPos+=byteLength;
   }
   sampleMemLen=memPos;
