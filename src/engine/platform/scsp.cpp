@@ -1249,7 +1249,10 @@ void DivPlatformSCSP::renderSamples(int sysID) {
     //if (byteLength<2) continue;
     short* src=s->data16;
     if (src==NULL) continue;
+	
 	int sampleLength;
+	int length;
+	
 	unsigned char* src=(unsigned char*)s->getCurBuf();
     switch (s->depth) {
       case DIV_SAMPLE_DEPTH_8BIT:
