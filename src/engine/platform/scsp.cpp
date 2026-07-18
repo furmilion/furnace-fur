@@ -1249,6 +1249,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
     //if (byteLength<2) continue;
     short* src=s->data16;
     if (src==NULL) continue;
+	int sampleLength;
 	unsigned char* src=(unsigned char*)s->getCurBuf();
     switch (s->depth) {
       case DIV_SAMPLE_DEPTH_8BIT:
@@ -1285,7 +1286,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
     sampleStored[i]=(unsigned short)sampleLength;
     sampleLoaded[i]=true;
     memCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"Sample",i,memPos,memPos+sampleLength));
-    memPos+=byteLength;
+    memPos+=sampleLength;
   }
   sampleMemLen=memPos;
   memCompo.used=memPos;
