@@ -1244,11 +1244,26 @@ void DivPlatformSCSP::renderSamples(int sysID) {
       continue;
     }
     // store as 16-bit signed PCM (SCSP native format)
-    int sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT);
-    int byteLength=sampleLength;
-    if (byteLength<2) continue;
+    // int sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT);
+    //int byteLength=sampleLength;
+    //if (byteLength<2) continue;
     short* src=s->data16;
     if (src==NULL) continue;
+	unsigned char* src=(unsigned char*)s->getCurBuf();
+    switch (s->depth) {
+      case DIV_SAMPLE_DEPTH_8BIT:
+        sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_8BIT);
+        length=sampleLength+1;
+        break;
+	  case DIV_SAMPLE_DEPTH_16BIT:
+        sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT);
+        length=sampleLength+2;
+      default:
+        sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_8BIT);
+        length=sampleLength+1;
+        src=(unsigned char*)s->data8;
+        break;
+    }
     int avail=(int)RAM_SIZE-(int)memPos;
     if (avail<2) {
       logW("SCSP RAM full, sample %d (%s) skipped",
@@ -1260,15 +1275,16 @@ void DivPlatformSCSP::renderSamples(int sysID) {
       // hardware, so a sample too large for SCSP RAM was never going
       // to play back in full anyway. Loud warning so the user knows.
       logW("SCSP RAM nearly full: truncating sample %d (%s) from %d to %d frames",
-           i,s->name.c_str(),sizeof(*src),(avail&~1)/2);
-      byteLength=avail&~1;  // even byte count
-      sampleLength=byteLength;
+           i,s->name.c_str(),sampleLength,(avail&~1));
+      //byteLength=avail&~1;  // even byte count
+      sampleLength=avail&~1;  // even byte count
+      //sampleLength=byteLength;
     }
-    memcpy(sampleMem+memPos,src,sizeof(*src));
+    memcpy(sampleMem+memPos,src,sampleLength);
     sampleOff[i]=(unsigned short)memPos;
     sampleStored[i]=(unsigned short)sampleLength;
     sampleLoaded[i]=true;
-    memCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"Sample",i,memPos,memPos+sizeof(*src)));
+    memCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"Sample",i,memPos,memPos+sampleLength));
     memPos+=byteLength;
   }
   sampleMemLen=memPos;
