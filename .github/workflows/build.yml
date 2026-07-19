@@ -2,16 +2,16 @@ name: Build furnace
 
 on:
   push:
-    branches: master
+    branches: ['*']
   pull_request:
-    branches: master
+    branches: ['*']
 
 defaults:
   run:
     shell: bash
 
 env:
-  BUILD_TYPE: Debug
+  BUILD_TYPE: Release
 
 jobs:
   build:
@@ -331,7 +331,6 @@ jobs:
         tar -zcv -f ../${{ steps.package-identify.outputs.filename }} furnace
 
     - name: Upload artifact
-      if: ${{ github.repository == 'tildearrow/furnace' && github.ref_name == 'master' }}
       uses: actions/upload-artifact@v7.0.1
       with:
         name: ${{ steps.package-identify.outputs.id }}
