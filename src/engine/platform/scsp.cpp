@@ -1258,14 +1258,14 @@ void DivPlatformSCSP::renderSamples(int sysID) {
     switch (s->depth) {
       case DIV_SAMPLE_DEPTH_8BIT:
         sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_8BIT);
-        length=sampleLength+1;
+        //length=sampleLength+1;
         break;
 	  case DIV_SAMPLE_DEPTH_16BIT:
         sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT);
-        length=sampleLength+2;
+        //length=sampleLength+2;
       default:
         sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_8BIT);
-        length=sampleLength+1;
+        //length=sampleLength+1;
         src=(unsigned char*)s->data8;
         break;
     }
