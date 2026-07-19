@@ -1287,8 +1287,8 @@ void DivPlatformSCSP::renderSamples(int sysID) {
       //sampleLength=byteLength;
     }
     memcpy(sampleMem+memPos,src,sampleLength);
-    sampleOff[i]=(unsigned short)memPos;
-    sampleStored[i]=(unsigned short)sampleLength;
+    sampleOff[i]=memPos;
+    sampleStored[i]=sampleLength;
     sampleLoaded[i]=true;
     memCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"Sample",i,memPos,memPos+sampleLength));
     memPos+=sampleLength;
