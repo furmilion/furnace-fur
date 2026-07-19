@@ -1248,12 +1248,13 @@ void DivPlatformSCSP::renderSamples(int sysID) {
     //int byteLength=sampleLength;
     //if (byteLength<2) continue;
     //short* src=s->data16;
-    if (src==NULL) continue;
 	
 	int sampleLength;
 	int length;
 	
 	unsigned char* src=(unsigned char*)s->getCurBuf();
+	if (src==NULL) continue;
+	
     switch (s->depth) {
       case DIV_SAMPLE_DEPTH_8BIT:
         sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_8BIT);
