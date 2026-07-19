@@ -1247,7 +1247,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
     // int sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT);
     //int byteLength=sampleLength;
     //if (byteLength<2) continue;
-    short* src=s->data16;
+    //short* src=s->data16;
     if (src==NULL) continue;
 	
 	int sampleLength;
@@ -1274,7 +1274,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
            i,s->name.c_str());
       continue;
     }
-    if (byteLength>avail) {
+    if (sampleLength>avail) {
       // Truncate to fit. The Saturn has the same 512KB limit on real
       // hardware, so a sample too large for SCSP RAM was never going
       // to play back in full anyway. Loud warning so the user knows.
