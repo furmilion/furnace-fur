@@ -1250,7 +1250,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
     //short* src=s->data16;
 	
 	int sampleLength;
-	int length;
+	//int length;
 	
 	unsigned char* src=(unsigned char*)s->getCurBuf();
 	if (src==NULL) continue;
