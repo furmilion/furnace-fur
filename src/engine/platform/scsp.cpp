@@ -1264,7 +1264,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
         sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT);
 		break;
       default:
-        sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_8BIT);
+        int sampleLengthPre=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_8BIT);
 		sampleLength = sampleLengthPre%2?sampleLengthPre:sampleLengthPre - 1;
         src=(unsigned char*)s->data8;
         break;
