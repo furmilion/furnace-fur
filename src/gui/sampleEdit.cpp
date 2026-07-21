@@ -576,11 +576,14 @@ void FurnaceGUI::drawSampleEdit() {
             }
             break;
           case DIV_SYSTEM_MULTIPCM:
-          case DIV_SYSTEM_SCSP:
             if (sample->samples>65535) {
               SAMPLE_WARN(warnLength,_("MultiPCM: maximum sample length is 65535"));
             }
             break;
+          case DIV_SYSTEM_SCSP:
+            if (sample->samples>65535) {
+              SAMPLE_WARN(warnLength,_("SCSP: maximum sample length is 65535"));
+            }
           default:
             break;
         }
