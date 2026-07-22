@@ -594,8 +594,11 @@ void FurnaceGUI::drawSampleEdit() {
 				  if (sample->samples%2) {
                     SAMPLE_WARN(warnLength,_("SCSP: sample is not padded to 2 bytes!"));
                   }
+				default:
+				  break;
 			    }
-			}
+			  }
+			  break;
           default:
             break;
         }
