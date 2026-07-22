@@ -1244,14 +1244,12 @@ void DivPlatformSCSP::renderSamples(int sysID) {
       continue;
     }
     // store as 16-bit signed PCM (SCSP native format)
-    // int sampleLength=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT);
-    //int byteLength=sampleLength;
-    //if (byteLength<2) continue;
-    //short* src=s->data16;
+	
+	//// fur's note: while SCSP's native fmt is 16-bit BE,
+	//// it as well supports 8-bit so i implemented some logic to allow usage of that
 	
 	int sampleLength;
 	int sampleLengthPre = 0;
-	//int length;
 	
 	unsigned char* src=(unsigned char*)s->getCurBuf();
 	if (src==NULL) continue;
@@ -1262,7 +1260,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
 		sampleLength = MIN(65535, sampleLengthPre%2?sampleLengthPre-1:sampleLengthPre);
         break;
 	  case DIV_SAMPLE_DEPTH_16BIT:
-        sampleLength=MIN(65535, s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT));
+        sampleLength=MIN(131071, s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT));
 		break;
       default:
 		sampleLengthPre=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_8BIT);
@@ -1293,6 +1291,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
     memCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"Sample",i,memPos,memPos+sampleLength));
     memPos+=sampleLength;
   }
+  //memCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_ECHO,"Ring Buffer",-1,(0xf800-echoDelay*2048),echoDelay==0?0xf804:0xf800));
   sampleMemLen=memPos;
   memCompo.used=memPos;
   memCompo.capacity=RAM_SIZE;

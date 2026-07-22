@@ -581,9 +581,21 @@ void FurnaceGUI::drawSampleEdit() {
             }
             break;
           case DIV_SYSTEM_SCSP:
-            if (sample->samples>65535) {
-              SAMPLE_WARN(warnLength,_("SCSP: maximum sample length is 65535"));
-            }
+		    switch (sample->depth) {
+				case DIV_SAMPLE_DEPTH_16BIT: {
+                  if (sample->samples>65535) {
+                    SAMPLE_WARN(warnLength,_("SCSP: maximum 16 bit PCM sample length is 65535"));
+                  }
+			    }
+				case DIV_SAMPLE_DEPTH_8BIT: {
+                  if (sample->samples>131071) {
+                    SAMPLE_WARN(warnLength,_("SCSP: maximum 8 bit PCM sample length is 131070"));
+                  }
+				  if (sample->samples%2) {
+                    SAMPLE_WARN(warnLength,_("SCSP: sample is not padded to 2 bytes!"));
+                  }
+			    }
+			}
           default:
             break;
         }
