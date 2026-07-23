@@ -641,10 +641,9 @@ bool FurnaceGUI::NoteSelector(int* value, bool showOffRel, int octaveMin, int oc
   return ret;
 }
 
-bool FurnaceGUI::LocalizedComboGetter(void* data, int idx, const char** out_text) {
+const char* FurnaceGUI::LocalizedComboGetter(void* data, int idx) {
   const char* const* items=(const char* const*)data;
-  if (out_text) *out_text=_(items[idx]);
-  return true;
+  return _(items[idx]);
 }
 
 void FurnaceGUI::sameLineMaybe(float width) {
@@ -664,8 +663,7 @@ const char* FurnaceGUI::getSystemName(DivSystem which) {
 }
 
 void FurnaceGUI::updateScroll(int amount) {
-  float lineHeight=round(PAT_FONT_SIZE+2*dpiScale);
-  nextScroll=lineHeight*amount;
+  nextScroll=patLineHeight*amount;
   haveHitBounds=false;
 }
 
@@ -675,14 +673,12 @@ void FurnaceGUI::updateScrollRaw(float amount) {
 }
 
 void FurnaceGUI::addScroll(int amount) {
-  float lineHeight=round(PAT_FONT_SIZE+2*dpiScale);
-  nextAddScroll=lineHeight*amount;
+  nextAddScroll=patLineHeight*amount;
   haveHitBounds=false;
 }
 
 void FurnaceGUI::addScrollX(int amount) {
-  float lineHeight=round(PAT_FONT_SIZE+2*dpiScale);
-  nextAddScrollX=lineHeight*amount;
+  nextAddScrollX=patLineHeight*amount;
   haveHitBounds=false;
 }
 
@@ -9553,6 +9549,7 @@ FurnaceGUI::FurnaceGUI():
   curWindowLast(GUI_WINDOW_NOTHING),
   curWindowThreadSafe(GUI_WINDOW_NOTHING),
   failedNoteOn(false),
+  patLineHeight(24.0f),
   lastPatternWidth(0.0f),
   longThreshold(0.48f),
   buttonLongThreshold(0.20f),
@@ -9708,9 +9705,10 @@ FurnaceGUI::FurnaceGUI():
   silenceSize(1024),
   resampleTarget(32000),
   resampleStrat(5),
+  sampleFixLoopTarget(0),
   amplifyVol(100.0),
   amplifyOff(0.0),
-  noiseGateThreshold(-60.0f),
+  trimSideNoiseThreshold(-60.0f),
   sampleSelStart(-1),
   sampleSelEnd(-1),
   sampleInfo(true),
@@ -9744,7 +9742,7 @@ FurnaceGUI::FurnaceGUI():
   openSampleSilenceOpt(false),
   openSampleFilterOpt(false),
   openSampleCrossFadeOpt(false),
-  openSampleNoiseGateOpt(false),
+  openTrimSideNoiseOpt(false),
   selectedPortSet(0x1fff),
   selectedSubPort(-1),
   hoveredPortSet(0x1fff),
