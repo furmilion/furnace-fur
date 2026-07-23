@@ -150,7 +150,7 @@ String DivEngine::getSongSystemLegacyName(DivSong& ds, bool isMultiSystemAccepta
         return "Sega Genesis/Mega Drive";
       }
       if (ds.system[0]==DIV_SYSTEM_YM2612_EXT && ds.system[1]==DIV_SYSTEM_SMS) {
-        return "Sega Genesis Extended Channel 3";
+        return "Sega Genesis/Mega Drive Extended Channel 3";
       }
 
       if (ds.system[0]==DIV_SYSTEM_OPLL && ds.system[1]==DIV_SYSTEM_SMS) {
@@ -2519,6 +2519,18 @@ void DivEngine::registerSystems() {
     false, true, 0x161, false, (1U<<DIV_SAMPLE_DEPTH_C219)|(1U<<DIV_SAMPLE_DEPTH_8BIT), 0, 0,
     _("Namco's PCM chip used in their NA-1/2 hardware.\nvery similar to C140, but has noise generator."),
     DivChanDefFunc(stockChanDef<DIV_CH_PCM,DIV_INS_C219,DIV_INS_AMIGA>),
+    {},
+    {
+      {0x11, {DIV_CMD_STD_NOISE_MODE, _("11xx: Set noise mode")}},
+      {0x12, {DIV_CMD_SNES_INVERT, _("12xy: Set invert mode (x: surround; y: invert)")}},
+    }
+  );
+
+  sysDefs[DIV_SYSTEM_C352]=new DivSysDef(
+    _("Namco C352"), NULL, 0xcf, 0, 32, 32, 32,
+    false, true, 0x161, false, (1U<<DIV_SAMPLE_DEPTH_MULAW)|(1U<<DIV_SAMPLE_DEPTH_8BIT), 0, 0,
+    _("This is the most complex sound chip ever made by Namco.\nhoping for Tekken fans to join"),
+    DivChanDefFunc(stockChanDef<DIV_CH_PCM,DIV_INS_C352,DIV_INS_AMIGA>),
     {},
     {
       {0x11, {DIV_CMD_STD_NOISE_MODE, _("11xx: Set noise mode")}},
