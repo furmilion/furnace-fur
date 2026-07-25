@@ -309,7 +309,7 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
   // built-in indexed by `waveform`. Pure FM math assumes a 1024-sample
   // modulator, so a long sample as a modulator will alias — that's a
   // documented experimentation hazard, not enforced here.
-  unsigned int sa;
+  /*unsigned int sa;
   unsigned int lsa, lea;
   unsigned char lpctl;
   bool useSample=(op.sampleId>=0 &&
@@ -378,7 +378,77 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
   unsigned char dipan=(unsigned char)(c.pan&0x1F);
 
   unsigned short r0=((lpctl&0x3)<<5)|((sa>>16)&0xF);
+  scsp_write_slot(slot,0x0,r0);*/
+  unsigned int sa;
+  unsigned int lsa, lea;
+  unsigned char lpctl;
+  bool useSample=(op.sampleId>=0 &&
+                  op.sampleId<parent->song.sampleLen &&
+                  sampleLoaded[op.sampleId]);
+  
+  bool is8Bit = false; // <-- Добавляем флаг
+
+  if (useSample) {
+    DivSample* s=parent->song.sample[op.sampleId];
+    sa=sampleOff[op.sampleId];
+    is8Bit = (s->depth == DIV_SAMPLE_DEPTH_8BIT); // <-- Запоминаем разрядность
+
+    // Тоже пересчитываем в фреймы вместо «байт»
+    unsigned int storedSamples = is8Bit ? sampleStored[op.sampleId] : (sampleStored[op.sampleId] / 2);
+    if (storedSamples<1) storedSamples=1;
+
+    bool needsLoop=(!op.isCarrier) || op.feedback>0 ||
+                   (op.modSource>=0 && op.mdl>=5);
+    if (s->isLoopable() && (unsigned int)s->loopEnd<=storedSamples) {
+      lsa=(unsigned int)s->loopStart;
+      lea=(unsigned int)s->loopEnd;
+      switch (s->loopMode) {
+        case DIV_SAMPLE_LOOP_FORWARD:  lpctl=1; break;
+        case DIV_SAMPLE_LOOP_BACKWARD: lpctl=2; break;
+        case DIV_SAMPLE_LOOP_PINGPONG: lpctl=3; break;
+        default: lpctl=1; break;
+      }
+    } else if (needsLoop) {
+      lsa=0;
+      lea=storedSamples;
+      lpctl=1;
+    } else {
+      lsa=0;
+      lea=storedSamples;
+      lpctl=0;
+    }
+  } else {
+    return;
+  }
+  if (lea>0xFFFF) lea=0xFFFF;
+  if (lsa>=lea) lsa=0;
+
+  unsigned short octBits=computeFMOctBitsForOp(op, midiNote);
+
+  // TL: linear-in-level (Формулу громкости поправим ниже!)
+  int tlInt=(int)floor((1.0-(double)op.level/127.0)*255.0+0.5); 
+  if (tlInt<0) tlInt=0;
+  if (tlInt>255) tlInt=255;
+  unsigned char tl=(unsigned char)tlInt;
+
+  unsigned short d4=(((unsigned short)(op.d2r&0x1F))<<11)
+                  | (((unsigned short)(op.d1r&0x1F))<<6)
+                  |  ((unsigned short)(op.ar &0x1F));
+  unsigned short d5=((unsigned short)0xF<<10)
+                  | (((unsigned short)(op.dl&0x1F))<<5)
+                  |  ((unsigned short)(op.rr&0x1F));
+  unsigned short d7=computeD7FromOp(op.mdl, op.modSource, op.feedback, slot, slotBase);
+
+  unsigned char disdl=isMuted[chanIdx]?0:(op.isCarrier?7:0);
+  unsigned char dipan=(unsigned char)(c.pan&0x1F);
+
+  // Пишем в 0-й регистр с учетом бита PCM8B!
+  unsigned short r0=((lpctl&0x3)<<5)|((sa>>16)&0xF);
+  if (is8Bit) {
+    r0 |= (1 << 4); // <--- Вот он!
+  }
   scsp_write_slot(slot,0x0,r0);
+  
   scsp_write_slot(slot,0x1,(unsigned short)(sa&0xFFFF));
   scsp_write_slot(slot,0x2,(unsigned short)(lsa&0xFFFF));
   scsp_write_slot(slot,0x3,(unsigned short)(lea&0xFFFF));
@@ -403,6 +473,7 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
 }
 
 void DivPlatformSCSP::programSlot(int slot, int chanIdx) {
+/*
   Channel& c=chan[chanIdx];
   if (c.sample<0 || c.sample>=parent->song.sampleLen || !sampleLoaded[c.sample]) {
     return;
@@ -462,6 +533,107 @@ void DivPlatformSCSP::programSlot(int slot, int chanIdx) {
 
   // reg 0x6: STWINH[9] | SDIR[8] | TL[7:0] — TL from channel volume
   unsigned char tl=(unsigned char)(127-(c.outVol&0x7F));
+  if (st.tl>tl) tl=st.tl;
+  unsigned short r6=((stwinh&1)<<9)|((sdir&1)<<8)|(tl&0xFF);
+  scsp_write_slot(slot,0x6,r6);
+
+  // reg 0x7: MDL[15:12] | MDXSL[11:6] | MDYSL[5:0] — FM only, zero for PCM
+  scsp_write_slot(slot,0x7,0);
+
+  // reg 0x9: LFOF[14:10] | PLFOWS[9:8] | PLFOS[7:5] | ALFOWS[4:3] | ALFOS[2:0]
+  unsigned short r9=(((unsigned short)(st.lfof   &0x1F))<<10)
+                  | (((unsigned short)(st.plfows&0x3))<<8)
+                  | (((unsigned short)(st.plfos &0x7))<<5)
+                  | (((unsigned short)(st.alfows&0x3))<<3)
+                  |  ((unsigned short)(st.alfos &0x7));
+  if (st.lforeset) r9|=0x8000;
+  scsp_write_slot(slot,0x9,r9);
+
+  // DSP send (reg 0xA): ISEL[6:3] | IMXL[2:0]
+  scsp_slot_set_effect_send(slot,st.isel,st.imxl);
+
+  // EFSDL/EFPAN (lower byte of reg 0xB)
+  scsp_slot_set_effect_output(slot,st.efsdl,st.efpan);
+
+  // DISDL/DIPAN (upper byte of reg 0xB) — direct mix output
+  unsigned char disdl=isMuted[chanIdx]?0:(st.disdl&0x7);
+  unsigned char dipan=(unsigned char)(c.pan&0x1F);
+  writeSlotPan(slot,disdl,dipan);
+
+  c.sampleSet=true;
+*/
+  Channel& c=chan[chanIdx];
+  if (c.sample<0 || c.sample>=parent->song.sampleLen || !sampleLoaded[c.sample]) {
+    return;
+  }
+  DivSample* s=parent->song.sample[c.sample];
+  const DivInstrumentSCSP& st=c.scspState;
+
+  unsigned int sampleByte=sampleOff[c.sample];
+  
+  // 1. Проверяем разрядность
+  bool is8Bit = (s->depth == DIV_SAMPLE_DEPTH_8BIT);
+
+  // 2. Рассчитываем реальный размер загруженных сэмплов (фреймов) в RAM.
+  // sampleStored хранит размер в байтах. Для 16-бит делим на 2, для 8-бит берем как есть.
+  unsigned int storedSamples = is8Bit ? sampleStored[c.sample] : (sampleStored[c.sample] / 2);
+  if (storedSamples < 1) storedSamples = 1;
+
+  // 3. Считаем петли на основе реально загруженных фреймов
+  unsigned int loopStart=s->isLoopable()?(unsigned int)s->loopStart:0;
+  unsigned int loopEnd=s->isLoopable()?(unsigned int)s->loopEnd:(unsigned int)storedSamples;
+  if (loopEnd<1) loopEnd=1;
+  if (loopEnd>0xFFFF) loopEnd=0xFFFF; // Ограничение регистра LSA/LEA
+  if (loopStart>=loopEnd) loopStart=0;
+
+  unsigned char lpctl=0;
+  if (s->isLoopable()) {
+    switch (s->loopMode) {
+      case DIV_SAMPLE_LOOP_FORWARD:  lpctl=1; break;
+      case DIV_SAMPLE_LOOP_BACKWARD: lpctl=2; break;
+      case DIV_SAMPLE_LOOP_PINGPONG: lpctl=3; break;
+      default: lpctl=1; break;
+    }
+  }
+  // Instrument can override loop control
+  if (st.lpctl!=0) lpctl=st.lpctl&0x3;
+
+  unsigned char eghold=st.eghold?1:0;
+  unsigned char lpslnk=st.lpslnk?1:0;
+  unsigned char sdir  =st.sdir?1:0;
+  unsigned char stwinh=st.stwinh?1:0;
+
+  // reg 0x0: bits 5..6 LPCTL, bit 4 PCM8B, bits 0..3 SA hi
+  unsigned short r0=((lpctl&0x3)<<5)|((sampleByte>>16)&0xF);
+  if (is8Bit) {
+    r0 |= (1 << 4); // Выставляем бит PCM8B для 8-битного режима!
+  }
+  scsp_write_slot(slot,0x0,r0);
+
+  // reg 0x1: SA low 16 bits
+  scsp_write_slot(slot,0x1,(unsigned short)(sampleByte&0xFFFF));
+  // reg 0x2: LSA — loop start in samples
+  scsp_write_slot(slot,0x2,(unsigned short)(loopStart&0xFFFF));
+  // reg 0x3: LEA — loop end in samples
+  scsp_write_slot(slot,0x3,(unsigned short)(loopEnd&0xFFFF));
+
+  // reg 0x4: D2R[15:11] | D1R[10:6] | EGHOLD[5] | AR[4:0]
+  unsigned short r4=(((unsigned short)(st.d2r&0x1F))<<11)
+                  | (((unsigned short)(st.d1r&0x1F))<<6)
+                  | ((eghold&1)<<5)
+                  |  ((unsigned short)(st.ar &0x1F));
+  scsp_write_slot(slot,0x4,r4);
+
+  // reg 0x5: LPSLNK[14] | KRS[13:10] | DL[9:5] | RR[4:0]
+  unsigned short r5=((lpslnk&1)<<14)
+                  | (((unsigned short)(st.krs&0xF))<<10)
+                  | (((unsigned short)(st.dl &0x1F))<<5)
+                  |  ((unsigned short)(st.rr &0x1F));
+  scsp_write_slot(slot,0x5,r5);
+
+  // reg 0x6: STWINH[9] | SDIR[8] | TL[7:0] — TL from channel volume
+  // (Формулу громкости поправим ниже, в Части 2)
+  unsigned char tl=(unsigned char)((127-(c.outVol&0x7F)) * 2); 
   if (st.tl>tl) tl=st.tl;
   unsigned short r6=((stwinh&1)<<9)|((sdir&1)<<8)|(tl&0xFF);
   scsp_write_slot(slot,0x6,r6);
