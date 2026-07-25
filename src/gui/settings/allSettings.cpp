@@ -89,7 +89,8 @@ static const char* specificControls[18]={
 
 static const char* arcadeCores[]={
   "ymfm",
-  "Nuked-OPM"
+  "Nuked-OPM",
+  "YM2151-LLE"
 };
 
 static const char* ym2612Cores[]={
@@ -128,13 +129,15 @@ static const char* opnCores[]={
 static const char* opl2Cores[]={
   "Nuked-OPL3",
   "ymfm",
-  "YM3812-LLE"
+  "YM3812-LLE",
+  "Nuked-OPL2 Lite"
 };
 
 static const char* opl3Cores[]={
   "Nuked-OPL3",
   "ymfm",
-  "YMF262-LLE"
+  "YMF262-LLE",
+  "Nuked-CQM"
 };
 
 static const char* opl4Cores[]={
@@ -1519,6 +1522,7 @@ void FurnaceGUI::initSettings() {
       // the table of doom...
       SettingEntry(_N("Emulation cores"),NULL,[this]{
         bool ret=false;
+        ImGui::TextWrapped(_("these settings will take effect after pressing OK or Apply."));
         if (ImGui::BeginTable("##Cores",3)) {
           ImGui::TableSetupColumn("##System",ImGuiTableColumnFlags_WidthFixed);
           ImGui::TableSetupColumn("##PlaybackCores",ImGuiTableColumnFlags_WidthStretch);
@@ -2487,6 +2491,7 @@ void FurnaceGUI::initSettings() {
       SETTING_COLOR(GUI_COLOR_SLIDER_GRAB_ACTIVE) GURU_MODE,
       SETTING_COLOR(GUI_COLOR_TITLE_BACKGROUND_ACTIVE) GURU_MODE,
       SETTING_COLOR(GUI_COLOR_CHECK_MARK) GURU_MODE,
+      SETTING_COLOR(GUI_COLOR_CHECKBOX_BACKGROUND_ACTIVE) GURU_MODE,
       SETTING_COLOR(GUI_COLOR_TEXT_LINK) GURU_MODE,
       SETTING_COLOR(GUI_COLOR_TEXT_SELECTION) GURU_MODE,
       SETTING_COLOR(GUI_COLOR_TREE_LINES) GURU_MODE,
@@ -3231,6 +3236,7 @@ void FurnaceGUI::initSettings() {
       SETTING_KEYBIND(GUI_ACTION_SAMPLE_SILENCE),
       SETTING_KEYBIND(GUI_ACTION_SAMPLE_DELETE),
       SETTING_KEYBIND(GUI_ACTION_SAMPLE_TRIM),
+      SETTING_KEYBIND(GUI_ACTION_SAMPLE_TRIM_SIDE_NOISE),
       SETTING_KEYBIND(GUI_ACTION_SAMPLE_REVERSE),
       SETTING_KEYBIND(GUI_ACTION_SAMPLE_INVERT),
       SETTING_KEYBIND(GUI_ACTION_SAMPLE_SIGN),
@@ -3242,6 +3248,7 @@ void FurnaceGUI::initSettings() {
       SETTING_KEYBIND(GUI_ACTION_SAMPLE_ZOOM_AUTO),
       SETTING_KEYBIND(GUI_ACTION_SAMPLE_MAKE_INS),
       SETTING_KEYBIND(GUI_ACTION_SAMPLE_SET_LOOP),
+      SETTING_KEYBIND(GUI_ACTION_SAMPLE_SELECT_LOOP),
       SETTING_KEYBIND(GUI_ACTION_SAMPLE_TRIM_AFTER_LOOP),
       SETTING_KEYBIND(GUI_ACTION_SAMPLE_TRIM_TO_LOOP),
     })
