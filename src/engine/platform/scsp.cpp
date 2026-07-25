@@ -1430,7 +1430,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
     switch (s->depth) {
       case DIV_SAMPLE_DEPTH_8BIT:
         sampleLengthPre=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_8BIT);
-		sampleLength = MIN(131070, sampleLengthPre%2?sampleLengthPre-1:sampleLengthPre);
+		sampleLength = MIN(65534, sampleLengthPre%2?sampleLengthPre-1:sampleLengthPre); // else it fucks up
         break;
 	  case DIV_SAMPLE_DEPTH_16BIT:
         sampleLength=MIN(131070, s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT));
@@ -1458,7 +1458,20 @@ void DivPlatformSCSP::renderSamples(int sysID) {
            i,s->name.c_str(),sampleLength,(avail&~1));
       sampleLength=avail&~1;  // even byte count
     }
-    memcpy(sampleMem+memPos,src,sampleLength);
+    /*memcpy(sampleMem+memPos,src,sampleLength);*/
+	if (s->depth == DIV_SAMPLE_DEPTH_8BIT) {
+      // SCSP читает память 16-битными словами и на LE-хостах играет байты задом наперед.
+      // Делаем попарный байтсвап (S0, S1 -> S1, S0), чтобы восстановить правильный порядок.
+      unsigned char* dst = sampleMem + memPos;
+      for (int j = 0; j < sampleLength; j += 2) {
+        dst[j]     = src[j + 1];
+        dst[j + 1] = src[j];
+      }
+    } else {
+      // Для 16-битных сэмплов оставляем обычное копирование
+      memcpy(sampleMem+memPos,src,sampleLength);
+    }
+	
     sampleOff[i]=memPos;
     sampleStored[i]=sampleLength;
     sampleLoaded[i]=true;
