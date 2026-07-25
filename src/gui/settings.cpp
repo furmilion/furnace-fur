@@ -47,6 +47,8 @@
 
 #include "newSettings.h"
 
+const ImWchar mainFontExcludeRange[2]={ICON_MIN_FA,ICON_MAX_FA};
+
 static String stripName(String what) {
   String ret;
   for (char& i: what) {
@@ -180,6 +182,7 @@ void FurnaceGUI::drawSettings() {
       settingsOpen=false;
       audioEngineChanged=false;
       syncSettings();
+      applyUISettings(false);
       settingsChanged=false;
     }
     ImGui::SameLine();
@@ -573,13 +576,14 @@ void FurnaceGUI::pushAccentColors(const ImVec4& one, const ImVec4& two, const Im
   ImGui::PushStyleColor(ImGuiCol_SliderGrabActive,primaryActive);
   ImGui::PushStyleColor(ImGuiCol_TitleBgActive,primary);
   ImGui::PushStyleColor(ImGuiCol_CheckMark,primaryActive);
+  ImGui::PushStyleColor(ImGuiCol_CheckboxSelectedBg,ImLerp(secondary,secondaryHover,0.65f));
   ImGui::PushStyleColor(ImGuiCol_TextSelectedBg,secondaryHover);
   ImGui::PushStyleColor(ImGuiCol_Border,border);
   ImGui::PushStyleColor(ImGuiCol_BorderShadow,borderShadow);
 }
 
 void FurnaceGUI::popAccentColors() {
-  ImGui::PopStyleColor(24);
+  ImGui::PopStyleColor(25);
 }
 
 void FurnaceGUI::pushDestColor() {
@@ -839,6 +843,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
     sty.Colors[ImGuiCol_SliderGrabActive]=primaryActive;
     sty.Colors[ImGuiCol_TitleBgActive]=primary;
     sty.Colors[ImGuiCol_CheckMark]=primaryActive;
+    sty.Colors[ImGuiCol_CheckboxSelectedBg]=ImLerp(secondary,secondaryHover,0.65f);
     sty.Colors[ImGuiCol_TextLink]=secondaryActive;
     sty.Colors[ImGuiCol_TextSelectedBg]=secondaryHoverActual;
     sty.Colors[ImGuiCol_TreeLines]=uiColors[GUI_COLOR_BORDER];
@@ -868,6 +873,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
     sty.Colors[ImGuiCol_SliderGrabActive]=uiColors[GUI_COLOR_SLIDER_GRAB_ACTIVE];
     sty.Colors[ImGuiCol_TitleBgActive]=uiColors[GUI_COLOR_TITLE_BACKGROUND_ACTIVE];
     sty.Colors[ImGuiCol_CheckMark]=uiColors[GUI_COLOR_CHECK_MARK];
+    sty.Colors[ImGuiCol_CheckboxSelectedBg]=uiColors[GUI_COLOR_CHECKBOX_BACKGROUND_ACTIVE];
     sty.Colors[ImGuiCol_TextLink]=uiColors[GUI_COLOR_TEXT_LINK];
     sty.Colors[ImGuiCol_TextSelectedBg]=uiColors[GUI_COLOR_TEXT_SELECTION];
     sty.Colors[ImGuiCol_TreeLines]=uiColors[GUI_COLOR_TREE_LINES];
@@ -1029,6 +1035,7 @@ void FurnaceGUI::applyUISettings(bool updateFonts) {
 
     fontConf.OversampleV=1;
     fontConf.OversampleH=settings.fontOversample;
+    fontConf.GlyphExcludeRanges=mainFontExcludeRange;
     fontConfP.OversampleV=1;
     fontConfP.OversampleH=settings.fontOversample;
     fontConfB.OversampleV=1;

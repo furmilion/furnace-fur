@@ -217,6 +217,7 @@ enum FurnaceGUIColors {
   GUI_COLOR_SLIDER_GRAB_ACTIVE,
   GUI_COLOR_TITLE_BACKGROUND_ACTIVE,
   GUI_COLOR_CHECK_MARK,
+  GUI_COLOR_CHECKBOX_BACKGROUND_ACTIVE,
   GUI_COLOR_TEXT_SELECTION,
   GUI_COLOR_TABLE_ROW_EVEN,
   GUI_COLOR_TABLE_ROW_ODD,
@@ -3046,6 +3047,10 @@ class FurnaceGUI {
   int sampleCompileIndex;
   size_t sampleCompileSize;
 
+  // speed window specific
+  Uint64 lastTapTime;
+  float grooveTargetBPM;
+
   // user presets window
   std::vector<int> selectedUserPreset;
 
@@ -3147,6 +3152,7 @@ class FurnaceGUI {
   void sameLineMaybe(float width=-1.0f);
 
   float calcBPM(const DivGroovePattern& speeds, float hz, int vN, int vD);
+  void calcGrooveBPM(float targetBPM, DivGroovePattern& groove, float hz, int hilightA);
 
   ImVec2 mapSelPoint(const SelectionPoint& s, float lineHeight);
 
