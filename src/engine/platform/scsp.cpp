@@ -1247,6 +1247,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
 	
 	//// fur's note: while SCSP's native fmt is 16-bit BE,
 	//// it as well supports 8-bit so i implemented some logic to allow usage of that
+	//// todo: set slot's bit to fully implement 8-bit pcm playback
 	
 	int sampleLength;
 	int sampleLengthPre = 0;
@@ -1257,15 +1258,18 @@ void DivPlatformSCSP::renderSamples(int sysID) {
     switch (s->depth) {
       case DIV_SAMPLE_DEPTH_8BIT:
         sampleLengthPre=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_8BIT);
-		sampleLength = MIN(65535, sampleLengthPre%2?sampleLengthPre-1:sampleLengthPre);
+		sampleLength = MIN(131070, sampleLengthPre%2?sampleLengthPre-1:sampleLengthPre);
         break;
 	  case DIV_SAMPLE_DEPTH_16BIT:
-        sampleLength=MIN(131071, s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT));
+        sampleLength=MIN(131070, s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT));
 		break;
       default:
+	  /*
 		sampleLengthPre=s->getLoopEndPosition(DIV_SAMPLE_DEPTH_8BIT);
 		sampleLength = MIN(65535, sampleLengthPre%2?sampleLengthPre-1:sampleLengthPre);
         src=(unsigned char*)s->data8;
+	  */
+	    sampleLength=MIN(131071, s->getLoopEndPosition(DIV_SAMPLE_DEPTH_16BIT)); // treat as 16 bits until i get 8-bit playback done
         break;
     }
     int avail=(int)RAM_SIZE-(int)memPos;
@@ -1280,9 +1284,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
       // to play back in full anyway. Loud warning so the user knows.
       logW("SCSP RAM nearly full: truncating sample %d (%s) from %d to %d frames",
            i,s->name.c_str(),sampleLength,(avail&~1));
-      //byteLength=avail&~1;  // even byte count
       sampleLength=avail&~1;  // even byte count
-      //sampleLength=byteLength;
     }
     memcpy(sampleMem+memPos,src,sampleLength);
     sampleOff[i]=memPos;
