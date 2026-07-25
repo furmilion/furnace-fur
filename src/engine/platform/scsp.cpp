@@ -385,15 +385,12 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
   bool useSample=(op.sampleId>=0 &&
                   op.sampleId<parent->song.sampleLen &&
                   sampleLoaded[op.sampleId]);
-  
-  bool is8Bit = false; // <-- Добавляем флаг
+ 
 
   if (useSample) {
     DivSample* s=parent->song.sample[op.sampleId];
     sa=sampleOff[op.sampleId];
-    is8Bit = (s->depth == DIV_SAMPLE_DEPTH_8BIT); // <-- Запоминаем разрядность
 
-    // Тоже пересчитываем в фреймы вместо «байт»
     unsigned int storedSamples = is8Bit ? sampleStored[op.sampleId] : (sampleStored[op.sampleId] / 2);
     if (storedSamples<1) storedSamples=1;
 
@@ -425,8 +422,8 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
 
   unsigned short octBits=computeFMOctBitsForOp(op, midiNote);
 
-  // TL: linear-in-level (Формулу громкости поправим ниже!)
-  int tlInt=(int)floor((1.0-(double)op.level/127.0)*255.0+0.5); 
+  // TL: linear-in-level
+  int tlInt=(int)floor((1.0-(double)op.level/127.0)*127.0+0.5); 
   if (tlInt<0) tlInt=0;
   if (tlInt>255) tlInt=255;
   unsigned char tl=(unsigned char)tlInt;
@@ -442,12 +439,12 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
   unsigned char disdl=isMuted[chanIdx]?0:(op.isCarrier?7:0);
   unsigned char dipan=(unsigned char)(c.pan&0x1F);
 
-  // Пишем в 0-й регистр с учетом бита PCM8B!
+  /*
   unsigned short r0=((lpctl&0x3)<<5)|((sa>>16)&0xF);
-  if (is8Bit) {
-    r0 |= (1 << 4); // <--- Вот он!
-  }
-  scsp_write_slot(slot,0x0,r0);
+  if (s->depth == DIV_SAMPLE_DEPTH_8BIT) { // 8-bit sample
+    r0 |= (1 << 4);
+  }*/
+  scsp_write_slot(slot,0x0,((lpctl&0x3)<<5)|((sa>>16)&0xF)|((s->depth == DIV_SAMPLE_DEPTH_8BIT?1:0)<<4));
   
   scsp_write_slot(slot,0x1,(unsigned short)(sa&0xFFFF));
   scsp_write_slot(slot,0x2,(unsigned short)(lsa&0xFFFF));
@@ -570,20 +567,14 @@ void DivPlatformSCSP::programSlot(int slot, int chanIdx) {
   const DivInstrumentSCSP& st=c.scspState;
 
   unsigned int sampleByte=sampleOff[c.sample];
-  
-  // 1. Проверяем разрядность
-  bool is8Bit = (s->depth == DIV_SAMPLE_DEPTH_8BIT);
 
-  // 2. Рассчитываем реальный размер загруженных сэмплов (фреймов) в RAM.
-  // sampleStored хранит размер в байтах. Для 16-бит делим на 2, для 8-бит берем как есть.
   unsigned int storedSamples = is8Bit ? sampleStored[c.sample] : (sampleStored[c.sample] / 2);
   if (storedSamples < 1) storedSamples = 1;
 
-  // 3. Считаем петли на основе реально загруженных фреймов
   unsigned int loopStart=s->isLoopable()?(unsigned int)s->loopStart:0;
   unsigned int loopEnd=s->isLoopable()?(unsigned int)s->loopEnd:(unsigned int)storedSamples;
   if (loopEnd<1) loopEnd=1;
-  if (loopEnd>0xFFFF) loopEnd=0xFFFF; // Ограничение регистра LSA/LEA
+  if (loopEnd>0xFFFF) loopEnd=0xFFFF;
   if (loopStart>=loopEnd) loopStart=0;
 
   unsigned char lpctl=0;
@@ -604,11 +595,7 @@ void DivPlatformSCSP::programSlot(int slot, int chanIdx) {
   unsigned char stwinh=st.stwinh?1:0;
 
   // reg 0x0: bits 5..6 LPCTL, bit 4 PCM8B, bits 0..3 SA hi
-  unsigned short r0=((lpctl&0x3)<<5)|((sampleByte>>16)&0xF);
-  if (is8Bit) {
-    r0 |= (1 << 4); // Выставляем бит PCM8B для 8-битного режима!
-  }
-  scsp_write_slot(slot,0x0,r0);
+  scsp_write_slot(slot,0x0,((lpctl&0x3)<<5)|((sampleByte>>16)&0xF)|((s->depth == DIV_SAMPLE_DEPTH_8BIT?1:0)<<4));
 
   // reg 0x1: SA low 16 bits
   scsp_write_slot(slot,0x1,(unsigned short)(sampleByte&0xFFFF));
@@ -1459,6 +1446,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
       sampleLength=avail&~1;  // even byte count
     }
     /*memcpy(sampleMem+memPos,src,sampleLength);*/
+	/* ========================= */
 	if (s->depth == DIV_SAMPLE_DEPTH_8BIT) {
       // SCSP читает память 16-битными словами и на LE-хостах играет байты задом наперед.
       // Делаем попарный байтсвап (S0, S1 -> S1, S0), чтобы восстановить правильный порядок.
@@ -1471,6 +1459,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
       // Для 16-битных сэмплов оставляем обычное копирование
       memcpy(sampleMem+memPos,src,sampleLength);
     }
+	/* ========================= */
 	
     sampleOff[i]=memPos;
     sampleStored[i]=sampleLength;
