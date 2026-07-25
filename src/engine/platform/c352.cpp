@@ -53,7 +53,7 @@ const char** DivPlatformC352::getRegisterSheet() {
   return regCheatSheetC352;
 }
 
-void DivPlatformC352::acquire_352(short** buf, size_t len) {
+void DivPlatformC352::acquire(short** buf, size_t len) {
   for (int i = 0; i < totalChans; i++) {
     oscBuf[i]->begin(len);
   }
@@ -69,6 +69,7 @@ void DivPlatformC352::acquire_352(short** buf, size_t len) {
     c352_tick;
 
     // use locals and scale to 16-bit range (do not mutate c352.lout/rout)
+	/*
     int lout = c352.lout >> 10;
     int rout = c352.rout >> 10;
 
@@ -77,7 +78,20 @@ void DivPlatformC352::acquire_352(short** buf, size_t len) {
 
     buf[0][h] = static_cast<short>(lout);
     buf[1][h] = static_cast<short>(rout);
+    */
+	// scale as 16bit
+    c352.lout>>=10;
+    c352.rout>>=10;
 
+    if (c352.lout<-32768) c352.lout=-32768;
+    if (c352.lout>32767) c352.lout=32767;
+
+    if (c352.rout<-32768) c352.rout=-32768;
+    if (c352.rout>32767) c352.rout=32767;
+  
+    buf[0][h]=c352.lout;
+    buf[1][h]=c352.rout;
+	/*
     for (int i = 0; i < totalChans; i++) {
       if (c352.voice[i].inv_lout) {
         int v = (c352.voice[i].lout - c352.voice[i].rout) >> 10;
@@ -85,363 +99,334 @@ void DivPlatformC352::acquire_352(short** buf, size_t len) {
         oscBuf[i]->putSample(h, static_cast<short>(v));
       }
     }
+	*/
+	for (int i=0; i<totalChans; i++) {
+      if (c352.voice[i].inv_lout) {
+        oscBuf[i]->putSample(h,(c352.voice[i].lout-c352.voice[i].rout)>>10);
+      } else {
+        oscBuf[i]->putSample(h,(c352.voice[i].lout+c352.voice[i].rout)>>10);
+      }
+    }
   }
   for (int i = 0; i < totalChans; i++) {
     oscBuf[i]->end(len);
   }
 }
-
+/*
 void DivPlatformC352::acquire(short** buf, size_t len) {
   // both variants currently use the same path; call the dedicated function
   acquire_352(buf, len);
 }
-
+*/
 void DivPlatformC352::tick(bool sysTick) {
-  for (int i = 0; i < totalChans; i++) {
+  for (int i=0; i<totalChans; i++) {
     chan[i].std.next();
     if (chan[i].std.vol.had) {
-      chan[i].outVol = (chan[i].vol * MIN(chan[i].macroVolMul, chan[i].std.vol.val)) / chan[i].macroVolMul;
-      chan[i].volChangedL = true;
-      chan[i].volChangedR = true;
+      chan[i].outVol=(chan[i].vol*MIN(chan[i].macroVolMul,chan[i].std.vol.val))/chan[i].macroVolMul;
+      chan[i].volChangedL=true;
+      chan[i].volChangedR=true;
     }
     if (NEW_ARP_STRAT) {
       chan[i].handleArp();
-    }
-    else if (chan[i].std.arp.had) {
+    } else if (chan[i].std.arp.had && !chan[i].rawFreq) {
       if (!chan[i].inPorta) {
-        chan[i].baseFreq = NOTE_FREQUENCY(parent->calcArp(chan[i].note, chan[i].std.arp.val));
+        chan[i].baseFreq=chan[i].calcBaseFreq(parent->calcArp(chan[i].note,chan[i].std.arp.val)); //chan[i].baseFreq = NOTE_FREQUENCY(parent->calcArp(chan[i].note, chan[i].std.arp.val));
       }
-      chan[i].freqChanged = true;
+      chan[i].freqChanged=true;
     }
-    if (is352){
-      if (chan[i].std.duty.had) {
-        unsigned char singleByte = (
-          (chan[i].noise ? 1 : 0) |
-          (chan[i].invert ? 2 : 0) |
-          (chan[i].surround ? 4 : 0)
-          );
-        if (singleByte != (chan[i].std.duty.val & 7)) {
-          chan[i].noise = chan[i].std.duty.val & 1;
-          chan[i].invert = chan[i].std.duty.val & 2;
-          chan[i].surround = chan[i].std.duty.val & 4;
-          chan[i].freqChanged = true;
-          chan[i].writeCtrl = true;
-        }
+    if (chan[i].std.duty.had) {
+      unsigned char singleByte = (
+        (chan[i].noise?1:0) |
+        (chan[i].invert?2:0) |
+        (chan[i].surround?4:0)
+        );
+      if (singleByte != (chan[i].std.duty.val&7)) {
+        chan[i].noise=chan[i].std.duty.val&1;
+        chan[i].invert=chan[i].std.duty.val&2;
+        chan[i].surround=chan[i].std.duty.val&4;
+        chan[i].freqChanged=true;
+        chan[i].writeCtrl=true;
       }
     }
     if (chan[i].std.pitch.had) {
       if (chan[i].std.pitch.mode) {
-        chan[i].pitch2 += chan[i].std.pitch.val;
-        CLAMP_VAR(chan[i].pitch2, -32768, 32767);
+        chan[i].pitch2+=chan[i].std.pitch.val;
+        CLAMP_VAR(chan[i].pitch2,-32768,32767);
+      } else {
+        chan[i].pitch2=chan[i].std.pitch.val;
       }
-      else {
-        chan[i].pitch2 = chan[i].std.pitch.val;
-      }
-      chan[i].freqChanged = true;
+      chan[i].freqChanged=true;
     }
     if (chan[i].std.panL.had) {
-      chan[i].chPanL = (255 * (chan[i].std.panL.val & 255)) / chan[i].macroPanMul;
-      chan[i].volChangedL = true;
+      chan[i].chPanL=(255*(chan[i].std.panL.val&255))/chan[i].macroPanMul;
+      chan[i].volChangedL=true;
     }
 
     if (chan[i].std.panR.had) {
-      chan[i].chPanR = (255 * (chan[i].std.panR.val & 255)) / chan[i].macroPanMul;
-      chan[i].volChangedR = true;
+      chan[i].chPanR=(255*(chan[i].std.panR.val&255))/chan[i].macroPanMul;
+      chan[i].volChangedR=true;
     }
 
     if (chan[i].std.phaseReset.had) {
-      if ((chan[i].std.phaseReset.val == 1) && chan[i].active) {
-        chan[i].audPos = 0;
-        chan[i].setPos = true;
+      if ((chan[i].std.phaseReset.val==1) && chan[i].active) {
+        chan[i].audPos=0;
+        chan[i].setPos=true;
       }
     }
     if (chan[i].volChangedL) {
-      chan[i].chVolL = (chan[i].outVol * chan[i].chPanL) / 255;
+      chan[i].chVolL=(chan[i].outVol*chan[i].chPanL)/255;
       rWrite(1+(i<<4),chan[i].chVolL);
-      chan[i].volChangedL = false;
+      chan[i].volChangedL=false;
     }
     if (chan[i].volChangedR) {
-      chan[i].chVolR = (chan[i].outVol * chan[i].chPanR) / 255;
+      chan[i].chVolR=(chan[i].outVol*chan[i].chPanR)/255;
       rWrite(0+(i<<4),chan[i].chVolR);
-      chan[i].volChangedR = false;
+      chan[i].volChangedR=false;
     }
     if (chan[i].setPos) {
       // force keyon
-      chan[i].keyOn = true;
-      chan[i].setPos = false;
-    }
-    else {
-      chan[i].audPos = 0;
+      chan[i].keyOn=true;
+      chan[i].setPos=false;
+    } else {
+      chan[i].audPos=0;
     }
     if (chan[i].freqChanged || chan[i].keyOn || chan[i].keyOff) {
-      DivSample* s = parent->getSample(chan[i].sample);
-      unsigned char ctrl = 0;
-      double off = (s->centerRate >= 1) ? ((double)s->centerRate / parent->getCenterRate()) : 1.0;
-      chan[i].freq = (int)(off * parent->calcFreq(chan[i].baseFreq, chan[i].pitch, chan[i].fixedArp ? chan[i].baseNoteOverride : chan[i].arpOff, chan[i].fixedArp, false, 2, chan[i].pitch2, chipClock, CHIP_FREQBASE));
-      if (chan[i].freq < 0) chan[i].freq = 0;
-      if (chan[i].freq > 65535) chan[i].freq = 65535;
-      if (is352) {
-        ctrl |= (chan[i].active ? 0x80 : 0) | ((s->isLoopable() || chan[i].noise) ? 0x10 : 0) | ((s->depth == DIV_SAMPLE_DEPTH_C352) ? 1 : 0) | (chan[i].invert ? 0x40 : 0) | (chan[i].surround ? 8 : 0) | (chan[i].noise ? 4 : 0);
+      DivSample* s=parent->getSample(chan[i].sample);
+      unsigned char ctrl=0;
+      chan[i].freq=chan[i].calcFreq();
+      if (!chan[i].rawFreq) {
+        if (chan[i].freq<0) chan[i].freq=0;
+        if (chan[i].freq>65535) chan[i].freq=65535;
       }
-      else {
-        ctrl |= (chan[i].active ? 0x80 : 0) | ((s->isLoopable()) ? 0x10 : 0) | ((s->depth == DIV_SAMPLE_DEPTH_MULAW) ? 0x08 : 0);
-      }
+      ctrl |= (chan[i].active ? 0x80 : 0) | ((s->isLoopable() || chan[i].noise) ? 0x10 : 0) | ((s->depth == DIV_SAMPLE_DEPTH_C219) ? 1 : 0) | (chan[i].invert ? 0x40 : 0) | (chan[i].surround ? 8 : 0) | (chan[i].noise ? 4 : 0);
       if (chan[i].keyOn) {
-        unsigned int bank = 0;
-        unsigned int start = 0;
-        unsigned int loop = 0;
-        unsigned int end = 0;
-        if (chan[i].sample >= 0 && chan[i].sample < parent->song.sampleLen) {
-          if (is352) {
-            bank = (sampleOff[chan[i].sample] >> 16) & 3;
-            start = sampleOff[chan[i].sample] & 0xffff;
-            end = MIN(start + (s->length8 >> 1) - 1, 65535);
-          }
-          else {
-            bank = (sampleOff[chan[i].sample] >> 16) & 0xff;
-            start = sampleOff[chan[i].sample] & 0xffff;
-            end = MIN(start + s->length8 - 1, 65535);
-          }
+        unsigned int bank=0;
+        unsigned int start=0;
+        unsigned int loop=0;
+        unsigned int end=0;
+        if (chan[i].sample>=0 && chan[i].sample<parent->song.sampleLen) {
+          bank=(sampleOff[chan[i].sample]>>16)&3;
+          start=sampleOff[chan[i].sample]&0xffff;
+          end=MIN(start+(s->length8>>1)-1,65535);
+        } else if (chan[i].noise && is219) {
+          bank=groupBank[i>>2];
+          start=0;
+          end=1;
         }
-        else if (chan[i].noise&&is352) {
-          bank = groupBank[i >> 2];
-          start = 0;
-          end = 1;
+        if (chan[i].audPos>0) {
+          start=MIN(start+(MIN(chan[i].audPos,s->length8)>>1),65535);
         }
-        if (chan[i].audPos > 0) {
-          start = MIN(start + (MIN(chan[i].audPos, s->length8) >> 1), 65535);
-        }
-        if (chan[i].sample >= 0 && chan[i].sample < parent->song.sampleLen && s->isLoopable()) {
-          if (is352) {
-            loop = MIN(start + (s->loopStart >> 1), 65535);
-            end = MIN(start + (s->loopEnd >> 1), 65535);
-          }
-          else {
-            loop = MIN(start + s->loopStart + 1, 65535);
-            end = MIN(start + s->loopEnd + 1, 65535);
-          }
-        }
-        else if (chan[i].noise&&is352) {
-          loop = 0;
+        if (chan[i].sample>=0 && chan[i].sample<parent->song.sampleLen && s->isLoopable()) {
+          loop=MIN(start+(s->loopStart>>1),65535);
+          end=MIN(start+(s->loopEnd>>1),65535);
+        } else if (chan[i].noise && is219) {
+          loop=0;
         }
         rWrite(0x05 + (i << 4), 0); // force keyoff first
-        if (is352) {
-          if (groupBank[i >> 2] != bank) {
-            groupBank[i >> 2] = bank;
-            rWrite(0x1f1 + (((3 + (i >> 2)) & 3) << 1), groupBank[i >> 2]);
-            // shut everyone else up
-            for (int j = 0; j < 4; j++) {
-              int ch = (i & (~3)) | j;
-              if (chan[ch].active && !chan[ch].keyOn && (i & 3) != j) {
-                chan[ch].sample = -1;
-                chan[ch].active = false;
-                chan[ch].keyOff = true;
-                chan[ch].macroInit(NULL);
-                rWrite(0x05+(ch<<4),ctrl);
-              }
+        if (groupBank[i>>2]!=bank) {
+          groupBank[i>>2]=bank;
+          rWrite(0x1f1+(((3+(i>>2))&3)<<1),groupBank[i>>2]);
+          // shut everyone else up
+          for (int j=0; j<4; j++) {
+            int ch=(i&(~3))|j;
+            if (chan[ch].active && !chan[ch].keyOn && (i&3)!=j) {
+              chan[ch].sample=-1;
+              chan[ch].pitchTable=samplePitchTable.get(chan[ch].sample);
+              chan[ch].active=false;
+              chan[ch].keyOff=true;
+              chan[ch].macroInit(NULL);
+              rWrite(0x05+(ch<<4),ctrl);
             }
           }
-        }
-        else {
+        } else {
           switch (bankType) {
-          case 0:
-            bank = ((bank & 8) << 2) | (bank & 7);
-            break;
-          case 1:
-            bank = ((bank & 0x18) << 1) | (bank & 7);
-            break;
+            case 0:
+              bank=((bank&8)<<2)|(bank&7);
+              break;
+            case 1:
+              bank=((bank&0x18)<<1)|(bank&7);
+              break;
           }
           rWrite(0x04+(i<<4),bank);
         }
         rWrite(0x06+(i<<4),(start>>8)&0xff);
         rWrite(0x07+(i<<4),start&0xff);
-        rWrite(0x08+(i<<4),(end >> 8)&0xff);
-        rWrite(0x09+(i<<4),end & 0xff);
+        rWrite(0x08+(i<<4),(end>>8)&0xff);
+        rWrite(0x09+(i<<4),end&0xff);
         rWrite(0x0a+(i<<4),(loop>>8)&0xff);
-        rWrite(0x0b+(i<<4),loop & 0xff);
+        rWrite(0x0b+(i<<4),loop&0xff);
         if (!chan[i].std.vol.had) {
-          chan[i].outVol = chan[i].vol;
-          chan[i].volChangedL = true;
-          chan[i].volChangedR = true;
+          chan[i].outVol=chan[i].vol;
+          chan[i].volChangedL=true;
+          chan[i].volChangedR=true;
         }
-        chan[i].writeCtrl = true;
-        chan[i].keyOn = false;
+        chan[i].writeCtrl=true;
+        chan[i].keyOn=false;
       }
       if (chan[i].keyOff) {
-        chan[i].writeCtrl = true;
-        chan[i].keyOff = false;
+        chan[i].writeCtrl=true;
+        chan[i].keyOff=false;
       }
       if (chan[i].freqChanged) {
-        rWrite(0x02 + (i << 4), chan[i].freq >> 8);
-        rWrite(0x03 + (i << 4), chan[i].freq & 0xff);
-        chan[i].freqChanged = false;
+        rWrite(0x02+(i<<4),chan[i].freq>>8);
+        rWrite(0x03+(i<<4),chan[i].freq&0xff);
+        chan[i].freqChanged=false;
       }
       if (chan[i].writeCtrl) {
-        rWrite(0x05 + (i << 4), ctrl);
-        chan[i].writeCtrl = false;
+        rWrite(0x05+(i<<4),ctrl);
+        chan[i].writeCtrl=false;
       }
     }
   }
 
-  for (int i = 0; i < 4; i++) {
-    bankLabel[i][0] = '0' + groupBank[i];
+  for (int i=0; i<4; i++) {
+    bankLabel[i][0]='0'+groupBank[i];
   }
 }
 
 int DivPlatformC352::dispatch(DivCommand c) {
   switch (c.cmd) {
-  case DIV_CMD_NOTE_ON: {
-    DivInstrument* ins = parent->getIns(chan[c.chan].ins, DIV_INS_AMIGA);
-    chan[c.chan].macroVolMul = ins->type == DIV_INS_AMIGA ? 64 : 255;
-    chan[c.chan].macroPanMul = ins->type == DIV_INS_AMIGA ? 127 : 255;
-    if (c.value != DIV_NOTE_NULL) {
-      chan[c.chan].sample = ins->amiga.getSample(c.value);
-      chan[c.chan].sampleNote = c.value;
-      c.value = ins->amiga.getFreq(c.value);
-      chan[c.chan].sampleNoteDelta = c.value - chan[c.chan].sampleNote;
-    }
-    if (c.value != DIV_NOTE_NULL) {
-      chan[c.chan].baseFreq = NOTE_FREQUENCY(c.value);
-    }
-    if (chan[c.chan].sample < 0 || chan[c.chan].sample >= parent->song.sampleLen) {
-      chan[c.chan].sample = -1;
-    }
-    if (c.value != DIV_NOTE_NULL) {
-      chan[c.chan].freqChanged = true;
-      chan[c.chan].note = c.value;
-    }
-    chan[c.chan].active = true;
-    chan[c.chan].keyOn = true;
-    chan[c.chan].macroInit(ins);
-    if (!parent->song.compatFlags.brokenOutVol && !chan[c.chan].std.vol.will) {
-      chan[c.chan].outVol = chan[c.chan].vol;
-      chan[c.chan].volChangedL = true;
-      chan[c.chan].volChangedR = true;
-    }
-    break;
-  }
-  case DIV_CMD_NOTE_OFF:
-    chan[c.chan].sample = -1;
-    chan[c.chan].active = false;
-    chan[c.chan].keyOff = true;
-    chan[c.chan].macroInit(NULL);
-    break;
-  case DIV_CMD_NOTE_OFF_ENV:
-  case DIV_CMD_ENV_RELEASE:
-    chan[c.chan].std.release();
-    break;
-  case DIV_CMD_INSTRUMENT:
-    if (chan[c.chan].ins != c.value || c.value2 == 1) {
-      chan[c.chan].ins = c.value;
-    }
-    break;
-  case DIV_CMD_VOLUME:
-    chan[c.chan].vol = c.value;
-    if (!chan[c.chan].std.vol.has) {
-      chan[c.chan].outVol = c.value;
-    }
-    chan[c.chan].volChangedL = true;
-    chan[c.chan].volChangedR = true;
-    break;
-  case DIV_CMD_GET_VOLUME:
-    if (chan[c.chan].std.vol.has) {
-      return chan[c.chan].vol;
-    }
-    return chan[c.chan].outVol;
-    break;
-  case DIV_CMD_STD_NOISE_MODE:
-    if (!is352) break;
-    chan[c.chan].noise = c.value;
-    chan[c.chan].writeCtrl = true;
-    break;
-  case DIV_CMD_SNES_INVERT:
-    if (!is352) break;
-    chan[c.chan].invert = c.value & 15;
-    chan[c.chan].surround = c.value >> 4;
-    chan[c.chan].writeCtrl = true;
-    break;
-  case DIV_CMD_PANNING:
-    chan[c.chan].chPanL = c.value;
-    chan[c.chan].chPanR = c.value2;
-    chan[c.chan].volChangedL = true;
-    chan[c.chan].volChangedR = true;
-    break;
-  case DIV_CMD_PITCH:
-    chan[c.chan].pitch = c.value;
-    chan[c.chan].freqChanged = true;
-    break;
-  case DIV_CMD_NOTE_PORTA: {
-    int destFreq = NOTE_FREQUENCY(c.value2 + chan[c.chan].sampleNoteDelta);
-    bool return2 = false;
-    if (destFreq > chan[c.chan].baseFreq) {
-      chan[c.chan].baseFreq += c.value;
-      if (chan[c.chan].baseFreq >= destFreq) {
-        chan[c.chan].baseFreq = destFreq;
-        return2 = true;
+    case DIV_CMD_NOTE_ON: {
+      DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_AMIGA);
+      chan[c.chan].macroVolMul=ins->type==DIV_INS_AMIGA?64:255;
+      chan[c.chan].macroPanMul=ins->type==DIV_INS_AMIGA?127:255;
+      if (c.value!=DIV_NOTE_NULL) {
+        chan[c.chan].sample=ins->amiga.getSample(c.value);
+        chan[c.chan].pitchTable=samplePitchTable.get(chan[c.chan].sample);
+        chan[c.chan].sampleNote=c.value;
+        c.value=ins->amiga.getFreq(c.value);
+        chan[c.chan].sampleNoteDelta=c.value-chan[c.chan].sampleNote;
       }
-    }
-    else {
-      chan[c.chan].baseFreq -= c.value;
-      if (chan[c.chan].baseFreq <= destFreq) {
-        chan[c.chan].baseFreq = destFreq;
-        return2 = true;
+      if (c.value!=DIV_NOTE_NULL) {
+        chan[c.chan].baseFreq=chan[c.chan].calcBaseFreq(c.value);
       }
+      if (chan[c.chan].sample<0 || chan[c.chan].sample>=parent->song.sampleLen) {
+        chan[c.chan].sample=-1;
+        chan[c.chan].pitchTable=samplePitchTable.get(chan[c.chan].sample);
+      }
+      if (c.value!=DIV_NOTE_NULL) {
+        chan[c.chan].freqChanged=true;
+        chan[c.chan].note=c.value;
+      }
+      chan[c.chan].active=true;
+      chan[c.chan].keyOn=true;
+      chan[c.chan].macroInit(ins);
+      if (!parent->song.compatFlags.brokenOutVol && !chan[c.chan].std.vol.will) {
+        chan[c.chan].outVol=chan[c.chan].vol;
+        chan[c.chan].volChangedL=true;
+        chan[c.chan].volChangedR=true;
+      }
+      break;
     }
-    chan[c.chan].freqChanged = true;
-    if (return2) {
-      chan[c.chan].inPorta = false;
-      return 2;
+    case DIV_CMD_NOTE_OFF:
+      chan[c.chan].sample=-1;
+      chan[c.chan].active=false;
+      chan[c.chan].keyOff=true;
+      chan[c.chan].macroInit(NULL);
+      break;
+    case DIV_CMD_NOTE_OFF_ENV:
+    case DIV_CMD_ENV_RELEASE:
+      chan[c.chan].std.release();
+      break;
+    case DIV_CMD_INSTRUMENT:
+      if (chan[c.chan].ins!=c.value || c.value2==1) {
+        chan[c.chan].ins=c.value;
+      }
+      break;
+    case DIV_CMD_VOLUME:
+      chan[c.chan].vol=c.value;
+      if (!chan[c.chan].std.vol.has) {
+        chan[c.chan].outVol=c.value;
+      }
+      chan[c.chan].volChangedL=true;
+      chan[c.chan].volChangedR=true;
+      break;
+    case DIV_CMD_GET_VOLUME:
+      if (chan[c.chan].std.vol.has) {
+        return chan[c.chan].vol;
+      }
+      return chan[c.chan].outVol;
+      break;
+    case DIV_CMD_STD_NOISE_MODE:
+      chan[c.chan].noise=c.value;
+      chan[c.chan].writeCtrl=true;
+      break;
+    case DIV_CMD_SNES_INVERT:
+      chan[c.chan].invert=c.value&15;
+      chan[c.chan].surround=c.value>>4;
+      chan[c.chan].writeCtrl=true;
+      break;
+    case DIV_CMD_PANNING:
+      chan[c.chan].chPanL=c.value;
+      chan[c.chan].chPanR=c.value2;
+      chan[c.chan].volChangedL=true;
+      chan[c.chan].volChangedR=true;
+      break;
+    case DIV_CMD_PITCH:
+      chan[c.chan].pitch=c.value;
+      chan[c.chan].freqChanged=true;
+      break;
+    case DIV_CMD_NOTE_PORTA: {
+      int destFreq=chan[c.chan].calcBaseFreq(c.value2+chan[c.chan].sampleNoteDelta);
+      bool return2=false;
+      if (destFreq>chan[c.chan].baseFreq) {
+        chan[c.chan].baseFreq+=c.value;
+        if (chan[c.chan].baseFreq>=destFreq) {
+          chan[c.chan].baseFreq=destFreq;
+          return2=true;
+        }
+      } else {
+        chan[c.chan].baseFreq-=c.value;
+        if (chan[c.chan].baseFreq<=destFreq) {
+          chan[c.chan].baseFreq=destFreq;
+          return2=true;
+        }
+      }
+      chan[c.chan].freqChanged=true;
+      if (return2) {
+        chan[c.chan].inPorta=false;
+        return 2;
+      }
+      break;
     }
-    break;
-  }
-  case DIV_CMD_LEGATO: {
-    chan[c.chan].baseFreq = NOTE_FREQUENCY(c.value + chan[c.chan].sampleNoteDelta + ((HACKY_LEGATO_MESS) ? (chan[c.chan].std.arp.val - 12) : (0)));
-    chan[c.chan].freqChanged = true;
-    chan[c.chan].note = c.value;
-    break;
-  }
-  case DIV_CMD_PRE_PORTA:
-    if (chan[c.chan].active && c.value2) {
-      if (parent->song.compatFlags.resetMacroOnPorta) chan[c.chan].macroInit(parent->getIns(chan[c.chan].ins, DIV_INS_AMIGA));
+    case DIV_CMD_LEGATO: {
+      chan[c.chan].baseFreq=chan[c.chan].calcBaseFreq(c.value+chan[c.chan].sampleNoteDelta+((HACKY_LEGATO_MESS)?(chan[c.chan].std.arp.val-12):(0)));
+      chan[c.chan].freqChanged=true;
+      chan[c.chan].note=c.value;
+      break;
     }
-    if (!chan[c.chan].inPorta && c.value && !parent->song.compatFlags.brokenPortaArp && chan[c.chan].std.arp.will && !NEW_ARP_STRAT) chan[c.chan].baseFreq = NOTE_FREQUENCY(chan[c.chan].note);
-    chan[c.chan].inPorta = c.value;
-    break;
-  case DIV_CMD_SAMPLE_POS:
-    chan[c.chan].audPos = c.value;
-    chan[c.chan].setPos = true;
-    break;
-  case DIV_CMD_GET_VOLMAX:
-    return 255;
-    break;
-  case DIV_CMD_MACRO_OFF:
-    chan[c.chan].std.mask(c.value, true);
-    break;
-  case DIV_CMD_MACRO_ON:
-    chan[c.chan].std.mask(c.value, false);
-    break;
-  case DIV_CMD_MACRO_RESTART:
-    chan[c.chan].std.restart(c.value);
-    break;
-  default:
-    break;
+    case DIV_CMD_PRE_PORTA:
+      if (chan[c.chan].active && c.value2) {
+        if (parent->song.compatFlags.resetMacroOnPorta) chan[c.chan].macroInit(parent->getIns(chan[c.chan].ins,DIV_INS_AMIGA));
+      }
+      if (!chan[c.chan].inPorta && c.value && !parent->song.compatFlags.brokenPortaArp && chan[c.chan].std.arp.will && !NEW_ARP_STRAT) chan[c.chan].baseFreq=chan[c.chan].calcBaseFreq(chan[c.chan].note);
+      chan[c.chan].inPorta=c.value;
+      break;
+    case DIV_CMD_SAMPLE_POS:
+      chan[c.chan].audPos=c.value;
+      chan[c.chan].setPos=true;
+      break;
+    case DIV_CMD_GET_VOLMAX:
+      return 255;
+      break;
+    case DIV_CMD_MACRO_OFF:
+      chan[c.chan].std.mask(c.value,true);
+      break;
+    case DIV_CMD_MACRO_ON:
+      chan[c.chan].std.mask(c.value,false);
+      break;
+    case DIV_CMD_MACRO_RESTART:
+      chan[c.chan].std.restart(c.value);
+      break;
+    default:
+      break;
   }
   return 1;
 }
 
 void DivPlatformC352::muteChannel(int ch, bool mute) {
-  if (ch < 0 || ch >= totalChans) {
-    logW("DivPlatformC352::muteChannel(): invalid channel %d", ch);
-    return;
-  }
-
-  // no-op if state already matches
-  if (isMuted[ch] == mute) return;
-
   isMuted[ch] = mute;
-
-  // underlying core uses the same field for both variants; set it unconditionally.
-  c352.voice[ch] .muted = mute;
+  c352.voice[ch].muted = mute;
 }
 
 void DivPlatformC352::forceIns() {
@@ -452,11 +437,8 @@ void DivPlatformC352::forceIns() {
     chan[i].volChangedR = true;
     chan[i].sample = -1;
   }
-  if (is352) {
-    // restore banks
-    for (int i = 0; i < 4; i++) {
-      rWrite(0x1f1 + (((3 + i) & 3) << 1), groupBank[i]);
-    }
+  for (int i = 0; i < 4; i++) {
+    rWrite(0x1f1 + (((3 + i) & 3) << 1), groupBank[i]);
   }
 }
 
@@ -478,15 +460,16 @@ DivDispatchOscBuffer* DivPlatformC352::getOscBuffer(int ch) {
 
 void DivPlatformC352::reset() {
   while (!writes.empty()) writes.pop();
-  memset(regPool, 0, 512);
-  c352_reset;
-  for (int i = 0; i < totalChans; i++) {
-    chan[i] = DivPlatformC352::Channel();
+  memset(regPool,0,512);
+  c352_reset(&c352);
+  for (int i=0; i<totalChans; i++) {
+    chan[i]=DivPlatformC352::Channel(parent->song.compatFlags.linearPitch);
+    chan[i].pitchTable=samplePitchTable.get(-1);
     chan[i].std.setEngine(parent);
-    rWrite(0x05 + (i << 4), 0);
+    rWrite(0x05+(i<<4),0);
   }
-  for (int i = 0; i < 4; i++) {
-    groupBank[i] = 0;
+  for (int i=0; i<4; i++) {
+    groupBank[i]=0;
   }
 }
 
