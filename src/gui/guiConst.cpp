@@ -885,7 +885,8 @@ const FurnaceGUIActionDef guiActions[GUI_ACTION_MAX]={
 
 #define D(x,y,z) FurnaceGUIColorDef(#x,y,ImGui::ColorConvertFloat4ToU32(z))
 
-const FurnaceGUIColorDef guiColors[GUI_COLOR_MAX]={
+const FurnaceGUIColorDef guiColors[
+]={
   D(GUI_COLOR_BACKGROUND,_N("Background"),ImVec4(0.1f,0.1f,0.1f,1.0f)),
   D(GUI_COLOR_FRAME_BACKGROUND,_N("Window background"),ImVec4(0.0f,0.0f,0.0f,0.85f)),
   D(GUI_COLOR_FRAME_BACKGROUND_CHILD,_N("Sub-window background"),ImVec4(0.0f,0.0f,0.0f,0.0f)),
@@ -1102,7 +1103,6 @@ const FurnaceGUIColorDef guiColors[GUI_COLOR_MAX]={
   D(GUI_COLOR_INSTR_TED,_N("TED"),ImVec4(0.7f,0.6f,1.0f,1.0f)),
   D(GUI_COLOR_INSTR_C140,_N("C140"),ImVec4(1.0f,1.0f,0.0f,1.0f)),
   D(GUI_COLOR_INSTR_C219,_N("C219"),ImVec4(1.0f,0.8f,0.0f,1.0f)),
-  D(GUI_COLOR_INSTR_C352, _N("C352"),ImVec4(1.0f,0.6f,0.0f,1.0f)),
   D(GUI_COLOR_INSTR_ESFM,_N("ESFM"),ImVec4(0.1f,0.9f,1.0f,1.0f)),
   D(GUI_COLOR_INSTR_POWERNOISE,_N("PowerNoise (noise)"),ImVec4(1.0f,1.0f,0.8f,1.0f)),
   D(GUI_COLOR_INSTR_POWERNOISE_SLOPE,_N("PowerNoise (slope)"),ImVec4(1.0f,0.6f,0.3f,1.0f)),
@@ -1115,6 +1115,7 @@ const FurnaceGUIColorDef guiColors[GUI_COLOR_MAX]={
   D(GUI_COLOR_INSTR_SUPERVISION,_N("Supervision"),ImVec4(0.52f,1.0f,0.6f,1.0f)),
   D(GUI_COLOR_INSTR_UPD1771C,_N("μPD1771C"),ImVec4(0.94f,0.52f,0.6f,1.0f)),
   D(GUI_COLOR_INSTR_SID3,_N("SID3"),ImVec4(0.6f,0.75f,0.6f,1.0f)),
+  D(GUI_COLOR_INSTR_C352, _N("C352"),ImVec4(1.0f,0.6f,0.0f,1.0f)),
   D(GUI_COLOR_INSTR_UNKNOWN,_N("Other/Unknown"),ImVec4(0.3f,0.3f,0.3f,1.0f)),
 
   D(GUI_COLOR_CHANNEL_BG,_N("Single color (background)"),ImVec4(0.4f,0.6f,0.8f,1.0f)),
