@@ -486,13 +486,13 @@ void DivPlatformC352::rWrite(unsigned short addr, unsigned short val) {
 }
 
 int DivPlatformC352::getOutputCount() {
-  return 2;
+  return 4;
 }
 
 void DivPlatformC352::notifyInsChange(int ins) {
-  for (int i = 0; i < totalChans; i++) {
-    if (chan[i].ins == ins) {
-      chan[i].insChanged = true;
+  for (int i=0; i<totalChans; i++) {
+    if (chan[i].ins==ins) {
+      chan[i].insChanged=true;
     }
   }
 }
@@ -502,18 +502,22 @@ void DivPlatformC352::notifyWaveChange(int wave) {
 }
 
 void DivPlatformC352::notifyInsDeletion(void* ins) {
-  for (int i = 0; i < totalChans; i++) {
+  for (int i=0; i<totalChans; i++) {
     chan[i].std.notifyInsDeletion((DivInstrument*)ins);
   }
 }
 
-void DivPlatformC352::poke(unsigned int addr, unsigned short val) {
-  rWrite(addr, val);
+void DivPlatformC352::notifyPitchTable(int sample) {
+  samplePitchTable.update<Channel>(chan,32,parent->song.tuning,chipClock,CHIP_FREQBASE,0xffff,false,parent->song.compatFlags.linearPitch,sample);
 }
 
-void DivPlatformC352::poke(std::vector<DivRegWrite>& wlist) {
-  for (DivRegWrite& i : wlist) rWrite(i.addr, i.val);
+void DivPlatformC352::poke(unsigned int addr, unsigned short val) {
+  rWrite(addr,val);
 }
+void DivPlatformC352::poke(std::vector<DivRegWrite>& wlist) {
+  for (DivRegWrite& i: wlist) rWrite(i.addr,i.val);
+}
+
 
 unsigned char* DivPlatformC352::getRegisterPool() {
   return regPool;
@@ -528,9 +532,8 @@ float DivPlatformC352::getPostAmp() {
 }
 
 void DivPlatformC352::getPaired(int ch, std::vector<DivChannelPair>& ret) {
-  if (!is352) return;
-  if ((ch & 3) == 0) {
-    ret.push_back(DivChannelPair(bankLabel[ch >> 2], ch + 1, ch + 2, ch + 3, -1, -1, -1, -1, -1));
+  if ((ch&3)==0) {
+    ret.push_back(DivChannelPair(bankLabel[ch>>2],ch+1,ch+2,ch+3,-1,-1,-1,-1,-1));
   }
 }
 
@@ -540,14 +543,7 @@ const void* DivPlatformC352::getSampleMem(int index) {
 
 size_t DivPlatformC352::getSampleMemCapacity(int index) {
   if (index != 0) return 0;
-  if (is352) return 524288;
-  switch (bankType) {
-  case 0:
-    return 2097152;
-  case 1:
-    return 4194304;
-  }
-  return 16777216;
+  return 524288;
 }
 
 size_t DivPlatformC352::getSampleMemUsage(int index) {
@@ -555,13 +551,13 @@ size_t DivPlatformC352::getSampleMemUsage(int index) {
 }
 
 bool DivPlatformC352::isSampleLoaded(int index, int sample) {
-  if (index != 0) return false;
-  if (sample < 0 || sample>32767) return false;
+  if (index!=0) return false;
+  if (sample<0 || sample>32767) return false;
   return sampleLoaded[sample];
 }
 
 const DivMemoryComposition* DivPlatformC352::getMemCompo(int index) {
-  if (index != 0) return NULL;
+  if (index!=0) return NULL;
   return &memCompo;
 }
 
