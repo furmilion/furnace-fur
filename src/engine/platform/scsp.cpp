@@ -424,7 +424,8 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
   unsigned short octBits=computeFMOctBitsForOp(op, midiNote);
 
   // TL: linear-in-level
-  int tlInt=(int)floor((1.0-(double)op.level/127.0)*127.0+0.5); 
+  //int tlInt=(int)floor((1.0-(double)op.level/127.0)*127.0+0.5); 
+  int tlInt=(int)floor((1.0-(double)op.level/255.0)*254.0+1.0); 
   if (tlInt<0) tlInt=0;
   if (tlInt>255) tlInt=255;
   unsigned char tl=(unsigned char)tlInt;
@@ -447,13 +448,22 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
   }*/
   
   /**
-  | --- | --- | --- | KYONEX | KYONB | SBCTL | SSCTL | LPCTL |
-  | ---
-  | ---
-  | ---
-  | ---
-  
-  
+  +---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
+  | Offset  | Bit  15 | Bit  14 | Bit  13 | Bit  12 | Bit  11 | Bit  10 | Bit   9 | Bit   8 | Bit   7 | Bit   6 | Bit   5 | Bit   4 | Bit   3 | Bit   2 | Bit   1 | Bit   0 |
+  +---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
+  |  0x00   | ------- | ------- | ------- | KeyOnEx | KeyOnBt | SourceBit Control | SoundSrc  Control |    Loop Control   |  PCM8B  |  Sample address (bits 19 through 16)  |
+  |  0x01   |                                                             Sample address (bits 15 through 0)                                                                |
+  |  0x02   |                                                                     Loop start address                                                                        |
+  |  0x03   |                                                                      Loop end address                                                                         |
+  |  0x04   |                  Decay 2 Rate                   |                  Decay 1 Rate                   | EnvHold |                   Attack Rate                   |
+  |  0x05   | ------- | LpStLnk |           Key Rate Scaling            |                  Decay Level                    |                   Release Rate                  |
+  |  0x06   | ------- | ------- | ------- | ------- | ------- | ------- | StkWrIn | SndDirt |                                  Total Level                                  |
+  |  0x07   |        Modulation Input Level         |                 Modulation Input X Select                 |                 Modulation Input Y Select                 |
+  |  0x08   | ------- |                Octave                 | ------- |                                         Frequency Number                                          |
+  |  0x09   | LFORest |                  LFO Frequency                  | LFO FreqMod Wave  |      LFO FreqMod Depth      |  LFO AmpMod Wave  |      LFO AmpMod Depth       |
+  |  0x0A   | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- |           DSP Input Select            |       DSP Send Level        |
+  |  0x0B   |      Direct Send Level      |                  Direct Panpot                  |    DSP Effect Send Level    |                DSP Effect Panpot                |
+  +---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+---------+
   **/
   
   scsp_write_slot(slot,0x0,((lpctl&0x3)<<5)|((sa>>16)&0xF)|(is8Bit<<4));
@@ -630,7 +640,8 @@ void DivPlatformSCSP::programSlot(int slot, int chanIdx) {
   scsp_write_slot(slot,0x5,r5);
 
   // reg 0x6: STWINH[9] | SDIR[8] | TL[7:0] — TL from channel volume
-  unsigned char tl=(unsigned char)((127-(c.outVol&0x7F))); 
+  /*unsigned char tl=(unsigned char)((127-(c.outVol&0x7F))); */
+  unsigned char tl=(unsigned char)((255-(c.outVol&0xFF))); 
   if (st.tl>tl) tl=st.tl;
   unsigned short r6=((stwinh&1)<<9)|((sdir&1)<<8)|(tl&0xFF);
   scsp_write_slot(slot,0x6,r6);
@@ -1110,7 +1121,8 @@ int DivPlatformSCSP::dispatch(DivCommand c) {
       chan[c.chan].std.restart(c.value);
       break;
     case DIV_CMD_GET_VOLMAX:
-      return 127;
+      return 255;
+      //return 127;
     // ── SCSP runtime effects. Mutate scspState first so a fresh row
     // (effect dispatches before NOTE_ON sets keyOn) survives the
     // commitState-on-insChanged seeding at note-on. If the slot is
@@ -1178,9 +1190,12 @@ int DivPlatformSCSP::dispatch(DivCommand c) {
       unsigned char newTl=c.value2&0xFF;
       // Inverse of the linear-in-level mapping programSlotFM uses
       // (tl = round((1-level/127)*128)). Clamp the recovered level.
-      int lvlInt=(int)floor((1.0-(double)newTl/128.0)*127.0+0.5);
+      int lvlInt=(int)floor((1.0-(double)newTl/255.0)*254.0+1.0);
       if (lvlInt<0) lvlInt=0;
-      if (lvlInt>127) lvlInt=127;
+      if (lvlInt>255) lvlInt=255;
+	  /*int lvlInt=(int)floor((1.0-(double)newTl/255.0)*254.0+1.0);
+      if (lvlInt<0) lvlInt=0;
+      if (lvlInt>127) lvlInt=127;*/
       chan[c.chan].scspState.ops[opIdx].level=(unsigned char)lvlInt;
       int n=activeOpCount[c.chan];
       if (opIdx>=n) break;
