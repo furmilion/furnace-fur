@@ -444,8 +444,18 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
   if (s->depth == DIV_SAMPLE_DEPTH_8BIT) { // 8-bit sample
     r0 |= (1 << 4);
   }*/
-  scsp_write_slot(slot,0x0,((lpctl&0x3)<<5)|((sa>>16)&0xF)|(((s->depth == DIV_SAMPLE_DEPTH_8BIT)?1:0)<<4));
   
+  /**
+  | --- | --- | --- | KYONEX | KYONB | SBCTL | SSCTL | LPCTL |
+  | ---
+  | ---
+  | ---
+  | ---
+  
+  
+  **/
+  
+  scsp_write_slot(slot,0x0,((lpctl&0x3)<<5)|((sa>>16)&0xF)|(((s->depth == DIV_SAMPLE_DEPTH_8BIT)?1:0)<<4));
   scsp_write_slot(slot,0x1,(unsigned short)(sa&0xFFFF));
   scsp_write_slot(slot,0x2,(unsigned short)(lsa&0xFFFF));
   scsp_write_slot(slot,0x3,(unsigned short)(lea&0xFFFF));
@@ -572,7 +582,7 @@ void DivPlatformSCSP::programSlot(int slot, int chanIdx) {
   //if (storedSamples < 1) storedSamples = 1;
 
   unsigned int loopStart=s->isLoopable()?(unsigned int)s->loopStart:0;
-  unsigned int loopEnd=s->isLoopable()?(unsigned int)s->loopEnd:(unsigned int)storedSamples;
+  unsigned int loopEnd=s->isLoopable()?(unsigned int)s->loopEnd:(unsigned int)sampleStored[c.sample];
   if (loopEnd<1) loopEnd=1;
   if (loopEnd>0xFFFF) loopEnd=0xFFFF;
   if (loopStart>=loopEnd) loopStart=0;
