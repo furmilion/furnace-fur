@@ -385,12 +385,13 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
   bool useSample=(op.sampleId>=0 &&
                   op.sampleId<parent->song.sampleLen &&
                   sampleLoaded[op.sampleId]);
- 
+  bool is8Bit = false;
 
   if (useSample) {
     DivSample* s=parent->song.sample[op.sampleId];
     sa=sampleOff[op.sampleId];
-
+    
+	is8Bit = (s->depth == DIV_SAMPLE_DEPTH_8BIT);
     /*unsigned int storedSamples = is8Bit ? sampleStored[op.sampleId] : (sampleStored[op.sampleId] / 2);
     if (storedSamples<1) storedSamples=1;*/
 
@@ -455,7 +456,7 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
   
   **/
   
-  scsp_write_slot(slot,0x0,((lpctl&0x3)<<5)|((sa>>16)&0xF)|(((s->depth == DIV_SAMPLE_DEPTH_8BIT)?1:0)<<4));
+  scsp_write_slot(slot,0x0,((lpctl&0x3)<<5)|((sa>>16)&0xF)|(is8Bit<<4));
   scsp_write_slot(slot,0x1,(unsigned short)(sa&0xFFFF));
   scsp_write_slot(slot,0x2,(unsigned short)(lsa&0xFFFF));
   scsp_write_slot(slot,0x3,(unsigned short)(lea&0xFFFF));
