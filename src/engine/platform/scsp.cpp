@@ -396,7 +396,7 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
 
     bool needsLoop=(!op.isCarrier) || op.feedback>0 ||
                    (op.modSource>=0 && op.mdl>=5);
-    if (s->isLoopable() && (unsigned int)s->loopEnd<=storedSamples) {
+    if (s->isLoopable() && (unsigned int)s->loopEnd<=sampleStored[op.sampleId]) {
       lsa=(unsigned int)s->loopStart;
       lea=(unsigned int)s->loopEnd;
       switch (s->loopMode) {
@@ -407,11 +407,11 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
       }
     } else if (needsLoop) {
       lsa=0;
-      lea=storedSamples;
+      lea=sampleStored[op.sampleId];
       lpctl=1;
     } else {
       lsa=0;
-      lea=storedSamples;
+      lea=sampleStored[op.sampleId];
       lpctl=0;
     }
   } else {
