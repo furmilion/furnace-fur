@@ -291,7 +291,7 @@ void DivPlatformSCSP::updateChanVolume(int chanIdx) {
   if (n<=0) return;
   const DivInstrumentSCSP& st=chan[chanIdx].scspState;
   bool isFMIns=(st.mode==DivInstrumentSCSP::SCSP_MODE_FM);
-  unsigned char chanTl=(unsigned char)(127-(chan[chanIdx].outVol&0x7F));
+  unsigned char chanTl=(unsigned char)(255-(chan[chanIdx].outVol&0xFF));
   for (int s=0; s<n; s++) {
     int slot=chanIdx+s;
     if (isFMIns && !st.ops[s].isCarrier) continue;
@@ -739,7 +739,7 @@ void DivPlatformSCSP::tick(bool sysTick) {
     chan[i].std.next();
 
     if (chan[i].std.vol.had) {
-      chan[i].outVol=VOL_SCALE_LOG((chan[i].vol&0x7F),(0x7F*chan[i].std.vol.val)/0x7F,0x7F);
+      chan[i].outVol=VOL_SCALE_LOG((chan[i].vol&0xFF),(0xFF*chan[i].std.vol.val)/0xFF,0xFF);
       updateChanVolume(i);
     }
 

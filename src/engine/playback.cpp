@@ -336,6 +336,7 @@ const char* cmdName[]={
   "SCSP_DIRECT_SEND",
   "SCSP_DIRECT_PAN",
 
+  "SCSP_LEVEL_DIRECT",
   "SCSP_OP_TL",
   "SCSP_OP_MDL",
   "SCSP_FEEDBACK"
