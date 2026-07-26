@@ -391,8 +391,8 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
     DivSample* s=parent->song.sample[op.sampleId];
     sa=sampleOff[op.sampleId];
 
-    unsigned int storedSamples = is8Bit ? sampleStored[op.sampleId] : (sampleStored[op.sampleId] / 2);
-    if (storedSamples<1) storedSamples=1;
+    /*unsigned int storedSamples = is8Bit ? sampleStored[op.sampleId] : (sampleStored[op.sampleId] / 2);
+    if (storedSamples<1) storedSamples=1;*/
 
     bool needsLoop=(!op.isCarrier) || op.feedback>0 ||
                    (op.modSource>=0 && op.mdl>=5);
@@ -444,7 +444,7 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
   if (s->depth == DIV_SAMPLE_DEPTH_8BIT) { // 8-bit sample
     r0 |= (1 << 4);
   }*/
-  scsp_write_slot(slot,0x0,((lpctl&0x3)<<5)|((sa>>16)&0xF)|((s->depth == DIV_SAMPLE_DEPTH_8BIT?1:0)<<4));
+  scsp_write_slot(slot,0x0,((lpctl&0x3)<<5)|((sa>>16)&0xF)|(((s->depth == DIV_SAMPLE_DEPTH_8BIT)?1:0)<<4));
   
   scsp_write_slot(slot,0x1,(unsigned short)(sa&0xFFFF));
   scsp_write_slot(slot,0x2,(unsigned short)(lsa&0xFFFF));
@@ -568,8 +568,8 @@ void DivPlatformSCSP::programSlot(int slot, int chanIdx) {
 
   unsigned int sampleByte=sampleOff[c.sample];
 
-  unsigned int storedSamples = is8Bit ? sampleStored[c.sample] : (sampleStored[c.sample] / 2);
-  if (storedSamples < 1) storedSamples = 1;
+  //unsigned int storedSamples = (s->depth == DIV_SAMPLE_DEPTH_8BIT) ? sampleStored[c.sample] : (sampleStored[c.sample] / 2);
+  //if (storedSamples < 1) storedSamples = 1;
 
   unsigned int loopStart=s->isLoopable()?(unsigned int)s->loopStart:0;
   unsigned int loopEnd=s->isLoopable()?(unsigned int)s->loopEnd:(unsigned int)storedSamples;
@@ -595,7 +595,7 @@ void DivPlatformSCSP::programSlot(int slot, int chanIdx) {
   unsigned char stwinh=st.stwinh?1:0;
 
   // reg 0x0: bits 5..6 LPCTL, bit 4 PCM8B, bits 0..3 SA hi
-  scsp_write_slot(slot,0x0,((lpctl&0x3)<<5)|((sampleByte>>16)&0xF)|((s->depth == DIV_SAMPLE_DEPTH_8BIT?1:0)<<4));
+  scsp_write_slot(slot,0x0,((lpctl&0x3)<<5)|((sampleByte>>16)&0xF)|(((s->depth == DIV_SAMPLE_DEPTH_8BIT)?1:0)<<4));
 
   // reg 0x1: SA low 16 bits
   scsp_write_slot(slot,0x1,(unsigned short)(sampleByte&0xFFFF));
@@ -1462,7 +1462,7 @@ void DivPlatformSCSP::renderSamples(int sysID) {
 	/* ========================= */
 	
     sampleOff[i]=memPos;
-    sampleStored[i]=sampleLength;
+    sampleStored[i]=(s->depth == DIV_SAMPLE_DEPTH_8BIT)?sampleLength:sampleLength/2;
     sampleLoaded[i]=true;
     memCompo.entries.push_back(DivMemoryEntry(DIV_MEMORY_SAMPLE,"Sample",i,memPos,memPos+sampleLength));
     memPos+=sampleLength;
