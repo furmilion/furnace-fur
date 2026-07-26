@@ -630,8 +630,7 @@ void DivPlatformSCSP::programSlot(int slot, int chanIdx) {
   scsp_write_slot(slot,0x5,r5);
 
   // reg 0x6: STWINH[9] | SDIR[8] | TL[7:0] — TL from channel volume
-  // (Формулу громкости поправим ниже, в Части 2)
-  unsigned char tl=(unsigned char)((127-(c.outVol&0x7F)) * 2); 
+  unsigned char tl=(unsigned char)((127-(c.outVol&0x7F))); 
   if (st.tl>tl) tl=st.tl;
   unsigned short r6=((stwinh&1)<<9)|((sdir&1)<<8)|(tl&0xFF);
   scsp_write_slot(slot,0x6,r6);
