@@ -38,7 +38,7 @@ void DivPlatformYAM10::acquire(short** buf, size_t len) {
     float mixL=0.0f, mixR=0.0f;
     for (int i=0; i<YAM10_CHANS; i++) {
       float l=0.0f, r=0.0f;
-      if (!isMuted[i]) chip.renderChan(i,l,r);
+      if (!isMuted[i] && !chip.chanIdle(i)) chip.renderChan(i,l,r);
       mixL+=l;
       mixR+=r;
       if (oscBuf[i]!=NULL) {

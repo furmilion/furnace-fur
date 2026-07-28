@@ -248,6 +248,10 @@ static void yam10_build_dsp(void) {
   yam10_dsp_built=1;
 }
 
+/* a value on its way to zero must not be left subnormal: the arithmetic
+   costs many times more and every feedback path here converges on zero */
+static inline float yam10_fz(float v) { return (v>-1.0e-20f && v<1.0e-20f)?0.0f:v; }
+
 /* direct form I biquad, same shape as the YM2609 one */
 struct YAM10Biquad {
   float a0,a1,a2,b0,b1,b2;
@@ -257,7 +261,8 @@ struct YAM10Biquad {
   void clear() { in1=in2=out1=out2=0.0f; }
   inline float process(float x) {
     float y=b0/a0*x + b1/a0*in1 + b2/a0*in2 - a1/a0*out1 - a2/a0*out2;
-    in2=in1; in1=x;
+    y=yam10_fz(y);
+    in2=in1; in1=yam10_fz(x);
     out2=out1; out1=y;
     return y;
   }
@@ -474,6 +479,10 @@ class YAM10Chip {
     unsigned char xCache[2];
     bool xValid;
     float compEnv[3][2], compGain[3][2];
+    int quiet;
+    float cAtk, cDec, cThrDb, cDnR, cUpR, cMakeup, cBandLin[3];
+    unsigned char cCache[9];
+    bool cValid;
     /* reverb */
     float earlyBuf[2][YAM10_REV_EARLY];
     int earlyPos;
@@ -497,6 +506,11 @@ class YAM10Chip {
       }
       xCache[0]=xCache[1]=0;
       xValid=false;
+      quiet=0;
+      memset(cCache,0,sizeof(cCache));
+      cValid=false;
+      cAtk=cDec=0.0f; cThrDb=0.0f; cDnR=cUpR=1.0f; cMakeup=1.0f;
+      cBandLin[0]=cBandLin[1]=cBandLin[2]=1.0f;
       memset(earlyBuf,0,sizeof(earlyBuf));
       earlyPos=0;
       revDampS[0][0]=revDampS[0][1]=revDampS[1][0]=revDampS[1][1]=0.0f;
@@ -558,6 +572,7 @@ public:
   void setFreq(int c, double hz) { chan[c].freq=hz; }
   void keyOn(int c) {
     chan[c].keyOn=true;
+    chan[c].quiet=0;
     for (int i=0; i<YAM10_OPS; i++) {
       chan[c].op[i].egState=0;
       chan[c].op[i].phase=0;
@@ -570,6 +585,9 @@ public:
     chan[c].keyOn=false;
     for (int i=0; i<YAM10_OPS; i++) if (chan[c].op[i].egState<3) chan[c].op[i].egState=3;
   }
+  /* a released channel whose output has sat at nothing long enough for the
+     delay lines to have drained does not need rendering at all */
+  bool chanIdle(int c) const { return chan[c].quiet>8192; }
   bool isSilent(int c) const {
     for (int i=0; i<YAM10_OPS; i++)
       if (chan[c].op[i].egState<4 && chan[c].op[i].att<0x3f0) return false;
@@ -808,8 +826,8 @@ public:
         if (dr<1.0) dr=1.0; if (dr>maxD) dr=maxD;
         float sL=chorusTap(ch,0,dl), sR=chorusTap(ch,1,dr);
         float fbk=(float)cp.chorusFeedback/127.0f*0.7f;
-        ch.chorusBuf[0][ch.chorusPos]=dL+sL*fbk;
-        ch.chorusBuf[1][ch.chorusPos]=dR+sR*fbk;
+        ch.chorusBuf[0][ch.chorusPos]=yam10_fz(dL+sL*fbk);
+        ch.chorusBuf[1][ch.chorusPos]=yam10_fz(dR+sR*fbk);
         if (++ch.chorusPos>=YAM10_MAX_CHORUS) ch.chorusPos=0;
         float m=(float)cp.chorusMix/127.0f;
         dL+=sL*m;
@@ -834,7 +852,7 @@ public:
         float wet[2];
         for (int sd=0; sd<2; sd++) {
           float in=(sd?dR:dL)*send;
-          ch.earlyBuf[sd][ch.earlyPos]=in;
+          ch.earlyBuf[sd][ch.earlyPos]=yam10_fz(in);
           float er=0.0f;
           if (early>0.0f) {
             for (int t=0; t<YAM10_EARLY_TAPS; t++) {
@@ -850,21 +868,21 @@ public:
           /* two combs, each losing treble a little more every pass */
           float c1=ch.revC1[sd][ch.revP1];
           float c2=ch.revC2[sd][ch.revP2];
-          ch.revDampS[sd][0]+=(c1-ch.revDampS[sd][0])*(1.0f-damp);
-          ch.revDampS[sd][1]+=(c2-ch.revDampS[sd][1])*(1.0f-damp);
-          ch.revC1[sd][ch.revP1]=in+ch.revDampS[sd][0]*g;
-          ch.revC2[sd][ch.revP2]=in+ch.revDampS[sd][1]*g;
+          ch.revDampS[sd][0]=yam10_fz(ch.revDampS[sd][0]+(c1-ch.revDampS[sd][0])*(1.0f-damp));
+          ch.revDampS[sd][1]=yam10_fz(ch.revDampS[sd][1]+(c2-ch.revDampS[sd][1])*(1.0f-damp));
+          ch.revC1[sd][ch.revP1]=yam10_fz(in+ch.revDampS[sd][0]*g);
+          ch.revC2[sd][ch.revP2]=yam10_fz(in+ch.revDampS[sd][1]*g);
           float sum=(c1+c2)*0.5f;
           /* three allpasses in series: diffusion sets how hard they smear */
           float ap=ch.revAP[sd][ch.revPA];
           float o1=ap-sum;
-          ch.revAP[sd][ch.revPA]=sum+ap*diff;
+          ch.revAP[sd][ch.revPA]=yam10_fz(sum+ap*diff);
           float ap2=ch.revAP2[sd][ch.revPA2];
           float o2=ap2-o1;
-          ch.revAP2[sd][ch.revPA2]=o1+ap2*diff;
+          ch.revAP2[sd][ch.revPA2]=yam10_fz(o1+ap2*diff);
           float ap3=ch.revAP3[sd][ch.revPA3];
           float o3=ap3-o2;
-          ch.revAP3[sd][ch.revPA3]=o2+ap3*diff;
+          ch.revAP3[sd][ch.revPA3]=yam10_fz(o2+ap3*diff);
           wet[sd]=o3+er;
         }
         if (++ch.earlyPos>=YAM10_REV_EARLY) ch.earlyPos=0;
@@ -898,25 +916,31 @@ public:
           ch.xCache[1]=cp.compMidHi;
           ch.xValid=true;
         }
-        /* attack and decay as times, so the numbers read in milliseconds */
-        float atkMs=0.1f*(float)pow(1000.0,(double)cp.compAttack/127.0);
-        float decMs=1.0f*(float)pow(1000.0,(double)cp.compDecay/127.0);
-        float atkC=1.0f-(float)exp(-1.0/(atkMs*0.001*rate));
-        float decC=1.0f-(float)exp(-1.0/(decMs*0.001*rate));
-        if (atkC>1.0f) atkC=1.0f;
-        if (decC>1.0f) decC=1.0f;
-        float thrDb=-60.0f+(float)cp.compThreshold/127.0f*60.0f;
-        float dnR=1.0f+(float)cp.compRatio/127.0f*19.0f;
-        /* the upward lift stops at 4:1. any more and quiet passages come up
-           far enough to be painful */
-        float upR=1.0f+(float)cp.compUpRatio/127.0f*3.0f;
-        float bandDb[3]={
-          yam10_gainTable[cp.compLowGain],
-          yam10_gainTable[cp.compMidGain],
-          yam10_gainTable[cp.compHighGain]
+        const unsigned char cWant[9]={
+          cp.compAttack,cp.compDecay,cp.compThreshold,cp.compRatio,cp.compUpRatio,
+          cp.compMakeup,cp.compLowGain,cp.compMidGain,cp.compHighGain
         };
-        /* makeup in decibels around a unity middle, so 64 changes nothing */
-        float makeup=(float)pow(10.0,((double)cp.compMakeup-64.0)/63.0*12.0/20.0);
+        if (!ch.cValid || memcmp(ch.cCache,cWant,9)!=0) {
+          float atkMs=0.1f*(float)pow(1000.0,(double)cp.compAttack/127.0);
+          float decMs=1.0f*(float)pow(1000.0,(double)cp.compDecay/127.0);
+          ch.cAtk=1.0f-(float)exp(-1.0/(atkMs*0.001*rate));
+          ch.cDec=1.0f-(float)exp(-1.0/(decMs*0.001*rate));
+          if (ch.cAtk>1.0f) ch.cAtk=1.0f;
+          if (ch.cDec>1.0f) ch.cDec=1.0f;
+          ch.cThrDb=-60.0f+(float)cp.compThreshold/127.0f*60.0f;
+          ch.cDnR=1.0f+(float)cp.compRatio/127.0f*19.0f;
+          /* the upward lift stops at 4:1 */
+          ch.cUpR=1.0f+(float)cp.compUpRatio/127.0f*3.0f;
+          ch.cMakeup=(float)pow(10.0,((double)cp.compMakeup-64.0)/63.0*12.0/20.0);
+          ch.cBandLin[0]=(float)pow(10.0,(double)yam10_gainTable[cp.compLowGain]/20.0);
+          ch.cBandLin[1]=(float)pow(10.0,(double)yam10_gainTable[cp.compMidGain]/20.0);
+          ch.cBandLin[2]=(float)pow(10.0,(double)yam10_gainTable[cp.compHighGain]/20.0);
+          memcpy(ch.cCache,cWant,9);
+          ch.cValid=true;
+        }
+        const float atkC=ch.cAtk, decC=ch.cDec;
+        const float thrDb=ch.cThrDb, dnR=ch.cDnR, upR=ch.cUpR;
+        const float makeup=ch.cMakeup;
         /* the level is followed as power rather than peak, and the corner is
            rounded off over 12 dB, so it holds a line without sounding worked */
         const float knee=12.0f;
@@ -933,7 +957,12 @@ public:
             float det=a*a;
             float e=ch.compEnv[b][sd];
             e+=(det-e)*((det>e)?atkC:decC);
-            ch.compEnv[b][sd]=e;
+            ch.compEnv[b][sd]=yam10_fz(e);
+            if (e<1.0e-9f && upR<=1.0f) {
+              ch.compGain[b][sd]+=(1.0f-ch.compGain[b][sd])*decC;
+              sum+=band[b]*ch.compGain[b][sd]*ch.cBandLin[b];
+              continue;
+            }
             float lvl=(float)sqrt((double)e);
             float db=20.0f*(float)log10((double)lvl+1.0e-9);
             float outDb=db;
@@ -955,7 +984,7 @@ public:
             float want=(float)pow(10.0,(double)(outDb-db)/20.0);
             if (want>2.0f) want=2.0f;      /* never more than 6 dB up */
             ch.compGain[b][sd]+=(want-ch.compGain[b][sd])*decC;
-            sum+=band[b]*ch.compGain[b][sd]*(float)pow(10.0,(double)bandDb[b]/20.0);
+            sum+=band[b]*ch.compGain[b][sd]*ch.cBandLin[b];
           }
           if (sd) dR=sum*makeup*32768.0f; else dL=sum*makeup*32768.0f;
         }
@@ -1008,8 +1037,8 @@ public:
       int rd=ch.echoPos-d; if (rd<0) rd+=YAM10_MAX_ECHO;
       double eL=ch.echoBuf[0][rd], eR=ch.echoBuf[1][rd];
       double fbk=(double)cp.echoFeedback/127.0*0.9;
-      ch.echoBuf[0][ch.echoPos]=(float)(mixL+eL*fbk);
-      ch.echoBuf[1][ch.echoPos]=(float)(mixR+eR*fbk);
+      ch.echoBuf[0][ch.echoPos]=yam10_fz((float)(mixL+eL*fbk));
+      ch.echoBuf[1][ch.echoPos]=yam10_fz((float)(mixR+eR*fbk));
       ch.echoPos=(ch.echoPos+1)%YAM10_MAX_ECHO;
       double m=(double)cp.echoMix/127.0;
       mixL+=eL*m; mixR+=eR*m;
@@ -1017,6 +1046,8 @@ public:
 
     outL=(float)mixL;
     outR=(float)mixR;
+
+    if (!ch.keyOn && isSilent(c) && fabs(outL)+fabs(outR)<0.5f) ch.quiet++; else ch.quiet=0;
   }
 };
 
