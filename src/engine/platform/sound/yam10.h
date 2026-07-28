@@ -493,8 +493,12 @@ class YAM10Chip {
     /* the bytes the EQ coefficients were last built from */
     unsigned char eqCache[1+YAM10_EQ_BANDS*4];
     bool eqValid;
-    ChanState(): freq(0), keyOn(false), echoPos(0), distCut(0), distValid(false),
-                 chorusPos(0), chorusPhase(0.0), revP1(0), revP2(0), revPA(0) {
+    ChanState() { reset(); }
+    /* in place: this holds most of a megabyte of delay lines, so building a
+       temporary one to assign from would overflow a modest stack */
+    void reset() {
+      freq=0; keyOn=false; echoPos=0; distCut=0; distValid=false;
+      chorusPos=0; chorusPhase=0.0; revP1=0; revP2=0; revPA=0;
       memset(echoBuf,0,sizeof(echoBuf));
       memset(chorusBuf,0,sizeof(chorusBuf));
       memset(revC1,0,sizeof(revC1));
@@ -567,7 +571,7 @@ public:
     yam10_build_dsp();
     rate=outRate;
     egTimer=0; egSubCount=0;
-    for (int c=0; c<YAM10_CHANS; c++) chan[c]=ChanState();
+    for (int c=0; c<YAM10_CHANS; c++) chan[c].reset();
   }
   void setFreq(int c, double hz) { chan[c].freq=hz; }
   void keyOn(int c) {
