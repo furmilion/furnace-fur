@@ -207,6 +207,7 @@ const char* insTypes[DIV_INS_MAX+1][3]={
   {"Watara Supervision",ICON_FA_GAMEPAD,ICON_FUR_INS_SUPERVISION},
   {"NEC μPD1771C",ICON_FA_BAR_CHART,ICON_FUR_INS_UPD1771C},
   {"SID3",ICON_FA_KEYBOARD_O,ICON_FUR_INS_SID3},
+  {"YAM10",ICON_FA_AREA_CHART,ICON_FA_AREA_CHART},
   {NULL,ICON_FA_QUESTION,ICON_FA_QUESTION}
 };
 
@@ -1113,6 +1114,7 @@ const FurnaceGUIColorDef guiColors[GUI_COLOR_MAX]={
   D(GUI_COLOR_INSTR_SUPERVISION,_N("Supervision"),ImVec4(0.52f,1.0f,0.6f,1.0f)),
   D(GUI_COLOR_INSTR_UPD1771C,_N("μPD1771C"),ImVec4(0.94f,0.52f,0.6f,1.0f)),
   D(GUI_COLOR_INSTR_SID3,_N("SID3"),ImVec4(0.6f,0.75f,0.6f,1.0f)),
+  D(GUI_COLOR_INSTR_YAM10,_N("YAM10"),ImVec4(0.6f,0.9f,1.0f,1.0f)),
   D(GUI_COLOR_INSTR_UNKNOWN,_N("Other/Unknown"),ImVec4(0.3f,0.3f,0.3f,1.0f)),
 
   D(GUI_COLOR_CHANNEL_BG,_N("Single color (background)"),ImVec4(0.4f,0.6f,0.8f,1.0f)),
@@ -1378,6 +1380,7 @@ const int availableSystems[]={
   DIV_SYSTEM_UPD1771C,
   DIV_SYSTEM_SID3,
   DIV_SYSTEM_MULTIPCM,
+  DIV_SYSTEM_YAM10,
   0 // don't remove this last one!
 };
 
@@ -1417,6 +1420,7 @@ const int chipsFM[]={
   DIV_SYSTEM_ESFM,
   DIV_SYSTEM_OPL4,
   DIV_SYSTEM_OPL4_DRUMS,
+  DIV_SYSTEM_YAM10,
   0 // don't remove this last one!
 };
 

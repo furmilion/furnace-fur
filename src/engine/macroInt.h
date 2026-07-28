@@ -167,7 +167,7 @@ class DivMacroInt {
         vib(DIV_MACRO_OP_VIB),
         ws(DIV_MACRO_OP_WS),
         ksr(DIV_MACRO_OP_KSR) {}
-    } op[4];
+    } op[6];
 
     // state
     bool hasRelease;
