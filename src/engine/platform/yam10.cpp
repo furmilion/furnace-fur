@@ -323,12 +323,17 @@ int DivPlatformYAM10::dispatch(DivCommand c) {
       break;
     case DIV_CMD_NOTE_PORTA: {
       int destFreq=chan[c.chan].calcBaseFreq(c.value2);
+      // in linear mode baseFreq counts 1/128 semitones, so one effect unit is
+      // already one step. the multiplier belongs to the raw frequency units
+      // the non-linear table hands back, and applying it to both made every
+      // slide run sixteen times too fast.
+      int step=c.value*(parent->song.compatFlags.linearPitch?1:16);
       bool return2=false;
       if (destFreq>chan[c.chan].baseFreq) {
-        chan[c.chan].baseFreq+=c.value*16;
+        chan[c.chan].baseFreq+=step;
         if (chan[c.chan].baseFreq>=destFreq) { chan[c.chan].baseFreq=destFreq; return2=true; }
       } else {
-        chan[c.chan].baseFreq-=c.value*16;
+        chan[c.chan].baseFreq-=step;
         if (chan[c.chan].baseFreq<=destFreq) { chan[c.chan].baseFreq=destFreq; return2=true; }
       }
       chan[c.chan].freqChanged=true;
@@ -680,7 +685,7 @@ void DivPlatformYAM10::reset() {
   memset(regPool,0,256);
   chip.init(rate);
   for (int i=0; i<YAM10_CHANS; i++) {
-    chan[i]=DivPlatformYAM10::Channel();
+    chan[i]=DivPlatformYAM10::Channel(parent->song.compatFlags.linearPitch);
     chan[i].std.setEngine(parent);
     chan[i].pitchTable=&pitchTable;
     chip.par[i]=YAM10ChanParam();
