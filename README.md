@@ -3,7 +3,7 @@ before the upstream does.
 
 Here's jumpers to branches:
 
-[klattsch](https://github.com/furmilion/furnace-fur/tree/polepos_wsg) (from [#2851](https://github.com/tildearrow/furnace/pull/2851), Furnace, tildearrow)
+[klattsch](https://github.com/furmilion/furnace-fur/tree/klattsch) (from [#2898](https://github.com/tildearrow/furnace/pull/2898), Furnace, tildearrow)
 
 [YM2609](https://github.com/furmilion/furnace-fur/tree/ym2609) (from [Furnace-B, YM2609 branch](https://github.com/LTVA1/furnace/tree/YM2609), LTVA)
 
