@@ -31,6 +31,10 @@ NOP
 
 ### Coefficients and addresses
 
+Coefficients are internally stored as a signed 13-bit integer ranging from -4096 to 4095.
+
+`ZERO` is a reserved coefficient with the value of 0.
+
 Coefficients can have one of the following types:
 - Percentage: a percentage of 4096.
   Always preceded by the `%` symbol.
@@ -43,7 +47,7 @@ Coefficients can have one of the following types:
   Ranges from `&H0000` to `&H1000`.
 - Milliseconds (address only): raw millisecond offset.
   Always preceded by `ms`. Cannot be fractional.
-  Final value is calculated using the formula `44100 * (x / 100)`, where `x` is input.
+  Final value is calculated using the formula `44100 * (x / 100)`, where `x` is input. The sample rate is **always** 44100.
 
 
 ## Program area
