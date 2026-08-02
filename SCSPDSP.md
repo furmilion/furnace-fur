@@ -91,6 +91,9 @@ Here is the list:
 - `S1 <comma-separated destinations>`: write value to destinations, bitshifted left once. Destination can be one of the registers. Always clears `FREG`.
 - `S2 <comma-separated destinations>`: ditto, but the value is leftshifted twice.
 - `S3 <comma-separated destinations>`: ditto, but the value is leftshifted thrice.
-#### Modifiers
-There is exactly one modifier:
+#### Memory work
+There are following modifiers when working with memory (`MR[]`):
+- `DEC`: sets the hardware TABLE flag to 1 if present, else 0. When present, the address is instead decremented.
+- `ADREG` or `ADRS`: use address register for offset.
+- `1`: next address.
 - `/NF`: sets hardware `NOFLOW` flag, preventing automatic memory increment.
