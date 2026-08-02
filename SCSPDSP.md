@@ -59,8 +59,8 @@ When programming the DSP, following registers are available:
 - `FREG`: feedback register.
 - `ADREG`: address register.
 - `MEMSxx`: `xx` ranges from 0 to 31.
-- `MIXSxx`: `xx` ranges from 0 to 31.
-- `EXTSxx`:
+- `MIXSxx`: `xx` ranges from 0 to 15.
+- `EXTSxx`: `xx` ranges from 0 to 1.
 
 ### Operations
 There are 3 kinds of operations:
