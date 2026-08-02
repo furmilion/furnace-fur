@@ -9,14 +9,14 @@ else {
 
 android {
     if (buildAsApplication) {
-        namespace "org.tildearrow.furnace"
+        namespace "org.tildearrow.furnace_scsp"
     }
     compileSdkVersion 26
     defaultConfig {
         minSdkVersion 21
         targetSdkVersion 26
         versionCode 228
-        versionName "0.6.8.1"
+        versionName "dev228_SCSP"
         externalNativeBuild {
             cmake {
                 arguments "-DANDROID_APP_PLATFORM=android-21", "-DANDROID_STL=c++_static", "-DWARNINGS_ARE_ERRORS=ON", "-DWITH_LOCALE=ON", "-DUSE_MOMO=ON"
