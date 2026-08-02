@@ -63,7 +63,7 @@ There are 3 kinds of operations:
 - Read: no prefix.
 - Math: `@ ` prefix. Can only perform addition and multiplication.
   Several operations can be cained in form of `@ A * B + (C * D +)`,
-  the assembler automatically splits them into separate instructions.
+  the assembler automatically splits them into separate steps.
   The first instruction in the chain always zeroes out the accumulator first, the other ones accumulate on top.
 - Write: `> ` prefix.
 
@@ -72,6 +72,8 @@ Now this is the juice.
 
 The DSP has the memory for exactly 128 steps.
 If the program has more, the excess will be cut off and a warning will be thrown.
+
+Memory work instructions can only happen on odd steps.
 
 Here is the list:
 - `NOP`: self-explanatory. No ooeration. Used to align memory operations.
@@ -85,4 +87,6 @@ Here is the list:
 - `S1 <comma-separated destinations>`: write value to destinations, bitshifted left once. Destination can be one of the registers. Always clears `FREG`.
 - `S2 <comma-separated destinations>`: ditto, but the value is leftshifted twice.
 - `S3 <comma-separated destinations>`: ditto, but the value is leftshifted thrice.
-#### Flags
+#### Modifiers
+There is exactly one modifier:
+- `/NF`: sets hardware `NOFLOW` flag, preventing automatic memory increment.
