@@ -45,7 +45,7 @@ Coefficients can have one of the following types:
   Limited from `0.0` to `1.0`.
 - Hexadecimal: raw hexadecimal value between 0 and 4096.
   Always preceded by `&H`.
-  Ranges from `&H0000` to `&H1000`.
+  Ranges from `&H0000` to `&H1000` for coefficients, `&H0000` to `&HFFFF` for addresses.
 - Milliseconds (address only): raw millisecond offset.
   Always preceded by `ms`. Cannot be fractional.
   Final value is calculated using the formula `44100 * (x / 100)`, where `x` is input. The sample rate is **always** 44100.
