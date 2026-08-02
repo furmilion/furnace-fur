@@ -7,8 +7,7 @@ any docs for it.
 ## Directives
 
 I have no idea on how else to call these.
-Directives dictate what area does the code
-below them belong to.
+Directives dictate which areas the code below belongs to.
 
 There are 3 directives:
 - `#COEF`: coefficients section
