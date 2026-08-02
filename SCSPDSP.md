@@ -62,14 +62,20 @@ When programming the DSP, following registers are available:
 There are 3 kinds of operations:
 - Read: no prefix.
 - Math: `@ ` prefix. Can only perform addition and multiplication.
+  Several operations can be cained in form of `@ A * B + (C * D +)`,
+  the assembler automatically splits them into separate instructions.
+  The first instruction in the chain always zeroes out the accumulator first, the other ones accumulate on top.
 - Write: `> ` prefix.
 
 ### Keywords
 Now this is the juice.
-There are quite a few keywords.
+
+The DSP has the memory for exactly 128 steps.
+If the program has more, the excess will be cut off and a warning will be thrown.
 
 Here is the list:
 - `NOP`: self-explanatory. No ooeration. Used to align memory operations.
+  Usually there's no need to use those, as the assembler automatically inserts those, but those can be useful as visualizers.
 - `LDI MEMSxx, MR[y]`: read from memory region `y` and push read value into MEMSxx register.
 - `MR MR[y]`: read from memory region `y`.
 - `IW MEMSxx`: push read value into MEMSxx register.
@@ -79,3 +85,4 @@ Here is the list:
 - `S1 <comma-separated destinations>`: write value to destinations, bitshifted left once. Destination can be one of the registers. Always clears `FREG`.
 - `S2 <comma-separated destinations>`: ditto, but the value is leftshifted twice.
 - `S3 <comma-separated destinations>`: ditto, but the value is leftshifted thrice.
+#### Flags
