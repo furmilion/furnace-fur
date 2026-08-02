@@ -36,7 +36,7 @@ Coefficients are internally stored as a signed 13-bit integer ranging from -4096
 `ZERO` is a reserved coefficient with the value of 0.
 
 Coefficients can have one of the following types:
-- Percentage: a percentage of 4096.
+- Percentage (coefficient only): a percentage of 4096.
   Always preceded by the `%` symbol.
   Rounded to integer and caps at 100.
 - Fraction: fractional multiplier of 4096.
@@ -91,6 +91,7 @@ Here is the list:
 - `S1 <comma-separated destinations>`: write value to destinations, bitshifted left once. Destination can be one of the registers. Always clears `FREG`.
 - `S2 <comma-separated destinations>`: ditto, but the value is leftshifted twice.
 - `S3 <comma-separated destinations>`: ditto, but the value is leftshifted thrice.
+- `=END`: marks the end of the program.
 #### Memory work
 There are following modifiers when working with memory (`MR[]`):
 - `DEC`: sets the hardware TABLE flag to 1 if present, else 0. When present, the address is instead decremented.
