@@ -13,6 +13,7 @@ There are 3 directives:
 - `#COEF`: coefficients section
 - `#ADRS`: addresses section
 - `#PROG`: actual DSP program section
+- `#END`: acts the same as `=END` kw. Ends the program
 
 Here is an example to show how those work:
 ```vliw
