@@ -121,6 +121,7 @@ static unsigned short computeD7FromOp(unsigned char mdl,
     int modSlotX=slotBase+(int)modSourceX;
     unsigned int distX=(unsigned int)(modSlotX-slot) & 0x3F;
 	mdxsl=distX;
+	mdysl=distX;
   }
   if (modSourceY>=0) {
     int modSlotY=slotBase+(int)modSourceY;
