@@ -845,7 +845,8 @@ struct DivInstrumentSCSP {
     unsigned char level;
     unsigned char ar, d1r, dl, d2r, rr;
     unsigned char mdl;
-    signed char modSource;
+    signed char modSourceX;
+    signed char modSourceY;
     //unsigned char feedback;
     bool isCarrier;
     unsigned short loopStart, loopEnd;
