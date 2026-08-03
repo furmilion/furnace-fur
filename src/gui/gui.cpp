@@ -1992,7 +1992,7 @@ void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
       if (!dirExists(workingDirIns)) workingDirIns=getHomeDir();
       hasOpened=fileDialog->openLoad(
         _("Load Instrument"),
-        {_("all compatible files"), "*.fui *.dmp *.tfi *.vgi *.eif *.s3i *.sbi *.opli *.opni *.y12 *.bnk *.ff *.gyb *.opm *.wopl *.wopn *.ton",
+        {_("all compatible files"), "*.fui *.dmp *.tfi *.vgi *.eif *.s3i *.sbi *.opli *.opni *.y12 *.bnk *.ff *.gyb *.opm *.wopl *.wopn",
          _("Furnace instrument"), "*.fui",
          _("DefleMask preset"), "*.dmp",
          _("TFM Music Maker instrument"), "*.tfi",
@@ -2009,7 +2009,7 @@ void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
          _("VOPM preset bank"), "*.opm",
          _("Wohlstand WOPL bank"), "*.wopl",
          _("Wohlstand WOPN bank"), "*.wopn",
-         _("Saturn TON bank"), "*.ton",
+         /*_("Saturn TON bank"), "*.ton",*/
          _("all files"), "*"},
         workingDirIns,
         dpiScale,
@@ -2206,7 +2206,7 @@ void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
         dpiScale,
         (settings.autoFillSave)?shortName:""
       );
-      break;
+      break;/*
     case GUI_FILE_EXPORT_TON:
       if (!dirExists(workingDirROMExport)) workingDirROMExport=getHomeDir();
       hasOpened=fileDialog->openSave(
@@ -2216,7 +2216,7 @@ void FurnaceGUI::openFileDialog(FurnaceGUIFileDialogs type) {
         dpiScale,
         (settings.autoFillSave)?shortName:""
       );
-      break;
+      break;*/
     case GUI_FILE_EXPORT_TEXT:
       if (!dirExists(workingDirROMExport)) workingDirROMExport=getHomeDir();
       hasOpened=fileDialog->openSave(
@@ -6270,7 +6270,7 @@ bool FurnaceGUI::loop() {
                 showError(fmt::sprintf(_("could not write VGM! (%s)"),e->getLastError()));
               }
               break;
-            }
+            }/*
             case GUI_FILE_EXPORT_TON: {
               SafeWriter* w=e->saveSCSPTON();
               if (w!=NULL) {
@@ -6288,7 +6288,7 @@ bool FurnaceGUI::loop() {
                 showError(fmt::sprintf(_("could not write TON! (%s)"),e->getLastError()));
               }
               break;
-            }
+            }*/
             case GUI_FILE_EXPORT_ROM:
               romExportPath=copyOfName;
               pendingExport=e->buildROM(romTarget);
