@@ -1271,9 +1271,11 @@ void DivPlatformSCSP::reset() {
   scsp_init();
   for (int i=0; i<32; i++) {
     chan[i]=DivPlatformSCSP::Channel(parent->song.compatFlags.linearPitch);
+	chan[i].std.setEngine(parent)
+	
     chan[i].pitchTable=&pitchTable;
-    chan[i].vol=0x7F;
-    chan[i].outVol=0x7F;
+    chan[i].vol=0xFF;
+    chan[i].outVol=0xFF;
     activeOpCount[i]=0;
     slotInUse[i]=false;
   }

@@ -275,7 +275,7 @@ static void applyCoefRefToFields(const std::string& pcIn, const Symbols& syms, I
     std::string name = pc.substr(5, pc.size() - 6);
     f.YSEL = 1; f.CRA = syms.coefIndex(name) & 0x3F; return;
   }
-  static const std::regex idRe(R"(^[A-Za-z][A-Za-z0-9]{0,14}$)");
+  static const std::regex idRe(R"(^[A-Za-z_][A-Za-z0-9_]{0,14}$)");
   if (std::regex_match(pc, idRe)) {
     f.YSEL = 1; f.CRA = syms.coefIndex(pc) & 0x3F; return;
   }
@@ -305,7 +305,7 @@ static std::vector<ProdPair> expandProducts(const std::string& expr, const Symbo
   // Multiplicand: INPUT | TEMPxx | MEMSxx | MIXSxx | EXTSx
   // Coef-ref:     COEF[name] | YREGH | YREGL | <ident>
   static const std::regex prodRe(
-    R"(\b(INPUT|TEMP\d{1,2}|MEMS\d{1,2}|MIXS\d{1,2}|EXTS\d)\b\s*\*\s*(COEF\[[^\]]+\]|YREGH|YREGL|[A-Za-z][A-Za-z0-9]{0,14}))",
+    R"(\b(INPUT|TEMP\d{1,2}|MEMS\d{1,2}|MIXS\d{1,2}|EXTS\d)\b\s*\*\s*(COEF\[[^\]]+\]|YREGH|YREGL|[A-Za-z_][A-Za-z0-9_]{0,14}))",
     std::regex::icase);
   std::vector<ProdPair> out;
   std::sregex_iterator begin(expr.begin(), expr.end(), prodRe);
@@ -371,7 +371,7 @@ void Assembler::assemble(const std::string& text) {
     if (u == "#PROG") { section = "PROG"; continue; }
     if (u == "#END" || u == "=END") { section = "END"; continue; }
 
-    static const std::regex coefRe(R"(^\s*([A-Za-z][A-Za-z0-9]{0,14})\s*=\s*(.+?)\s*$)");
+    static const std::regex coefRe(R"(^\s*([A-Za-z_][A-Za-z0-9_]{0,14})\s*=\s*(.+?)\s*$)");
     if (section == "COEF") {
       std::smatch m;
       if (!std::regex_match(line, m, coefRe))
