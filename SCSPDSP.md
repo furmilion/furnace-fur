@@ -60,17 +60,18 @@ When programming the DSP, following registers are available:
 - `FREG`: feedback register.
 - `ADREG`: address register.
 - `MEMSxx`: `xx` ranges from 0 to 31.
-- `MIXSxx`: `xx` ranges from 0 to 15.
-- `EXTSxx`: `xx` ranges from 0 to 1.
+- `MIXSxx`: DSP Input `xx`. `xx` ranges from 0 to 15.
+- `EXTSxx`: Final DSP output slot. `xx` ranges from 0 to 1 because of how SCSP is implemented in Furnace (when the DSP is active, slots 0 and 1 are used for DSP output).
 
 ### Operations
 There are 3 kinds of operations:
 - Read: no prefix.
 - Math: `@ ` prefix. Can only perform addition and multiplication.
   Several operations can be cained in form of `@ A * B + (C * D +)`,
-  the assembler automatically splits them into separate steps.
+  the assembler automatically splits them into separate steps. Each `A * B +` operation is a single step.
   The first instruction in the chain always zeroes out the accumulator first, the other ones accumulate on top.
 - Write: `> ` prefix.
+Additionally, you can put comments on any line using the `'` character. Any text on the line past that character is counted as a comment.
 
 ### Keywords
 Now this is the juice.
@@ -84,8 +85,8 @@ Here is the list:
 - `NOP`: self-explanatory. No ooeration. Used to align memory operations.
   Usually there's no need to use those, as the assembler automatically inserts those, but those can be useful as visualizers.
 - `LDI MEMSxx, MR[y]`: read from memory region `y` and push read value into MEMSxx register.
-- `MR MR[y]`: read from memory region `y`.
-- `IW MEMSxx`: push read value into MEMSxx register.
+- `MR MR[y]`: read from memory region `y`. Requires alignment to odd step.
+- `IW MEMSxx`: push read value into MEMSxx register. 
 - `MW MR[y]`: write accumulator value at memory region `y`.
 - `LDY <source>`: load value into Y from source. Source can be one of the following: `MEMSxx`, `MIXSxx`, `EXTSxx`.
 - `LDA <source>`: ditto, but loads into `ADREG` instead.
