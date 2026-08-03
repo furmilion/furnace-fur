@@ -536,7 +536,7 @@ class DivEngine {
   void loadFF(SafeReader& reader, std::vector<DivInstrument*>& ret, String& stripPath);
   void loadWOPL(SafeReader& reader, std::vector<DivInstrument*>& ret, String& stripPath);
   void loadWOPN(SafeReader& reader, std::vector<DivInstrument*>& ret, String& stripPath);
-  void loadTON(SafeReader& reader, std::vector<DivInstrument*>& ret, String& stripPath);
+  //void loadTON(SafeReader& reader, std::vector<DivInstrument*>& ret, String& stripPath);
 
  //sample banks
   void loadP(SafeReader& reader, std::vector<DivSample*>& ret, String& stripPath);
@@ -643,7 +643,7 @@ class DivEngine {
     SafeWriter* saveFur(bool notPrimary=false);
     // save SCSP FM instruments as a Saturn .TON bank (compatible with
     // mid2seq/saturn_kit and the SGL sound driver).
-    SafeWriter* saveSCSPTON();
+    //SafeWriter* saveSCSPTON();
     // Re-assemble song.scspDspSource and push the result to all live
     // SCSP dispatch instances. Returns true if the program loaded
     // cleanly. Errors/warnings are available on each platform via
