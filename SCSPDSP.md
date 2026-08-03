@@ -48,7 +48,7 @@ Coefficients can have one of the following types:
   Ranges from `&H0000` to `&H1000` for coefficients, `&H0000` to `&HFFFF` for addresses.
 - Milliseconds (address only): raw millisecond offset.
   Always preceded by `ms`. Cannot be fractional.
-  Final value is calculated using the formula `44100 * (x / 100)`, where `x` is input. The sample rate is **always** 44100.
+  Final value is calculated using the formula `44100 * (x / 1000)`, where `x` is input. The sample rate is **always** 44100.
 
 
 ## Program area
