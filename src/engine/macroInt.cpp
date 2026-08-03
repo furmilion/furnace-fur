@@ -46,6 +46,7 @@
 #define LFO_GLOBAL source.val[15]
 
 void DivMacroStruct::prepare(DivInstrumentMacro& source, DivEngine* e) {
+  logV("engine: %p",(void*)3);
   has=had=actualHad=will=true;
   mode=source.mode;
   type=(source.open>>1)&3;
