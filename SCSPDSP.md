@@ -9,7 +9,7 @@ any docs for it.
 I have no idea on how else to call these.
 Directives dictate which areas the code below belongs to.
 
-There are 3 directives:
+There are 4 directives:
 - `#COEF`: coefficients section
 - `#ADRS`: addresses section
 - `#PROG`: actual DSP program section
@@ -99,3 +99,7 @@ There are following modifiers when working with memory (`MR[]`):
 - `ADREG` or `ADRS`: use address register for offset.
 - `1`: next address.
 - `/NF`: sets hardware `NOFLOW` flag, preventing automatic memory increment.
+
+
+## How does it actually work?
+TODO: fill section
