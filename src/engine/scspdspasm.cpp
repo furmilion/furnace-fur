@@ -37,8 +37,9 @@ namespace {
 // ─── Numeric helpers ────────────────────────────────────────────────
 
 static int twosComp13(int value) {
-  if (value < -4096 || value > 4095)
-    throw std::runtime_error("Coefficient out of range (-4096..4095)");
+  if (value < -4096) value = -4096;
+  if (value >  4095) value = 4095;
+    //value = (value < -4096) ? -4096 : (value > 4095) ? 4095 : value;
   if (value < 0) value = (1 << 13) + value;
   return value & 0x1FFF;
 }

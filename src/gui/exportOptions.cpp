@@ -588,7 +588,7 @@ void FurnaceGUI::drawExportDMF(bool onWindow) {
     ImGui::CloseCurrentPopup();
   }
 }
-
+/*
 void FurnaceGUI::drawExportTON(bool onWindow) {
   exitDisabledTimer=1;
 
@@ -623,7 +623,7 @@ void FurnaceGUI::drawExportTON(bool onWindow) {
   }
   ImGui::EndDisabled();
 }
-
+*/
 void FurnaceGUI::drawExport() {
   if (settings.exportOptionsLayout==1 || curExportType==GUI_EXPORT_NONE) {
     if (ImGui::BeginTabBar("ExportTypes")) {
@@ -652,11 +652,11 @@ void FurnaceGUI::drawExport() {
       if (ImGui::BeginTabItem(_("DMF"))) {
         drawExportDMF(true);
         ImGui::EndTabItem();
-      }
+      }/*
       if (ImGui::BeginTabItem(_("TON"))) {
         drawExportTON(true);
         ImGui::EndTabItem();
-      }
+      }*/
       ImGui::EndTabBar();
     }
   } else switch (curExportType) {
