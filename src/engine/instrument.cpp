@@ -1798,8 +1798,9 @@ void DivInstrument::writeFeatureSC(SafeWriter* w) {
     w->writeC(op.d2r);
     w->writeC(op.rr);
     w->writeC(op.mdl);
-    w->writeC((unsigned char)op.modSource);
-    w->writeC(op.feedback);
+    w->writeC((unsigned char)op.modSourceX);
+    w->writeC((unsigned char)op.modSourceY);
+    //w->writeC(op.feedback);
     w->writeC(op.isCarrier?1:0);
     w->writeS(op.loopStart);
     w->writeS(op.loopEnd);
@@ -3348,8 +3349,9 @@ void DivInstrument::readFeatureSC(SafeReader& reader, short version) {
     op.d2r=reader.readC();
     op.rr=reader.readC();
     op.mdl=reader.readC();
-    op.modSource=(signed char)reader.readC();
-    op.feedback=reader.readC();
+    op.modSourceX=(signed char)reader.readC();
+    op.modSourceY=(signed char)reader.readC();
+    //op.feedback=reader.readC();
     op.isCarrier=reader.readC();
     op.loopStart=reader.readS();
     op.loopEnd=reader.readS();
