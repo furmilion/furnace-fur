@@ -162,7 +162,7 @@ jobs:
         export CMAKE_EXTRA_ARGS=()
         if [ '${{ matrix.config.compiler }}' == 'msvc' ]; then
           CMAKE_EXTRA_ARGS+=('-DCMAKE_GENERATOR_PLATFORM=${{ steps.windows-identify.outputs.msvc-target }}')
-          CMAKE_EXTRA_ARGS+=('-DCMAKE_CXX_FLAGS=/MP' '-DCMAKE_C_FLAGS=/MP')
+          #CMAKE_EXTRA_ARGS+=('-DCMAKE_CXX_FLAGS=/MP' '-DCMAKE_C_FLAGS=/MP')
 
           # Force static linking
           # 1. Make MSVC runtime configurable
