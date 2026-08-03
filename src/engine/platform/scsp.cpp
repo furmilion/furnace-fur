@@ -109,19 +109,24 @@ static double wavBaseNoteFor(int wavLen) {
 // `feedback` is the raw MDL nibble for the self-feedback path (0..15),
 // matching the OPL3 convention so the slider's full range maps 1:1 to an
 // audible step on the chip.
-static unsigned short computeD7FromOp(unsigned char mdl, signed char modSource,
-                                      unsigned char feedback,
+static unsigned short computeD7FromOp(unsigned char mdl,
+									  signed char modSourceX,
+                                      signed char modSourceY,
                                       int slot, int slotBase) {
-  static const unsigned int SELF_LATEST=0x20u; // ring offset 32 = 1 Fs ago
-  static const unsigned int SELF_PAST  =0x00u; // ring offset  0 = 2 Fs ago
   unsigned int regMdl=0, mdxsl=0, mdysl=0;
-  if (modSource>=0 && mdl>0) {
-    regMdl=(unsigned int)mdl & 0xF;
-    int modSlot=slotBase+(int)modSource;
-    unsigned int dist=(unsigned int)(modSlot-slot) & 0x3F;
-    mdxsl=dist;
-    mdysl=dist;
+  
+  regMdl=(unsigned int)mdl & 0xF;
+  
+  if (modSourceX>=0) {
+    int modSlotX=slotBase+(int)modSourceX;
+    unsigned int distX=(unsigned int)(modSlotX-slot) & 0x3F;
+	mdxsl=distX;
   }
+  if (modSourceY>=0) {
+    int modSlotY=slotBase+(int)modSourceY;
+    unsigned int distY=(unsigned int)(modSlotY-slot) & 0x3F;
+    mdysl=distY;
+  }/*
   if (feedback>0) {
     unsigned int fbMdl=(unsigned int)feedback & 0xF;
     if (regMdl>0) {
@@ -134,7 +139,7 @@ static unsigned short computeD7FromOp(unsigned char mdl, signed char modSource,
       mdxsl=SELF_LATEST;
       mdysl=SELF_PAST;
     }
-  }
+  }*/
   return (unsigned short)(((regMdl&0xF)<<12)|((mdxsl&0x3F)<<6)|(mdysl&0x3F));
 }
 
@@ -395,8 +400,8 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
     /*unsigned int storedSamples = is8Bit ? sampleStored[op.sampleId] : (sampleStored[op.sampleId] / 2);
     if (storedSamples<1) storedSamples=1;*/
 
-    bool needsLoop=(!op.isCarrier) || op.feedback>0 ||
-                   (op.modSource>=0 && op.mdl>=5);
+    bool needsLoop=(!op.isCarrier) ||
+                   ((op.modSourceX>=0 || op.modSourceY>=0) && op.mdl>=5);
     if (s->isLoopable() && (unsigned int)s->loopEnd<=sampleStored[op.sampleId]) {
       lsa=(unsigned int)s->loopStart;
       lea=(unsigned int)s->loopEnd;
@@ -1212,17 +1217,17 @@ int DivPlatformSCSP::dispatch(DivCommand c) {
       if (opIdx>=n) break;
       const DivInstrumentSCSP::Op& op=chan[c.chan].scspState.ops[opIdx];
       int slot=c.chan+opIdx;
-      unsigned short d7=computeD7FromOp(newMdl, op.modSource, op.feedback,
+      unsigned short d7=computeD7FromOp(newMdl, op.modSourceX, op.modSourceY,
                                          slot, c.chan);
       scsp_write_slot(slot,0x7,d7);
       break;
     }
     case DIV_CMD_SCSP_FEEDBACK: {
-      unsigned char newFb=c.value&0x0F;
+      unsigned char modSourceY=c.value&0x1F;
       // Apply to every op so the next key-on retains it for any op the
       // user later marks as a carrier.
       for (int op=0; op<32; op++) {
-        chan[c.chan].scspState.ops[op].feedback=newFb;
+        chan[c.chan].scspState.ops[op].modSourceY=modSourceY;
       }
       if (chan[c.chan].scspState.mode!=DivInstrumentSCSP::SCSP_MODE_FM) break;
       int n=activeOpCount[c.chan];
@@ -1230,7 +1235,7 @@ int DivPlatformSCSP::dispatch(DivCommand c) {
       for (int op=0; op<n; op++) {
         const DivInstrumentSCSP::Op& opdef=chan[c.chan].scspState.ops[op];
         int slot=c.chan+op;
-        unsigned short d7=computeD7FromOp(opdef.mdl, opdef.modSource, newFb,
+        unsigned short d7=computeD7FromOp(opdef.mdl, opdef.modSourceX, modSourceY,
                                            slot, c.chan);
         scsp_write_slot(slot,0x7,d7);
       }
