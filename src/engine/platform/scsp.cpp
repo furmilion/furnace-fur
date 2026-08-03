@@ -442,7 +442,7 @@ void DivPlatformSCSP::programSlotFM(int slot, int chanIdx, int opIdx, int slotBa
   unsigned short d5=((unsigned short)0xF<<10)
                   | (((unsigned short)(op.dl&0x1F))<<5)
                   |  ((unsigned short)(op.rr&0x1F));
-  unsigned short d7=computeD7FromOp(op.mdl, op.modSource, op.feedback, slot, slotBase);
+  unsigned short d7=computeD7FromOp(op.mdl, op.modSourceX, op.modSourceY, slot, slotBase);
 
   unsigned char disdl=isMuted[chanIdx]?0:(op.isCarrier?7:0);
   unsigned char dipan=(unsigned char)(c.pan&0x1F);
