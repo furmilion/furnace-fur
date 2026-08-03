@@ -5682,10 +5682,10 @@ bool FurnaceGUI::loop() {
           break;
         case GUI_FILE_EXPORT_VGM:
           workingDirVGMExport=fileDialog->getPath()+DIR_SEPARATOR_STR;
-          break;
+          break;/*
         case GUI_FILE_EXPORT_TON:
           workingDirROMExport=fileDialog->getPath()+DIR_SEPARATOR_STR;
-          break;
+          break;*/
         case GUI_FILE_EXPORT_ROM:
         case GUI_FILE_EXPORT_TEXT:
         case GUI_FILE_EXPORT_CMDSTREAM:
