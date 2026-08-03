@@ -40,8 +40,8 @@ enum DivInsFormats {
   DIV_INSFORMAT_OPM,
   DIV_INSFORMAT_WOPL,
   DIV_INSFORMAT_WOPN,
-  DIV_INSFORMAT_FF,
-  DIV_INSFORMAT_TON,
+  DIV_INSFORMAT_FF,/*
+  DIV_INSFORMAT_TON,*/
 };
 
 // Reused patch data structures
@@ -2043,9 +2043,9 @@ std::vector<DivInstrument*> DivEngine::instrumentFromFile(const char* path, bool
         format=DIV_INSFORMAT_WOPL;
       } else if (extS==".wopn") {
         format=DIV_INSFORMAT_WOPN;
-      } else if (extS==".ton") {
+      } /*else if (extS==".ton") {
         format=DIV_INSFORMAT_TON;
-      } else {
+      } */else {
         // unknown format
         lastError="unknown instrument format";
         delete[] buf;
@@ -2102,10 +2102,10 @@ std::vector<DivInstrument*> DivEngine::instrumentFromFile(const char* path, bool
         break;
       case DIV_INSFORMAT_WOPN:
         loadWOPN(reader,ret,stripPath);
-        break;
+        break;/*
       case DIV_INSFORMAT_TON:
         loadTON(reader,ret,stripPath);
-        break;
+        break;*/
     }
 
     if (reader.tell()<reader.size()) {
