@@ -39,6 +39,7 @@
 // byte 0x1B (bit 7 + layer index) tells the driver to compute the ring-
 // buffer offsets at slot allocation time.
 
+/*
 #include "engine.h"
 #include "instrument.h"
 #include "safeReader.h"
@@ -52,6 +53,7 @@
 #include <string.h>
 
 #define TON_WAVE_LEN 1024
+*/
 
 // `op.feedback` is the raw MDL nibble for the self-feedback path (0..15),
 // matching scsp.cpp's runtime mapping.
@@ -61,6 +63,7 @@
 // PCM section (caller adds the file-level pcm_base before writing).
 // `leaSamples` is the loop-end sample count to use; for built-ins the
 // caller passes 1024, for user samples the sample's length.
+/*
 static void buildLayer(unsigned char* out,
                        const DivInstrumentSCSP::Op& op,
                        unsigned int saOffset,
@@ -170,7 +173,8 @@ static void buildLayer(unsigned char* out,
     out[0x1B]=(1<<7)|((unsigned char)op.modSource&0x7F);
   }
 }
-
+*/
+/*
 SafeWriter* DivEngine::saveSCSPTON() {
   // Collect the FM-mode SCSP instruments to export.
   std::vector<int> insIndices;
@@ -328,7 +332,7 @@ SafeWriter* DivEngine::saveSCSPTON() {
   if (!pcmData.empty()) w->write(pcmData.data(),pcmData.size());
   return w;
 }
-
+*/
 // ─── TON import ───────────────────────────────────────────────────────────────
 //
 // Inverse of saveSCSPTON. Each voice → one DivInstrumentSCSP (FM mode); each
@@ -337,15 +341,21 @@ SafeWriter* DivEngine::saveSCSPTON() {
 // DivSample so the op can reference it via `sampleId`. Per the plan we go
 // straight to high-level fields — no rawRegs passthrough.
 
+/*
 #define TON_BUILTIN_MATCH_TOL 64  // max abs sample diff for builtin recognition
+*/
 
 // op.feedback IS the raw MDL nibble (matches scsp.cpp:computeD7FromOp).
 // `tl` is unused but kept in the signature for symmetry with the importer
 // callsites.
-static unsigned char tonRecoverFeedback(unsigned char /*tl*/, unsigned char mdl) {
+
+/*
+static unsigned char tonRecoverFeedback(unsigned char, //tl
+                                        unsigned char mdl) {
   return mdl&0xF;
 }
-
+*/
+/*
 void DivEngine::loadTON(SafeReader& reader, std::vector<DivInstrument*>& ret, String& stripPath) {
   size_t fileLen=reader.size();
   if (fileLen<10) {
@@ -527,3 +537,4 @@ void DivEngine::loadTON(SafeReader& reader, std::vector<DivInstrument*>& ret, St
     renderSamples();
   }
 }
+*/
