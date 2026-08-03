@@ -776,8 +776,8 @@ bool DivInstrumentSCSP::Op::operator==(const DivInstrumentSCSP::Op& other) {
     _C(level) &&
     _C(ar) && _C(d1r) && _C(dl) && _C(d2r) && _C(rr) &&
     _C(mdl) &&
-    _C(modSource) &&
-    _C(feedback) &&
+    _C(modSourceX) &&
+    _C(modSourceY) &&
     _C(isCarrier) &&
     _C(loopStart) && _C(loopEnd) &&
     _C(lpctlOp) &&
