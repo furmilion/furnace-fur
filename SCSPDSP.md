@@ -61,7 +61,7 @@ When programming the DSP, following registers are available:
 - `ADREG`: address register.
 - `MEMSxx`: `xx` ranges from 0 to 31.
 - `MIXSxx`: DSP Input `xx`. `xx` ranges from 0 to 15.
-- `EXTSxx`: Final DSP output slot. `xx` ranges from 0 to 1 because of how SCSP is implemented in Furnace (when the DSP is active, slots 0 and 1 are used for DSP output).
+- `EXTSxx`: One of DSP's stereo channels. `xx` ranges from 0 to 1.
 
 ### Operations
 There are 3 kinds of operations:
