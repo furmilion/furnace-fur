@@ -1513,6 +1513,7 @@ int DivPlatformSCSP::init(DivEngine* p, int channels, int sugRate, const DivConf
     isMuted[i]=false;
     activeOpCount[i]=0;
     oscBuf[i]=new DivDispatchOscBuffer;
+	chan[i].std.setEngine(parent);
   }
 
   setFlags(flags);

@@ -8179,29 +8179,34 @@ void FurnaceGUI::drawInsEdit() {
                       }
                     }
 
-                    // Level / Feedback
+                    // Level
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
-                    P(CWSliderScalar(_("Level"),ImGuiDataType_U8,&op.level,&_ZERO,&_ONE_HUNDRED_TWENTY_SEVEN)); rightClickable
-                    ImGui::TableNextColumn();
-                    P(CWSliderScalar(_("Feedback"),ImGuiDataType_U8,&op.feedback,&_ZERO,&_FIFTEEN)); rightClickable
+                    P(CWSliderScalar(_("Level"),ImGuiDataType_U8,&op.level,&_ZERO,&_TWO_HUNDRED_FIFTY_FIVE)); rightClickable
 
                     // Mod source / Mod depth
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
-                    int modSrcIdx=(op.modSource<0)?0:(op.modSource+1);
-                    if (modSrcIdx>ins->scsp.opCount) modSrcIdx=0;
-                    if (ImGui::Combo(_("Mod Source"),&modSrcIdx,scspModSourceOptions,ins->scsp.opCount+1)) {
-                      op.modSource=(signed char)(modSrcIdx-1);
+                    int modSrcXIdx=(op.modSourceX<0)?0:(op.modSourceX+1);
+                    if (modSrcXIdx>ins->scsp.opCount) modSrcXIdx=0;
+                    if (ImGui::Combo(_("Mod Source X"),&modSrcXIdx,scspModSourceOptions,ins->scsp.opCount+1)) {
+                      op.modSourceX=(signed char)(modSrcXIdx-1);
                       MARK_MODIFIED;
                     }
+					int modSrcYIdx=(op.modSourceY<0)?0:(op.modSourceY+1);
+                    if (modSrcYIdx>ins->scsp.opCount) modSrcYIdx=0;
+                    if (ImGui::Combo(_("Mod Source Y"),&modSrcYIdx,scspModSourceOptions,ins->scsp.opCount+1)) {
+                      op.modSourceY=(signed char)(modSrcYIdx-1);
+                      MARK_MODIFIED;
+                    }
+					
                     ImGui::TableNextColumn();
-                    P(CWSliderScalar(_("Mod Depth (MDL)"),ImGuiDataType_U8,&op.mdl,&_ZERO,&_FIFTEEN)); rightClickable
+                    P(CWSliderScalar(_("Mod Depth"),ImGuiDataType_U8,&op.mdl,&_ZERO,&_FIFTEEN)); rightClickable
 
                     // Per-op envelope
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
-                    ImGui::SeparatorText(_("Envelope (per op)"));
+                    ImGui::SeparatorText(_("Envelope"));
                     ImGui::TableNextColumn();
                     ImGui::TextDisabled(_("KRS forced to 0xF (disabled)"));
 

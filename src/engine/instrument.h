@@ -846,7 +846,7 @@ struct DivInstrumentSCSP {
     unsigned char ar, d1r, dl, d2r, rr;
     unsigned char mdl;
     signed char modSource;
-    unsigned char feedback;
+    //unsigned char feedback;
     bool isCarrier;
     unsigned short loopStart, loopEnd;
     unsigned char lpctlOp;
@@ -858,11 +858,12 @@ struct DivInstrumentSCSP {
     Op():
       freqRatio(256),
       freqFixed(0),
-      level(96),
-      ar(31), d1r(0), dl(0), d2r(0), rr(15),
+      level(208),
+      ar(31), d1r(0), dl(0), d2r(0), rr(31),
       mdl(0),
-      modSource(-1),
-      feedback(0),
+      modSourceX(-1),
+      modSourceY(-1),
+      //feedback(0),
       isCarrier(true),
       loopStart(0),
       loopEnd(1023),
@@ -882,7 +883,7 @@ struct DivInstrumentSCSP {
   DivInstrumentSCSP():
     mode(SCSP_MODE_PCM),
     tl(0), dl(0),
-    ar(31), d1r(0), d2r(0), rr(15),
+    ar(31), d1r(0), d2r(0), rr(31),
     krs(15),
     lpctl(0),
     eghold(false), lpslnk(false), sdir(false), stwinh(false),
