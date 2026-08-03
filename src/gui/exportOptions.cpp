@@ -677,10 +677,10 @@ void FurnaceGUI::drawExport() {
       break;
     case GUI_EXPORT_DMF:
       drawExportDMF(true);
-      break;
+      break;/*
     case GUI_EXPORT_TON:
       drawExportTON(true);
-      break;
+      break;*/
     default:
       ImGui::Text(_("congratulations! you've unlocked a secret panel."));
       if (ImGui::Button(_("Toggle hidden systems"))) {
