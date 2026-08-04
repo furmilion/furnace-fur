@@ -547,7 +547,7 @@ void DivMacroInt::init(DivInstrument* which) {
   }
 
   // prepare FM operator macros
-  for (int i=0; i<4; i++) {
+  for (int i=0; i<6; i++) {
     DivInstrumentSTD::OpMacro& m=ins->std.opMacros[i];
     IntOp& o=op[i];
     if (m.amMacro.len>0) {
