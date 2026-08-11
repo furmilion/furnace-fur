@@ -345,7 +345,6 @@ enum DivDispatchCmds {
   DIV_CMD_SCSP_DIRECT_SEND,     // (value 0..7)
   DIV_CMD_SCSP_DIRECT_PAN,      // (value 0..31)
 
-  DIV_CMD_SCSP_LEVEL_DIRECT,    // value
   DIV_CMD_SCSP_OP_TL,           // (op 0..5, value 0..255 raw TL — 0=loudest)
   DIV_CMD_SCSP_OP_MDL,          // (op 0..5, value 0..15 MDL)
   DIV_CMD_SCSP_SLOT_MOD_IN_X,   // 0..31 for current generated sample of the operator and 32..63 for the previous one
