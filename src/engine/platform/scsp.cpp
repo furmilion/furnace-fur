@@ -117,30 +117,22 @@ static unsigned short computeD7FromOp(unsigned char mdl,
   
   regMdl=(unsigned int)mdl & 0xF;
   
-  if (modSourceX>=0) {
-    int modSlotX=slotBase+(int)modSourceX;
-    unsigned int distX=(unsigned int)(modSlotX-slot) & 0x3F;
-	mdxsl=distX;
-	mdysl=distX;
-  }
-  if (modSourceY>=0) {
-    int modSlotY=slotBase+(int)modSourceY;
-    unsigned int distY=(unsigned int)(modSlotY-slot) & 0x3F;
-    mdysl=distY;
-  }/*
-  if (feedback>0) {
-    unsigned int fbMdl=(unsigned int)feedback & 0xF;
-    if (regMdl>0) {
-      // External mod already on X (latest of another slot); route self-FB
-      // to Y as the past self-sample to avoid same-cycle self-coupling.
-      mdysl=SELF_PAST;
-      if (fbMdl>regMdl) regMdl=fbMdl;
-    } else {
-      regMdl=fbMdl;
-      mdxsl=SELF_LATEST;
-      mdysl=SELF_PAST;
+  if (mdl > 0) {
+	/*
+    mdxsl=(modSourceX>0)?modSourceX:0;
+    mdysl=(modSourceX>0)?modSourceX:0;
+    */
+    if (modSourceX>=0) {
+      int modSlotX=slotBase+(int)modSourceX;
+      unsigned int distX=(unsigned int)(modSlotX-slot) & 0x3F;
+      mdxsl=distX;
     }
-  }*/
+    if (modSourceY>=0) {
+      int modSlotY=slotBase+(int)modSourceY;
+      unsigned int distY=(unsigned int)(modSlotY-slot) & 0x3F;
+      mdysl=distY;
+    }
+  }
   return (unsigned short)(((regMdl&0xF)<<12)|((mdxsl&0x3F)<<6)|(mdysl&0x3F));
 }
 

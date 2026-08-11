@@ -339,7 +339,8 @@ const char* cmdName[]={
   "SCSP_LEVEL_DIRECT",
   "SCSP_OP_TL",
   "SCSP_OP_MDL",
-  "SCSP_FEEDBACK"
+  "DIV_CMD_SCSP_SLOT_MOD_IN_X"
+  "DIV_CMD_SCSP_SLOT_MOD_IN_Y"
 };
 
 // fail build if you forgot to update the array
