@@ -2813,17 +2813,18 @@ void DivEngine::registerSystems() {
     },
 	
     effectValAnd<0x0f>));
+
   sysDefs[DIV_SYSTEM_SCSP]=new DivSysDef(
     _("Yamaha YMF292 (SCSP)"), NULL, 0xda, 0, 32, 32, 32,
-    false, true, 0, false, (1U<<DIV_SAMPLE_DEPTH_16BIT)|(1U<<DIV_SAMPLE_DEPTH_8BIT), 0, 0,
+    true, false, 0, false, (1U<<DIV_SAMPLE_DEPTH_16BIT)|(1U<<DIV_SAMPLE_DEPTH_8BIT), 0, 0,
     _("the Saturn Custom Sound Processor. 32 monophonic slots, sample-based with FM synthesis via wavetable RAM and an on-chip programmable DSP. used in the Sega Saturn."),
-	DivChanDefFunc([](unsigned short ch) -> DivChanDef {
+    DivChanDefFunc([](unsigned short ch) -> DivChanDef {
       return DivChanDef(
         fmt::sprintf(_("Slot %d"),ch+1),
         fmt::sprintf("S%d",ch+1),
         DIV_CH_FM,
         DIV_INS_YMF292,
-        DIV_INS_YMF292_FM,
+        DIV_INS_YMF292_FM
       );
     }),
     scspEffectHandlerMap
