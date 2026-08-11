@@ -2757,6 +2757,7 @@ void DivEngine::registerSystems() {
     // per-op MDL uses two xy-packed codes 0x40 (ops 1..16) / 0x41 (ops
     // 17..32) — both are inserted below since the op-index in the
     // constVal<> binding has to be patched in via a lambda capture.
+    //{0x43, {DIV_CMD_SCSP_FEEDBACK,    _("43xx: Set self-feedback amount (00 to 0F)"), effectValAnd<0x0f>}},
     {0x42, {DIV_CMD_SCSP_SLOT_MOD_IN_X, _("42xx: Set slot modulation input X (00 to 1F for current sample, 20 to 3F for latest sample)"),effectValAnd<0x3F>}},
 	{0x43, {DIV_CMD_SCSP_SLOT_MOD_IN_X, _("43xx: Set slot modulation input Y (00 to 1F for current sample, 20 to 3F for latest sample)"),effectValAnd<0x3F>}},
 
