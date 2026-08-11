@@ -338,7 +338,7 @@ const char* cmdName[]={
 
   "SCSP_OP_TL",
   "SCSP_OP_MDL",
-  "SCSP_SLOT_MOD_IN_X"
+  "SCSP_SLOT_MOD_IN_X",
   "SCSP_SLOT_MOD_IN_Y"
 };
 
