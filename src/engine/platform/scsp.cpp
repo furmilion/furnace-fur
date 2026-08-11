@@ -1129,6 +1129,7 @@ int DivPlatformSCSP::dispatch(DivCommand c) {
     case DIV_CMD_GET_VOLMAX:
       return 255;
       //return 127;
+	  
     // ── SCSP runtime effects. Mutate scspState first so a fresh row
     // (effect dispatches before NOTE_ON sets keyOn) survives the
     // commitState-on-insChanged seeding at note-on. If the slot is
@@ -1179,13 +1180,6 @@ int DivPlatformSCSP::dispatch(DivCommand c) {
       writeSlotPan(chan[c.chan].slot,isMuted[c.chan]?0:st.disdl,(unsigned char)(chan[c.chan].pan&0x1F));
       break;
     }
-    case DIV_CMD_SCSP_DIRECT_PAN: {
-      chan[c.chan].pan=c.value&0x1F;
-      if (chan[c.chan].slot<0) break;
-      unsigned char disdl=isMuted[c.chan]?0:(chan[c.chan].scspState.disdl&0x7);
-      writeSlotPan(chan[c.chan].slot,disdl,(unsigned char)(chan[c.chan].pan&0x1F));
-      break;
-    }
     // ── FM-mode performance effects (20xx-43xx). Same pattern: mutate
     // scspState so the next key-on (commitState on insChanged) keeps the
     // effect's value when it's the same instrument; also push to the chip
@@ -1223,7 +1217,26 @@ int DivPlatformSCSP::dispatch(DivCommand c) {
       scsp_write_slot(slot,0x7,d7);
       break;
     }
-    case DIV_CMD_SCSP_FEEDBACK: {
+    case DIV_CMD_SCSP_SLOT_MOD_IN_X: {
+      unsigned char modSourceX=c.value&0x1F;
+      // Apply to every op so the next key-on retains it for any op the
+      // user later marks as a carrier.
+      for (int op=0; op<32; op++) {
+        chan[c.chan].scspState.ops[op].modSourceY=modSourceY;
+      }
+      if (chan[c.chan].scspState.mode!=DivInstrumentSCSP::SCSP_MODE_FM) break;
+      int n=activeOpCount[c.chan];
+      if (n<=0) break;
+      for (int op=0; op<n; op++) {
+        const DivInstrumentSCSP::Op& opdef=chan[c.chan].scspState.ops[op];
+        int slot=c.chan+op;
+        unsigned short d7=computeD7FromOp(opdef.mdl, modSourceX, opdef.modSourceY,
+                                           slot, c.chan);
+        scsp_write_slot(slot,0x7,d7);
+      }
+      break;
+    }
+	case DIV_CMD_SCSP_SLOT_MOD_IN_Y: {
       unsigned char modSourceY=c.value&0x1F;
       // Apply to every op so the next key-on retains it for any op the
       // user later marks as a carrier.
@@ -1388,6 +1401,10 @@ void DivPlatformSCSP::poke(unsigned int addr, unsigned short val) {
   scsp_write_reg(addr,val);
 }
 
+void DivPlatformSCSP::read_slot_reg(unsigned int slot, unsigned int reg) {
+  scsp_read_slot_reg(slot,reg);
+}
+
 void DivPlatformSCSP::poke(std::vector<DivRegWrite>& wlist) {
   for (DivRegWrite& w: wlist) {
     scsp_write_reg(w.addr,w.val);
@@ -1528,7 +1545,7 @@ int DivPlatformSCSP::init(DivEngine* p, int channels, int sugRate, const DivConf
 
   sampleMem=new unsigned char[RAM_SIZE];
   sampleMemLen=0;
-  memset(sampleMem,0,RAM_SIZE);
+  memset(sampleMem,0xFF,RAM_SIZE);
   sampleOff=new unsigned int[65536];
   memset(sampleOff,0,65536*sizeof(unsigned int));
   sampleStored=new unsigned int[65536];

@@ -1479,7 +1479,7 @@ size_t DivInstrument::writeFeatureLS(SafeWriter* w, std::vector<int>& list, cons
   // SCSP FM operators reference samples per-op (any slot can read from
   // sound RAM regardless of synthesis mode). Collect those too so a
   // self-contained FM instrument carries its own waveform PCM.
-  if (type==DIV_INS_YMF292) {
+  if (type==DIV_INS_YMF292 || type==DIV_INS_YMF292_FM) {
     for (int i=0; i<scsp.opCount && i<32; i++) {
       int sid=scsp.ops[i].sampleId;
       if (sid>=0 && sid<(int)song->sample.size()) {
@@ -2119,6 +2119,11 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
         if (amiga.useSample) featureSL=true;
         break;
       case DIV_INS_UPD1771C:
+        break;
+      case DIV_INS_YMF292_FM:
+        featureSM=true;
+        featureSL=true;
+        featureSC=true;
         break;
       case DIV_INS_MAX:
         break;
@@ -3154,7 +3159,7 @@ void DivInstrument::readFeatureLS(SafeReader& reader, DivSong* song, short versi
   }
 
   // SCSP per-op sample references.
-  if (type==DIV_INS_YMF292) {
+  if (type==DIV_INS_YMF292 || type==DIV_INS_YMF292_FM) {
     for (int i=0; i<32; i++) {
       if (scsp.ops[i].sampleId>=0) {
         scsp.ops[i].sampleId=(signed short)sampleRemap[scsp.ops[i].sampleId];

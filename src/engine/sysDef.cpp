@@ -2751,13 +2751,13 @@ void DivEngine::registerSystems() {
     {0x16, {DIV_CMD_SCSP_DSP_SEND,    _("16xx: Set DSP send level (00 to 07)"),   effectValAnd<0x07>}},
     {0x17, {DIV_CMD_SCSP_DSP_PAN,     _("17xx: Set DSP pan (00 to 1F)"),          effectValAnd<0x1f>}},
     {0x18, {DIV_CMD_SCSP_DIRECT_SEND, _("18xx: Set direct send level (00 to 07)"),effectValAnd<0x07>}},
-    {0x19, {DIV_CMD_SCSP_DIRECT_PAN,  _("19xx: Set direct pan (00 to 1F)"),       effectValAnd<0x1f>}},
+    //{0x19, {DIV_CMD_SCSP_DIRECT_PAN,  _("19xx: Set direct pan (00 to 1F)"),       effectValAnd<0x1f>}},
     // FM-mode performance tweaks (Furnace-only — not preserved by SEQ export).
     // Per-op TL fills 0x20..0x3F (one code per op, full 8-bit value), and
     // per-op MDL uses two xy-packed codes 0x40 (ops 1..16) / 0x41 (ops
     // 17..32) — both are inserted below since the op-index in the
     // constVal<> binding has to be patched in via a lambda capture.
-    {0x43, {DIV_CMD_SCSP_FEEDBACK,    _("43xx: Set self-feedback amount (00 to 0F)"), effectValAnd<0x0f>}},
+    //{0x43, {DIV_CMD_SCSP_FEEDBACK,    _("43xx: Set self-feedback amount (00 to 0F)"), effectValAnd<0x0f>}},
   };
   // Per-op TL: 0x20..0x3F → ops 1..32. EffectHandler stores plain function
   // pointers, so we materialize 32 distinct constVal<> instantiations into
@@ -2799,15 +2799,19 @@ void DivEngine::registerSystems() {
     DIV_CMD_SCSP_OP_MDL,
     _("40xy: Set MDL of op x (1-16) to y (0-F)"),
     effectOpValNoZero<16>, effectValAnd<0x0f>));
+	
   scspEffectHandlerMap.emplace(0x41, EffectHandler(
     DIV_CMD_SCSP_OP_MDL,
-    _("41xy: Set MDL of op x+16 (1-16, ie ops 17-32) to y (0-F)"),
+    _("41xy: Set MDL of op x+16 to y (0-F)"),
     [](unsigned char,unsigned char val) -> int {
       int x=(val>>4)&0xF;
       if (x<1 || x>16) throw DivDoNotHandleEffect();
       return x-1+16;
     },
+	
     effectValAnd<0x0f>));
+	{0x42, {DIV_CMD_SCSP_SLOT_MOD_IN_X, _("42xx: Set slot modulation input X (00 to 1F for current sample, 20 to 3F for latest sample)"),effectValAnd<0x3F>}},
+	{0x43, {DIV_CMD_SCSP_SLOT_MOD_IN_X, _("43xx: Set slot modulation input Y (00 to 1F for current sample, 20 to 3F for latest sample)"),effectValAnd<0x3F>}},
 
   sysDefs[DIV_SYSTEM_SCSP]=new DivSysDef(
     _("Yamaha YMF292 (SCSP)"), NULL, 0xda, 0, 32, 32, 32,
@@ -2819,6 +2823,7 @@ void DivEngine::registerSystems() {
         fmt::sprintf("S%d",ch+1),
         DIV_CH_FM,
         DIV_INS_YMF292,
+        DIV_INS_YMF292_FM,
         DIV_INS_AMIGA
       );
     }),
