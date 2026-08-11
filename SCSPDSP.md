@@ -9,7 +9,7 @@ any docs for it.
 I have no idea on how else to call these.
 Directives dictate which areas the code below belongs to.
 
-There are 3 directives:
+There are 4 directives:
 - `#COEF`: coefficients section
 - `#ADRS`: addresses section
 - `#PROG`: actual DSP program section
@@ -48,7 +48,7 @@ Coefficients can have one of the following types:
   Ranges from `&H0000` to `&H1000` for coefficients, `&H0000` to `&HFFFF` for addresses.
 - Milliseconds (address only): raw millisecond offset.
   Always preceded by `ms`. Cannot be fractional.
-  Final value is calculated using the formula `44100 * (x / 100)`, where `x` is input. The sample rate is **always** 44100.
+  Final value is calculated using the formula `44100 * (x / 1000)`, where `x` is input. The sample rate is **always** 44100.
 
 
 ## Program area
@@ -60,17 +60,18 @@ When programming the DSP, following registers are available:
 - `FREG`: feedback register.
 - `ADREG`: address register.
 - `MEMSxx`: `xx` ranges from 0 to 31.
-- `MIXSxx`: `xx` ranges from 0 to 15.
-- `EXTSxx`: `xx` ranges from 0 to 1.
+- `MIXSxx`: DSP Input `xx`. `xx` ranges from 0 to 15.
+- `EXTSxx`: One of DSP's stereo channels. `xx` ranges from 0 to 1.
 
 ### Operations
 There are 3 kinds of operations:
 - Read: no prefix.
 - Math: `@ ` prefix. Can only perform addition and multiplication.
   Several operations can be cained in form of `@ A * B + (C * D +)`,
-  the assembler automatically splits them into separate steps.
+  the assembler automatically splits them into separate steps. Each `A * B +` operation is a single step.
   The first instruction in the chain always zeroes out the accumulator first, the other ones accumulate on top.
 - Write: `> ` prefix.
+Additionally, you can put comments on any line using the `'` character. Any text on the line past that character is counted as a comment.
 
 ### Keywords
 Now this is the juice.
@@ -84,8 +85,8 @@ Here is the list:
 - `NOP`: self-explanatory. No ooeration. Used to align memory operations.
   Usually there's no need to use those, as the assembler automatically inserts those, but those can be useful as visualizers.
 - `LDI MEMSxx, MR[y]`: read from memory region `y` and push read value into MEMSxx register.
-- `MR MR[y]`: read from memory region `y`.
-- `IW MEMSxx`: push read value into MEMSxx register.
+- `MR MR[y]`: read from memory region `y`. Requires alignment to odd step.
+- `IW MEMSxx`: push read value into MEMSxx register. 
 - `MW MR[y]`: write accumulator value at memory region `y`.
 - `LDY <source>`: load value into Y from source. Source can be one of the following: `MEMSxx`, `MIXSxx`, `EXTSxx`.
 - `LDA <source>`: ditto, but loads into `ADREG` instead.
@@ -99,3 +100,7 @@ There are following modifiers when working with memory (`MR[]`):
 - `ADREG` or `ADRS`: use address register for offset.
 - `1`: next address.
 - `/NF`: sets hardware `NOFLOW` flag, preventing automatic memory increment.
+
+
+## How does it actually work?
+TODO: fill section
