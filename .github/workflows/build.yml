@@ -11,7 +11,7 @@ defaults:
     shell: bash
 
 env:
-  BUILD_TYPE: Release
+  BUILD_TYPE: RelWithDebugInfo
 
 jobs:
   build:
