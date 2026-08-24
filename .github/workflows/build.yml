@@ -2,16 +2,16 @@ name: Build furnace
 
 on:
   push:
-    branches: ['*']
+    branches: '*'
   pull_request:
-    branches: ['*']
+    branches: '*'
 
 defaults:
   run:
     shell: bash
 
 env:
-  BUILD_TYPE: RelWithDebugInfo
+  BUILD_TYPE: Release
 
 jobs:
   build:
