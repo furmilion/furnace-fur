@@ -1,4 +1,4 @@
-# Furnace-B YM2609
+# Furnace-B YM2609 
 This branch is for automatically building the [YM2609](https://github.com/LTVA1/furnace/tree/YM2609) branch of LTVA's Furnace-B. It is built whenever I pull from that branch.
 For builds, go [here](https://nightly.link/furmilion/furnace-fur/workflows/build/ym2609).
 
