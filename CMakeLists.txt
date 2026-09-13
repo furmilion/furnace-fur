@@ -291,6 +291,9 @@ set(OPUS_X86_MAY_HAVE_AVX2 OFF CACHE BOOL "Enable AVX2 for Opus" FORCE)
 set(OPUS_FORTIFY_SOURCE OFF CACHE BOOL "Enable Fortify Source" FORCE)
 set(OPUS_STACK_PROTECTOR OFF CACHE BOOL "Enable Fortify Source" FORCE)
 add_subdirectory(extern/opus EXCLUDE_FROM_ALL)
+set(KLATTSCH_BUILD_TEXT_COMPILER OFF CACHE BOOL "Build the Klattsch text-to-phoneme compiler" FORCE)
+add_subdirectory(extern/klattsch-cpp EXCLUDE_FROM_ALL)
+list(APPEND DEPENDENCIES_LIBRARIES klattsch::klattsch)
 
 if (USE_SNDFILE)
   list(APPEND DEPENDENCIES_DEFINES HAVE_SNDFILE)
@@ -658,6 +661,7 @@ extern/YM2608-LLE/fmopna_2608.c
 extern/YM2608-LLE/fmopna_2610.c
 extern/YM2608-LLE/fmopna_2612.c
 extern/YM2151-LLE/fmopm.c
+extern/YM2414-LLE/opz_lle.c
 
 extern/pwrnoise/pwrnoise.c
 
@@ -806,6 +810,7 @@ src/engine/fileOps/fc.cpp
 src/engine/fileOps/ftm.cpp
 src/engine/fileOps/fur.cpp
 src/engine/fileOps/it.cpp
+src/engine/fileOps/midi.cpp
 src/engine/fileOps/mod.cpp
 src/engine/fileOps/s3m.cpp
 src/engine/fileOps/text.cpp
@@ -924,6 +929,7 @@ src/engine/platform/gbadma.cpp
 src/engine/platform/gbaminmod.cpp
 src/engine/platform/nds.cpp
 src/engine/platform/bifurcator.cpp
+src/engine/platform/klattsch.cpp
 src/engine/platform/sid2.cpp
 src/engine/platform/sid3.cpp
 src/engine/platform/multipcm.cpp
@@ -1027,10 +1033,12 @@ src/gui/newFilePicker.cpp
 
 src/gui/intConst.cpp
 src/gui/guiConst.cpp
+src/gui/klattschInput.cpp
 
 src/gui/about.cpp
 src/gui/backupsManager.cpp
 src/gui/channels.cpp
+src/gui/oscTrigger.cpp
 src/gui/chanOsc.cpp
 src/gui/clock.cpp
 src/gui/commandPalette.cpp
