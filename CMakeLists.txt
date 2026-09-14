@@ -291,6 +291,9 @@ set(OPUS_X86_MAY_HAVE_AVX2 OFF CACHE BOOL "Enable AVX2 for Opus" FORCE)
 set(OPUS_FORTIFY_SOURCE OFF CACHE BOOL "Enable Fortify Source" FORCE)
 set(OPUS_STACK_PROTECTOR OFF CACHE BOOL "Enable Fortify Source" FORCE)
 add_subdirectory(extern/opus EXCLUDE_FROM_ALL)
+set(KLATTSCH_BUILD_TEXT_COMPILER OFF CACHE BOOL "Build the Klattsch text-to-phoneme compiler" FORCE)
+add_subdirectory(extern/klattsch-cpp EXCLUDE_FROM_ALL)
+list(APPEND DEPENDENCIES_LIBRARIES klattsch::klattsch)
 
 if (USE_SNDFILE)
   list(APPEND DEPENDENCIES_DEFINES HAVE_SNDFILE)
@@ -462,6 +465,24 @@ if (USE_SDL2)
     CHECK_INCLUDE_FILE(GLES/gl.h GLES_GL_FOUND)
     if (NOT GLES_GL_FOUND AND NOT USE_GLES)
       set(SDL_OPENGLES OFF CACHE BOOL "Enable OpenGL ES" FORCE)
+    endif()
+
+    # SDL builds a path to the NDK's cpu-features out of ANDROID_NDK. newer
+    # toolchain files only set CMAKE_ANDROID_NDK, leaving that empty, so the
+    # path starts at the filesystem root and the source is never found.
+    if (ANDROID AND NOT ANDROID_NDK)
+      if (CMAKE_ANDROID_NDK)
+        set(ANDROID_NDK "${CMAKE_ANDROID_NDK}")
+      elseif (DEFINED ENV{ANDROID_NDK_HOME})
+        set(ANDROID_NDK "$ENV{ANDROID_NDK_HOME}")
+      elseif (DEFINED ENV{ANDROID_NDK_ROOT})
+        set(ANDROID_NDK "$ENV{ANDROID_NDK_ROOT}")
+      endif()
+      if (ANDROID_NDK)
+        message(STATUS "filled in ANDROID_NDK as ${ANDROID_NDK}")
+      else()
+        message(WARNING "ANDROID_NDK is not set and could not be worked out; SDL will fail to find cpu-features.c")
+      endif()
     endif()
 
     add_subdirectory(extern/SDL EXCLUDE_FROM_ALL)
@@ -640,6 +661,7 @@ extern/YM2608-LLE/fmopna_2608.c
 extern/YM2608-LLE/fmopna_2610.c
 extern/YM2608-LLE/fmopna_2612.c
 extern/YM2151-LLE/fmopm.c
+extern/YM2414-LLE/opz_lle.c
 
 extern/pwrnoise/pwrnoise.c
 
@@ -788,6 +810,7 @@ src/engine/fileOps/fc.cpp
 src/engine/fileOps/ftm.cpp
 src/engine/fileOps/fur.cpp
 src/engine/fileOps/it.cpp
+src/engine/fileOps/midi.cpp
 src/engine/fileOps/mod.cpp
 src/engine/fileOps/s3m.cpp
 src/engine/fileOps/text.cpp
@@ -907,6 +930,7 @@ src/engine/platform/gbadma.cpp
 src/engine/platform/gbaminmod.cpp
 src/engine/platform/nds.cpp
 src/engine/platform/bifurcator.cpp
+src/engine/platform/klattsch.cpp
 src/engine/platform/sid2.cpp
 src/engine/platform/sid3.cpp
 src/engine/platform/multipcm.cpp
@@ -1010,10 +1034,12 @@ src/gui/newFilePicker.cpp
 
 src/gui/intConst.cpp
 src/gui/guiConst.cpp
+src/gui/klattschInput.cpp
 
 src/gui/about.cpp
 src/gui/backupsManager.cpp
 src/gui/channels.cpp
+src/gui/oscTrigger.cpp
 src/gui/chanOsc.cpp
 src/gui/clock.cpp
 src/gui/commandPalette.cpp
@@ -1043,6 +1069,7 @@ src/gui/osc.cpp
 src/gui/patManager.cpp
 src/gui/pattern.cpp
 src/gui/piano.cpp
+src/gui/pianoRoll.cpp
 src/gui/presets.cpp
 src/gui/refPlayer.cpp
 src/gui/regView.cpp
