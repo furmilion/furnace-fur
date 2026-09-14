@@ -47,6 +47,7 @@ class DivPlatformYAM10: public DivDispatch {
     void notifyInsChange(int ins);
     void notifyInsDeletion(void* ins);
     void notifyWaveChange(int wave);
+    void notifyPitchTable(int sample=-1);
     void setFlags(const DivConfig& flags);
     void poke(unsigned int addr, unsigned short val);
     void poke(std::vector<DivRegWrite>& wlist);

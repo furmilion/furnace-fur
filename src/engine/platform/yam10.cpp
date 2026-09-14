@@ -722,11 +722,16 @@ void DivPlatformYAM10::setFlags(const DivConfig& flags) {
   // 32*Hz*(divider/clock). divider=clock*8 lands on Hz*256, which is what the
   // freqChanged block below divides by. clock*256 made every note five
   // octaves sharp.
-  pitchTable.init(parent->song.tuning,chipClock,(double)chipClock*8.0,0xffffff,false,parent->song.compatFlags.linearPitch);
+  notifyPitchTable();
   for (int i=0; i<YAM10_CHANS; i++) {
     if (oscBuf[i]!=NULL) oscBuf[i]->setRate(rate);
   }
   chip.init(rate);
+}
+
+// the engine calls this when the song's tuning or pitch linearity changes
+void DivPlatformYAM10::notifyPitchTable(int sample) {
+  pitchTable.init(parent->song.tuning,chipClock,(double)chipClock*8.0,0xffffff,false,parent->song.compatFlags.linearPitch);
 }
 
 void DivPlatformYAM10::poke(unsigned int addr, unsigned short val) {}
