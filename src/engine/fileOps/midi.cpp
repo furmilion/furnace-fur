@@ -34,6 +34,7 @@
 #include <math.h>
 #include <map>
 #include <vector>
+#include <memory>
 
 static const char* midiGMInstrumentNames[128]={
   "Acoustic Grand Piano", "Bright Acoustic Piano", "Electric Grand Piano", "Honky-tonk Piano",
@@ -465,7 +466,10 @@ bool DivEngine::loadMIDI(unsigned char* file, size_t len) {
   warnings="";
 
   try {
-    DivSong ds;
+    // a whole song is far more than the stack can hold on some platforms,
+    // where the frame overflows before the file has even been read
+    std::unique_ptr<DivSong> dsPtr(new DivSong);
+    DivSong& ds=*dsPtr;
     ds.version=DIV_VERSION_MIDI;
 
     const int drumChannel=(midiImportOptions.drumChannel>=1 && midiImportOptions.drumChannel<=16)?(midiImportOptions.drumChannel-1):-1;
