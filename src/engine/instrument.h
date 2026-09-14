@@ -1204,17 +1204,22 @@ struct DivInstrumentPOD {
   }
 };
 
+// these are indexed by macroType, which is a byte. operator macros run
+// base+(op<<5), so six operators reach 211 and the old size of 160 was short
+// by four operators' worth.
+#define DIV_MACRO_TYPE_MAX 256
+
 struct DivInstrumentTemp {
   // the following variables are used by the GUI and not saved in the file
-  int vScroll[160];
-  int vZoom[160];
-  int typeMemory[160][16];
-  unsigned char lenMemory[160];
+  int vScroll[DIV_MACRO_TYPE_MAX];
+  int vZoom[DIV_MACRO_TYPE_MAX];
+  int typeMemory[DIV_MACRO_TYPE_MAX][16];
+  unsigned char lenMemory[DIV_MACRO_TYPE_MAX];
   DivInstrumentTemp() {
-    memset(vScroll,0,160*sizeof(int));
-    memset(vZoom,-1,160*sizeof(int));
-    memset(typeMemory,0,160*16*sizeof(int));
-    memset(lenMemory,0,160*sizeof(unsigned char));
+    memset(vScroll,0,sizeof(vScroll));
+    memset(vZoom,-1,sizeof(vZoom));
+    memset(typeMemory,0,sizeof(typeMemory));
+    memset(lenMemory,0,sizeof(lenMemory));
   }
 };
 
