@@ -48,6 +48,12 @@
 #include <string.h>
 #include <stdint.h>
 
+/* MSVC only hands out M_PI and friends when _USE_MATH_DEFINES was set before
+   math.h, and this header is pulled into translation units that do not set
+   it, so carry our own rather than depend on include order. */
+#define YAM10_PI 3.14159265358979323846
+#define YAM10_SQRT2 1.41421356237309504880
+
 #define YAM10_CHANS 10
 #define YAM10_OPS 6
 /* how many waveforms the chip carries. the wavetable is not one of them, it
@@ -962,10 +968,10 @@ public:
         /* 2*sqrt(2) makes centre pan put the operator's full output on each
          * side while staying constant power, so one voice reads clearly on
          * the oscilloscope and four carriers fill the scale. */
-        double amp=(double)out*((double)p.outLvl/127.0)*(2.0*M_SQRT2);
+        double amp=(double)out*((double)p.outLvl/127.0)*(2.0*YAM10_SQRT2);
         double pp=(double)p.pan/255.0;
-        mixL+=amp*cos(pp*M_PI*0.5);
-        mixR+=amp*sin(pp*M_PI*0.5);
+        mixL+=amp*cos(pp*YAM10_PI*0.5);
+        mixR+=amp*sin(pp*YAM10_PI*0.5);
       }
     }
 
@@ -1009,8 +1015,8 @@ public:
         ch.chorusPhase+=lfoHz/rate;
         if (ch.chorusPhase>=1.0) ch.chorusPhase-=1.0;
         double wOff=(double)cp.chorusWidth/254.0;
-        double aL=ch.chorusPhase*2.0*M_PI;
-        double aR=(ch.chorusPhase+wOff)*2.0*M_PI;
+        double aL=ch.chorusPhase*2.0*YAM10_PI;
+        double aR=(ch.chorusPhase+wOff)*2.0*YAM10_PI;
         double base=rate*0.006;                        /* 6 ms centre */
         double depth=base*0.9*((double)cp.chorusDepth/127.0);
         double dl=base+depth*sin(aL);
