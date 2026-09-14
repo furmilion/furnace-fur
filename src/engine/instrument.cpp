@@ -2529,6 +2529,9 @@ void DivInstrument::readFeatureFM(SafeReader& reader, short version) {
   fm.op[3].enable=(opCount&128);
 
   opCount&=15;
+  // the writer only ever stores 2 or 4. a file saying more than fm.op holds
+  // would have us write operators off the end of the instrument.
+  if (opCount>4) opCount=4;
 
   unsigned char next=reader.readC();
   fm.alg=(next>>4)&7;
