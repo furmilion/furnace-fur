@@ -6544,7 +6544,7 @@ void FurnaceGUI::insTabFM(DivInstrument* ins) {
 
 static const int _YAM10_MINUS_36=-36, _YAM10_36=36, _YAM10_MINUS_64=-64, _YAM10_63=63;
 // the waveform slider needs pointers whose type actually matches the U8 slider
-static const unsigned char _YAM10_WS_MIN=0, _YAM10_WS_MAX=23;
+static const unsigned char _YAM10_WS_MIN=0, _YAM10_WS_MAX=YAM10_WAVES-1;
 // the DSP bytes index curves that run far wider than anything useful, so
 // the sliders only cover the part worth reaching
 static const unsigned char _YAM10_XLO_MIN=49,  _YAM10_XLO_MAX=159; // 50 Hz to 730 Hz
@@ -6558,21 +6558,66 @@ static const unsigned char _YAM10_DELAY_MAX=7;
 
 // the waveforms are grouped by family rather than by when they were added,
 // so the names are given in one list rather than borrowed from elsewhere.
-static const char* yam10WaveNames[24]={
-  _N("Sine"), _N("Half Sine"), _N("Absolute Sine"), _N("Pulse Sine"),
-  _N("Squished Sine"), _N("Squished AbsSine"), _N("Quarter Squished Sine"),
-  _N("Triangle"), _N("Absolute Triangle"), _N("Cut Triangle"),
-  _N("Squished Triangle"), _N("Squished AbsTriangle"),
+// the numbers are the order they were added in, which is what a saved song
+// carries, and the picker below puts them back into family order.
+static const char* yam10WaveNames[YAM10_WAVES]={
+  _N("Sine"), _N("Half Sine"), _N("Absolute Sine"),
+  _N("Pulse Sine"), _N("Squished Sine"), _N("Squished AbsSine"),
+  _N("Quarter Squished Sine"), _N("Triangle"), _N("Absolute Triangle"),
+  _N("Cut Triangle"), _N("Squished Triangle"), _N("Squished AbsTriangle"),
   _N("Squared Sine"), _N("Absolute Squared Sine"), _N("Half Squared Sine"),
-  _N("Squished Squared Sine"), _N("Squished AbsSquared Sine"),
-  _N("Saw"), _N("Half Saw"),
-  _N("Square"), _N("Logarithmic Saw"),
-  _N("Noise"), _N("Noise (1-bit)"), _N("Sample & Hold")
+  _N("Squished Squared Sine"), _N("Squished AbsSquared Sine"), _N("Saw"),
+  _N("Half Saw"), _N("Square"), _N("Logarithmic Saw"),
+  _N("Noise"), _N("Noise (1-bit)"), _N("Sample & Hold"),
+  _N("Pulse Triangle"), _N("Quarter Squished Triangle"), _N("Pulse Squared Sine"),
+  _N("Quarter Squished Squared Sine"), _N("Absolute Saw"), _N("Pulse Saw"),
+  _N("Squished Saw"), _N("Squished AbsSaw"), _N("Quarter Squished Saw"),
+  _N("Half Square"), _N("Pulse Square"), _N("Squished Square"),
+  _N("Quarter Squished Square"), _N("Pulse 12.5%"), _N("Pulse 25%"),
+  _N("Pulse 75%"), _N("Half Log Saw"), _N("Absolute Log Saw"),
+  _N("Pulse Log Saw"), _N("Squished Log Saw"), _N("Squished AbsLog Saw"),
+  _N("Quarter Squished Log Saw"), _N("Cubed Sine"), _N("Half Cubed Sine"),
+  _N("Absolute Cubed Sine"), _N("Pulse Cubed Sine"), _N("Squished Cubed Sine"),
+  _N("Squished AbsCubed Sine"), _N("Quarter Squished Cubed Sine"), _N("Cubed Triangle"),
+  _N("Cut Cubed Triangle"), _N("Absolute Cubed Triangle"), _N("Pulse Cubed Triangle"),
+  _N("Squished Cubed Triangle"), _N("Squished AbsCubed Triangle"), _N("Quarter Squished Cubed Triangle"),
+  _N("Cubed Saw"), _N("Half Cubed Saw"), _N("Absolute Cubed Saw"),
+  _N("Pulse Cubed Saw"), _N("Squished Cubed Saw"), _N("Squished AbsCubed Saw"),
+  _N("Quarter Squished Cubed Saw"), _N("Periodic Noise (7 step)"), _N("Periodic Noise (15 step)"),
+  _N("Periodic Noise (63 step)"), _N("Periodic Noise (127 step)"), _N("Atari Noise (4-bit)"),
+  _N("Atari Noise (5-bit)"), _N("Atari Noise (9-bit)"), _N("NES Short Noise")
 };
 
+// what the picker shows, in the order it shows it. every family carries the
+// same derivations in the same order, so a row means the same thing wherever
+// you are in the list.
+#define YAM10_WAVE_GROUP_MAX 8
+
+struct YAM10WaveGroup {
+  const char* name;
+  unsigned char ws[YAM10_WAVE_GROUP_MAX];
+  int count;
+};
+
+static const YAM10WaveGroup yam10WaveGroups[]={
+  {_N("Sine"),{0,1,2,3,4,5,6},7},
+  {_N("Squared Sine"),{12,14,13,26,15,16,27},7},
+  {_N("Cubed Sine"),{46,47,48,49,50,51,52},7},
+  {_N("Triangle"),{7,9,8,24,10,11,25},7},
+  {_N("Cubed Triangle"),{53,54,55,56,57,58,59},7},
+  {_N("Sawtooth"),{17,18,28,29,30,31,32},7},
+  {_N("Cubed Sawtooth"),{60,61,62,63,64,65,66},7},
+  {_N("Logarithmic Saw"),{20,40,41,42,43,44,45},7},
+  {_N("Square and Pulse"),{19,33,34,35,36,37,38,39},8},
+  {_N("Noise"),{21,22,23},3},
+  {_N("Periodic Noise"),{67,68,69,70,71,72,73,74},8},
+};
+#define YAM10_WAVE_GROUP_COUNT ((int)(sizeof(yam10WaveGroups)/sizeof(yam10WaveGroups[0])))
+
 static const char* yam10WaveName(unsigned char ws, bool oplStandard) {
+  // the OPL standard names setting does not apply: this is the chip's own list
   (void)oplStandard;
-  if (ws>23) ws=23;
+  if (ws>=YAM10_WAVES) ws=0;
   return _(yam10WaveNames[ws]);
 }
 
@@ -6626,11 +6671,16 @@ void FurnaceGUI::drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex,
     if (waveformLen>512) waveformLen=512;
     ImVec2 waveform[513];
 
-    // noise and sample & hold are random per cycle, so show a few cycles
-    const int cycles=(!custom && ws>=21 && ws<=23)?6:1;
+    // anything generated as it plays wants a few cycles, so that noise reads
+    // as noise and a short register shows where it comes back around
+    const unsigned char wsClamped=(ws>=YAM10_WAVES)?(YAM10_WAVES-1):ws;
+    const unsigned char wkind=custom?YAM10_WK_WAVETABLE:yam10_wave_def[wsClamped].kind;
+    const int cycles=(wkind!=YAM10_WK_TABLE && wkind!=YAM10_WK_WAVETABLE)?6:1;
     unsigned int seed=0x2545f491u+ws;
     float held=0.0f;
     int lastCycle=-1;
+    unsigned int polyReg=1;
+    int polyStep=0;
 
     for (int i=0; i<=waveformLen; i++) {
       float x=(float)i/(float)waveformLen;
@@ -6643,11 +6693,25 @@ void FurnaceGUI::drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex,
         if (wi>=wt->len) wi=wt->len-1;
         double half=(double)(wt->max>0?wt->max:255)*0.5;
         yv=(float)(((double)wt->data[wi]-half)/(half>0.0?half:1.0));
-      } else if (ws==21 || ws==22) {
+      } else if (wkind==YAM10_WK_NOISE || wkind==YAM10_WK_NOISE1) {
         seed=seed*1103515245u+12345u;
-        yv=(ws==22)?(((seed>>16)&1)?1.0f:-1.0f)
+        yv=(wkind==YAM10_WK_NOISE1)?(((seed>>16)&1)?1.0f:-1.0f)
                    :(((float)((seed>>16)&0xffff)/32768.0f)-1.0f);
-      } else if (ws==23) {
+      } else if (wkind==YAM10_WK_POLY) {
+        // step the same short register the chip steps, so the picture is the
+        // pattern that will play rather than an impression of one
+        const YAM10WaveDef& wd=yam10_wave_def[wsClamped];
+        unsigned int mask=(1u<<wd.polyWidth)-1u;
+        int want=(int)((double)i*32.0*(double)cycles/(double)waveformLen);
+        while (polyStep<want) {
+          unsigned int fb=polyReg&wd.polyTaps;
+          fb^=fb>>4; fb^=fb>>2; fb^=fb>>1;
+          polyReg=((polyReg>>1)|((fb&1u)<<(wd.polyWidth-1)))&mask;
+          if (polyReg==0) polyReg=1;
+          polyStep++;
+        }
+        yv=(polyReg&1)?1.0f:-1.0f;
+      } else if (wkind==YAM10_WK_SH) {
         int cyc=(int)(x*(float)cycles);
         if (cyc!=lastCycle) {
           lastCycle=cyc;
@@ -6659,7 +6723,7 @@ void FurnaceGUI::drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex,
         // same endpoint rule: run to entry 1023 rather than wrapping to 0
         unsigned int p=(unsigned int)((double)i*1024.0*(double)cycles/(double)waveformLen);
         if (cycles>1) p&=0x3ff; else if (p>1023) p=1023;
-        unsigned short entry=yam10_wf[(ws>23)?23:ws][p];
+        unsigned short entry=yam10_wf[wsClamped][p];
         unsigned short lg=entry&0x7fff, neg=entry&0x8000;
         yv=(lg>=0x1000)?0.0f:((float)yam10_exp(lg,neg)/4084.0f);
       }
@@ -6669,6 +6733,52 @@ void FurnaceGUI::drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex,
     }
     dl->AddPolyline(waveform,waveformLen+1,color,dpiScale,ImDrawFlags_None);
   }
+}
+
+// the waveform picker. one row a waveform, grouped by family, and every row
+// carries the picture the chip will actually play rather than a stock icon.
+// the number is shown beside the name because that is what the waveform
+// effects take.
+bool FurnaceGUI::drawYAM10WaveSelect(const char* id, unsigned char& ws) {
+  bool changed=false;
+  if (ws>=YAM10_WAVES) ws=0;
+  String label=fmt::sprintf("%s (%d)",yam10WaveName(ws,false),(int)ws);
+  if (ImGui::BeginCombo(id,label.c_str())) {
+    const float rowHeight=ImGui::GetFontSize()*1.5f;
+    const float previewW=52.0f*dpiScale;
+    if (ImGui::BeginTable("YAM10WaveList",1,ImGuiTableFlags_ScrollY,ImVec2(280.0f*dpiScale,360.0f*dpiScale))) {
+      for (int g=0; g<YAM10_WAVE_GROUP_COUNT; g++) {
+        const YAM10WaveGroup& grp=yam10WaveGroups[g];
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::SeparatorText(_(grp.name));
+        for (int i=0; i<grp.count; i++) {
+          const unsigned char w=grp.ws[i];
+          ImGui::TableNextRow();
+          ImGui::TableNextColumn();
+          ImGui::PushID((int)w);
+          const ImVec2 rowStart=ImGui::GetCursorPos();
+          if (ImGui::Selectable("##yam10WsRow",ws==w,ImGuiSelectableFlags_None,ImVec2(0.0f,rowHeight))) {
+            ws=w;
+            changed=true;
+          }
+          if (ws==w) {
+            ImGui::SetItemDefaultFocus();
+            if (ImGui::IsWindowAppearing()) ImGui::SetScrollHereY();
+          }
+          ImGui::SetCursorPos(rowStart);
+          drawYAM10Waveform(w,false,-1,ImVec2(previewW,rowHeight));
+          ImGui::SameLine();
+          ImGui::AlignTextToFramePadding();
+          ImGui::Text("%s (%d)",_(yam10WaveNames[w]),(int)w);
+          ImGui::PopID();
+        }
+      }
+      ImGui::EndTable();
+    }
+    ImGui::EndCombo();
+  }
+  return changed;
 }
 
 // YAM10 has no algorithm list, so this draws the routing matrix itself:
@@ -6794,7 +6904,7 @@ void FurnaceGUI::drawInsYAM10(DivInstrument* ins) {
       float waveHeight=sliderHeight-ImGui::GetFrameHeightWithSpacing()*2.0f;
       if (waveHeight<40.0f*dpiScale) waveHeight=40.0f*dpiScale;
 
-      if (op.ws>23) op.ws=23;
+      if (op.ws>=YAM10_WAVES) op.ws=0;
 
       ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,oldPadding);
       if (ImGui::BeginTable("yam10opParams",4,ImGuiTableFlags_BordersInnerV)) {
@@ -6889,7 +6999,7 @@ void FurnaceGUI::drawInsYAM10(DivInstrument* ins) {
         drawYAM10Waveform(op.ws,op.customWave,op.customWaveIndex,ImVec2(ImGui::GetContentRegionAvail().x,waveHeight));
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        P(CWSliderScalar("##YAM10WS",ImGuiDataType_U8,&op.ws,&_YAM10_WS_MIN,&_YAM10_WS_MAX,yam10WaveName(op.ws,settings.oplStandardWaveNames))); rightClickable
+        if (drawYAM10WaveSelect("##YAM10WS",op.ws)) { PARAMETER }
 
         bool customWave=op.customWave;
         if (ImGui::Checkbox(YAM10_SHORT_NAME(YAM10_WT),&customWave)) { PARAMETER
@@ -8579,7 +8689,7 @@ void FurnaceGUI::drawInsEdit() {
                 macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_MULT),&ins->std.opMacros[ordi].multMacro,0,16,64,uiColors[GUI_COLOR_MACRO_OTHER]));
                 macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_DT),&ins->std.opMacros[ordi].dtMacro,-36,36,128,uiColors[GUI_COLOR_MACRO_OTHER]));
                 macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_RS),&ins->std.opMacros[ordi].rsMacro,0,3,32,uiColors[GUI_COLOR_MACRO_OTHER]));
-                macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_WS),&ins->std.opMacros[ordi].wsMacro,0,23,64,uiColors[GUI_COLOR_MACRO_OTHER]));
+                macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_WS),&ins->std.opMacros[ordi].wsMacro,0,YAM10_WAVES-1,160,uiColors[GUI_COLOR_MACRO_OTHER]));
                 macroList.push_back(FurnaceGUIMacroDesc(FM_NAME(FM_KSR),&ins->std.opMacros[ordi].ksrMacro,0,1,32,uiColors[GUI_COLOR_MACRO_OTHER],false,NULL,NULL,true));
                 // the rest of the operator's FM shape, which had no macro
                 // before. the fields follow ESFM's choices where they are free.

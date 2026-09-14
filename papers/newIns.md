@@ -516,7 +516,7 @@ size | description
      | - bit 2: KSR
      | - bit 1: fixed pitch
      | - bit 0: enabled
-  1  | waveform (0-15)
+  1  | waveform (0 to 74)
   1  | total level (0-127)
   1  | attack (0-31)
   1  | decay (0-31)

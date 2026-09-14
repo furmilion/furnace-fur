@@ -391,7 +391,9 @@ const char* cmdName[]={
   "YAM10_OP_MODIN",
   "YAM10_OP_PHRESET",
   "YAM10_OP_DELAY",
-  "YAM10_WS_HI"
+  "YAM10_WS_HI",
+  "YAM10_WS_SEL",
+  "YAM10_WS_FULL"
 };
 
 // fail build if you forgot to update the array

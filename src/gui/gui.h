@@ -3364,6 +3364,7 @@ class FurnaceGUI {
   void drawInsYAM10(DivInstrument* ins);
   void drawInsYAM10DSP(DivInstrument* ins);
   void drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex, const ImVec2& size);
+  bool drawYAM10WaveSelect(const char* id, unsigned char& ws);
   void drawInsSID3(DivInstrument* ins);
   void drawWaveList(bool asChild=false);
   void drawWaveEdit();

@@ -8,7 +8,7 @@ each operator gets a panel containing:
 
 - **A, D, S, D2, R**: the envelope rates as vertical sliders, with the sustain level sitting where the sustain position setting puts it. attack, decay and decay 2 run 0 to 31; sustain and release run 0 to 15.
 - **Scale Rate**: key scale rate. higher notes run their envelopes faster.
-- **Waveform**: a picture of the operator's wave, the wave selector under it, and a wavetable toggle with the wavetable number beside it. the picture is drawn from the chip's own waveform table, so it is always what you will hear.
+- **Waveform**: a picture of the operator's wave, the picker under it, and a wavetable toggle with the wavetable number beside it. the picture is drawn from the chip's own waveform table, so it is always what you will hear. the picker lists all 75 waveforms grouped by family, each row drawn the same way, with its number beside the name because that is what the waveform effects take.
 - **Envelope**: the resulting envelope shape.
 - **TL** and **OL**: total level and output level. TL sets how loud the operator runs, at 0.75 dB a step. OL is a linear gain and decides whether the operator is heard at all: anything above zero makes it a carrier.
 - **Multiplier**, **Detune**, **Fine**, **EnvScale**, **Pan**: the operator's tuning and placement. detune is in semitones, fine is in cents, pan is 0 to 255 with 128 in the centre.

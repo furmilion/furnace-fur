@@ -344,7 +344,7 @@ struct DivInstrumentMacro {
 struct DivInstrumentYAM10 {
   struct Operator {
     bool enable, fixedMode, ksr, customWave;
-    unsigned char ws;          // 0-14 built in, or custom wavetable
+    unsigned char ws;          // built in waveform; the wavetable is the separate customWave flag
     unsigned char tl;          // 0-127
     unsigned char ar, dr, d2r; // 0-31
     unsigned char sl, rr;      // 0-15

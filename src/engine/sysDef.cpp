@@ -2899,6 +2899,8 @@ void DivEngine::registerSystems() {
       {0x7b, {DIV_CMD_YAM10_OP_PHRESET, _("7Bxx: Set phase reset of operator 6 in ticks, 0 is off"), constVal<5>, effectVal}},
       {0x7c, {DIV_CMD_YAM10_OP_DELAY, _("7Cxy: Set the delay before an operator attacks (x: operator from 1 to 6 (0 for all ops); y: delay from 0 to 7)"), effectOpVal<6>, effectValAnd<7>}},
       {0x5c, {DIV_CMD_YAM10_WS_HI, _("5Cxy: Set waveform 16 to 23 (x: operator from 1 to 6 (0 for all ops); y: waveform minus 16)"), effectOpVal<6>, effectValAnd<7>}},
+      {0x5d, {DIV_CMD_YAM10_WS_SEL, _("5Dxx: Pick the operator the next waveform effect addresses (0 for all ops, 1 to 6)")}},
+      {0x5e, {DIV_CMD_YAM10_WS_FULL, _("5Exx: Set the waveform of the picked operator, any of them")}},
       {0xaf, {DIV_CMD_YAM10_EQ_SEL, _("AFxx: Pick the EQ band the next EQ effects address (0 to 7)")}},
       {0x56, {DIV_CMD_YAM10_EQ_FREQ, _("56xx: Set the frequency of the picked EQ band")}},
       {0x57, {DIV_CMD_YAM10_EQ_GAIN, _("57xx: Set the gain of the picked EQ band (80 is flat)")}},

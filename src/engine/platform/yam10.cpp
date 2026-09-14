@@ -235,7 +235,7 @@ void DivPlatformYAM10::tick(bool sysTick) {
       if (m.rs.had)   { o.rs=m.rs.val&3;      d.rs=o.rs; }
       if (m.ksr.had)  { o.ksr=m.ksr.val;      d.ksr=o.ksr; }
       if (m.dam.had)  { o.delay=m.dam.val&7;  d.delay=o.delay; }
-      if (m.ws.had)   { o.ws=(m.ws.val>23)?23:m.ws.val; d.ws=o.ws; }
+      if (m.ws.had)   { o.ws=(m.ws.val<0||m.ws.val>=YAM10_WAVES)?0:(unsigned char)m.ws.val; d.ws=o.ws; }
       if (m.dt.had)   { o.dtSemi=m.dt.val;    d.dtSemi=o.dtSemi; }
       if (m.dt2.had)  { o.fb=m.dt2.val&7;     d.fb=o.fb; }
       if (m.egt.had)  { o.outLvl=m.egt.val&127; d.outLvl=o.outLvl; }
@@ -391,7 +391,7 @@ int DivPlatformYAM10::dispatch(DivCommand c) {
       YAM10_OP_LOOP(ksr,c.value2&1)
       break;
     case DIV_CMD_FM_WS:
-      YAM10_OP_LOOP(ws,(c.value2>19)?19:c.value2)
+      YAM10_OP_LOOP(ws,(c.value2>=YAM10_WAVES)?0:c.value2)
       break;
     case DIV_CMD_FM_DT:
       YAM10_OP_LOOP(dtSemi,(signed char)(c.value2-64))
@@ -618,6 +618,21 @@ int DivPlatformYAM10::dispatch(DivCommand c) {
     case DIV_CMD_YAM10_WS_HI:
       YAM10_OP_LOOP(ws,(unsigned char)(16+(c.value2&7)))
       break;
+    case DIV_CMD_YAM10_WS_SEL:
+      // 5Dxx picks who 5Exx talks to. one digit cannot carry a waveform
+      // number any more, so the operator and the waveform take an effect each
+      chan[c.chan].wsSel=(c.value>YAM10_OPS)?0:(unsigned char)c.value;
+      break;
+    case DIV_CMD_YAM10_WS_FULL: {
+      int sel=(int)chan[c.chan].wsSel-1;
+      unsigned char v=(c.value<0||c.value>=YAM10_WAVES)?0:(unsigned char)c.value;
+      for (int o=0; o<YAM10_OPS; o++) {
+        if (sel>=0 && o!=sel) continue;
+        chan[c.chan].state.op[o].ws=v;
+        chip.par[c.chan].op[o].ws=v;
+      }
+      break;
+    }
     case DIV_CMD_YAM10_EQ_ON:
       chan[c.chan].state.eqBand[chan[c.chan].eqSel].on=c.value&1;
       chip.par[c.chan].eqBand[chan[c.chan].eqSel].on=chan[c.chan].state.eqBand[chan[c.chan].eqSel].on;

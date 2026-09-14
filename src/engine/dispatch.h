@@ -401,6 +401,8 @@ enum DivDispatchCmds {
   DIV_CMD_YAM10_OP_PHRESET, // (value: operator, value2: ticks)
   DIV_CMD_YAM10_OP_DELAY, // (value: operator, value2: delay)
   DIV_CMD_YAM10_WS_HI, // (value: operator, value2: waveform minus 16)
+  DIV_CMD_YAM10_WS_SEL, // (value: operator, 0 for all)
+  DIV_CMD_YAM10_WS_FULL, // (value: waveform, any of them)
 
   DIV_CMD_MAX
 };

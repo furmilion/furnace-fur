@@ -15,8 +15,9 @@ class DivPlatformYAM10: public DivDispatch {
   struct Channel: public SharedChannel {
     DivInstrumentYAM10 state;
     unsigned char eqSel;       // the band AFxx picked, indexes eqBand
+    unsigned char wsSel;       // the operator 5Dxx picked, 0 meaning all
     Channel(bool linear=true):
-      SharedChannel(127,linear), eqSel(0) {}
+      SharedChannel(127,linear), eqSel(0), wsSel(0) {}
   };
   Channel chan[YAM10_CHANS];
   DivDispatchOscBuffer* oscBuf[YAM10_CHANS];

@@ -31,7 +31,14 @@
 
 #define YAM10_CHANS 10
 #define YAM10_OPS 6
-#define YAM10_WAVES 25
+/* how many waveforms the chip carries. the wavetable is not one of them, it
+   sits one past the end so a waveform can be added without moving it. */
+#define YAM10_WAVES 75
+#define YAM10_WF_NOISE  21
+#define YAM10_WF_NOISE1 22
+#define YAM10_WF_SH     23
+/* not a row in the bank: the oscillator reads a wavetable instead */
+#define YAM10_WAVE_WT 0x7f
 #define YAM10_MAX_ECHO 48000
 #define YAM10_FILTERS 3
 #define YAM10_EQ_BANDS 32
@@ -119,7 +126,8 @@ static const uint16_t yam10_exprom[256] = {
 
 /* waveform bank, built once: [wave][1024] of log-domain magnitude.
  * bit 15 of an entry means "silent", matching the OPL convention. */
-static uint16_t yam10_wf[YAM10_WAVES][1024];
+static uint16_t yam10_wf[YAM10_WAVES+1][1024];
+
 static uint8_t yam10_wf_built=0;
 
 static inline uint16_t yam10_logsin(uint32_t p) {
@@ -145,10 +153,81 @@ static inline uint16_t yam10_logsin_even(uint32_t p) {
   return (p&0x80)?yam10_logsinrom[((p^0xff)<<1)&0xff]:yam10_logsinrom[(p<<1)&0xff];
 }
 
-/* the waveforms are grouped by family: the sines first, then the triangles,
-   then the squared sines, then saw, square and noise. anything derived from
-   a wave is built after it, and the two squished squared sines read the
-   plain one at twice the phase so they wait for a second pass. */
+/* a waveform is either read from the bank above or generated as it plays.
+   keeping that in a table rather than in the number itself means a new
+   waveform of either sort can take the next free number, and a song saved
+   before it was added still means what it meant. */
+enum YAM10WaveKind {
+  YAM10_WK_TABLE=0,   /* read from yam10_wf */
+  YAM10_WK_NOISE,     /* the long register, full depth */
+  YAM10_WK_NOISE1,    /* the long register, one bit deep */
+  YAM10_WK_SH,        /* one step a cycle, so a much coarser noise */
+  YAM10_WK_POLY,      /* a short register, so the pattern repeats and pitches */
+  YAM10_WK_WAVETABLE
+};
+
+/* width is how many bits the register holds and taps is the xor feedback
+   mask. a four bit register comes back around every fifteen steps and a five
+   bit one every thirty one, which is heard as a rough pitch rather than as
+   noise. */
+struct YAM10WaveDef {
+  uint8_t kind;
+  uint8_t polyWidth;
+  uint16_t polyTaps;
+};
+
+/* filled by yam10_build_wf. almost every waveform reads the bank, so the
+   exceptions are listed rather than the rule. */
+static YAM10WaveDef yam10_wave_def[YAM10_WAVES];
+
+/* the short registers, all shifting the same way as the long one above.
+   period is how many steps before the pattern comes back around, which at
+   32 steps a cycle is what decides whether it reads as a pitch or as noise. */
+struct YAM10PolyDef {
+  uint8_t ws;
+  uint8_t width;
+  uint16_t taps;
+};
+
+static const YAM10PolyDef yam10_polys[]={
+  {67,3,0x005},   /* 7 steps */
+  {68,4,0x009},   /* 15 steps */
+  {69,6,0x021},   /* 63 steps */
+  {70,7,0x041},   /* 127 steps */
+  {71,4,0x003},   /* the TIA's four bit counter, 15 steps */
+  {72,5,0x005},   /* the TIA's five bit counter, 31 steps */
+  {73,9,0x011},   /* nine bits, 511 steps */
+  {74,15,0x041}   /* the NES short mode, 93 steps */
+};
+#define YAM10_POLY_COUNT ((int)(sizeof(yam10_polys)/sizeof(yam10_polys[0])))
+
+/* the falling saw, the jump at the half cycle. bit 15 is the sign, the same
+   as yam10_logsin. waves 17 and 18 were doing this inline. */
+static inline uint16_t yam10_saw(uint32_t p) {
+  uint32_t q=(p+512)&0x3ff;
+  uint16_t lin=(q<512)?(uint16_t)(511-q):(uint16_t)(q-512);
+  uint16_t att=(lin==0)?0x1000:(uint16_t)(-(int)(log2((double)lin/511.0)*256.0));
+  return att|((q<512)?0:0x8000);
+}
+
+/* the saw folded up rather than mirrored, so a unipolar ramp runs twice a
+   cycle. taking the plain absolute value of a saw only gives a triangle,
+   which the chip already has at wave 7. */
+static inline uint16_t yam10_saw_abs(uint32_t p) {
+  uint16_t lin=(uint16_t)(511-(p&0x1ff));
+  return (lin==0)?0x1000:(uint16_t)(-(int)(log2((double)lin/511.0)*256.0));
+}
+
+/* raising the linear amplitude to the nth power is multiplying the log
+   domain value by n. the sign is kept, so an odd power keeps its negative
+   lobe, and anything that overflows past silence stays silent. n=2 is what
+   wave 12 always did. */
+static inline uint16_t yam10_pow(uint16_t e, unsigned int n) {
+  uint16_t mag=e&0x7fff, neg=e&0x8000;
+  uint32_t v=(uint32_t)mag*n;
+  return (uint16_t)(((mag>=0x1000)||(v>0xfff))?0x1000:v)|neg;
+}
+
 static void yam10_build_wf(void) {
   uint32_t p;
   if (yam10_wf_built) return;
@@ -180,16 +259,11 @@ static void yam10_build_wf(void) {
        kept, so this is sin times the absolute value of sin, not sin squared
        on its own, which would never go negative. slot 13 is the true one.
        13-16 come from this in the second pass. */
-    yam10_wf[12][p]=(uint16_t)((mag<0x7fff)?((mag*2>0xfff)?0x1000:mag*2):0x1000)|neg;
+    yam10_wf[12][p]=yam10_pow(s,2);
 
     /* 17-18: the saws */
-    {
-      uint32_t q=(p+512)&0x3ff;
-      uint16_t lin=(q<512)?(uint16_t)(511-q):(uint16_t)(q-512);
-      uint16_t att=(lin==0)?0x1000:(uint16_t)(-(int)(log2((double)lin/511.0)*256.0));
-      yam10_wf[17][p]=att|((q<512)?0:0x8000);
-      yam10_wf[18][p]=(p&0x200)?0x1000:yam10_wf[17][p];
-    }
+    yam10_wf[17][p]=yam10_saw(p);
+    yam10_wf[18][p]=(p&0x200)?0x1000:yam10_wf[17][p];
 
     /* 19-20: the squares */
     yam10_wf[19][p]=(p&0x200)?0x8000:0;
@@ -197,11 +271,44 @@ static void yam10_build_wf(void) {
        anything square */
     yam10_wf[20][p]=neg?(((((p&0x1ff)^0x1ff))<<3)|0x8000):((p&0x1ff)<<3);
 
-    /* 21-23 are generated as they play, 24 reads a wavetable */
+    /* 21-23 are generated as they play, so they have no bank entry */
     yam10_wf[21][p]=0;
     yam10_wf[22][p]=0;
     yam10_wf[23][p]=0;
-    yam10_wf[24][p]=0;
+
+    /* 24-25: the two the triangle family was missing */
+    yam10_wf[24][p]=(p&0x100)?0x1000:(yam10_tri(p)&0x7fff);   /* pulse */
+    yam10_wf[25][p]=(p&0x300)?0x1000:yam10_tri(p*4);          /* quarter squished */
+
+    /* 26: pulse squared sine. the quarter squished one reads wave 12 at four
+       times the phase, so it waits for the second pass. */
+    yam10_wf[26][p]=(p&0x100)?0x1000:(yam10_pow(s,2)&0x7fff);
+
+    /* 28-32: the rest of the saw family */
+    yam10_wf[28][p]=yam10_saw_abs(p);                         /* absolute */
+    yam10_wf[29][p]=(p&0x100)?0x1000:yam10_saw_abs(p);        /* pulse */
+    yam10_wf[30][p]=(p&0x200)?0x1000:yam10_saw(p*2);          /* squished */
+    yam10_wf[31][p]=(p&0x200)?0x1000:yam10_saw_abs(p*2);      /* squished abs */
+    yam10_wf[32][p]=(p&0x300)?0x1000:yam10_saw(p*4);          /* quarter squished */
+
+    /* 33-36: the square gated the same ways as every other family. an
+       absolute square is only DC and a squished absolute square repeats 33,
+       so neither gets a number. */
+    yam10_wf[33][p]=(p&0x200)?0x1000:0;                       /* half */
+    yam10_wf[34][p]=(p&0x100)?0x1000:0;                       /* pulse */
+    yam10_wf[35][p]=(p&0x200)?0x1000:((p&0x100)?0x8000:0);    /* squished */
+    yam10_wf[36][p]=(p&0x300)?0x1000:((p&0x80)?0x8000:0);     /* quarter squished */
+
+    /* 37-39: the PSG duties. 50% is wave 19. */
+    yam10_wf[37][p]=(p<128)?0:0x8000;                         /* 12.5% */
+    yam10_wf[38][p]=(p<256)?0:0x8000;                         /* 25% */
+    yam10_wf[39][p]=(p<768)?0:0x8000;                         /* 75% */
+
+    /* the periodic registers are generated as they play */
+    {
+      int w;
+      for (w=0; w<YAM10_POLY_COUNT; w++) yam10_wf[yam10_polys[w].ws][p]=0;
+    }
   }
   for (p=0; p<1024; p++) {
     uint16_t sq=yam10_wf[12][p];
@@ -209,6 +316,51 @@ static void yam10_build_wf(void) {
     yam10_wf[14][p]=(p&0x200)?0x1000:sq;                /* half */
     yam10_wf[15][p]=(p&0x200)?0x1000:yam10_wf[12][(p*2)&0x3ff];
     yam10_wf[16][p]=(p&0x200)?0x1000:(yam10_wf[12][(p*2)&0x1ff]&0x7fff);
+
+    /* 27: the last gap in the squared sine family */
+    yam10_wf[27][p]=(p&0x300)?0x1000:yam10_wf[12][(p*4)&0x3ff];
+
+    /* 40-45: the logarithmic saw, gated like every other family */
+    yam10_wf[40][p]=(p&0x200)?0x1000:yam10_wf[20][p];
+    yam10_wf[41][p]=yam10_wf[20][p]&0x7fff;
+    yam10_wf[42][p]=(p&0x100)?0x1000:(yam10_wf[20][p]&0x7fff);
+    yam10_wf[43][p]=(p&0x200)?0x1000:yam10_wf[20][(p*2)&0x3ff];
+    yam10_wf[44][p]=(p&0x200)?0x1000:(yam10_wf[20][(p*2)&0x3ff]&0x7fff);
+    yam10_wf[45][p]=(p&0x300)?0x1000:yam10_wf[20][(p*4)&0x3ff];
+
+    /* 46-66: the cubed families. tripling the log domain value cubes the
+       amplitude, so each one is the matching plain wave cubed and the gating
+       comes along with it. */
+    {
+      static const unsigned char yam10_cubeOf[21]={
+        0,1,2,3,4,5,6,        /* 46-52, the sines */
+        7,9,8,24,10,11,25,    /* 53-59, the triangles */
+        17,18,28,29,30,31,32  /* 60-66, the saws */
+      };
+      int w;
+      for (w=0; w<21; w++) {
+        yam10_wf[46+w][p]=yam10_pow(yam10_wf[yam10_cubeOf[w]][p],3);
+      }
+    }
+  }
+
+  /* which waveforms are generated rather than read from the bank */
+  {
+    int w;
+    for (w=0; w<YAM10_WAVES; w++) {
+      yam10_wave_def[w].kind=YAM10_WK_TABLE;
+      yam10_wave_def[w].polyWidth=0;
+      yam10_wave_def[w].polyTaps=0;
+    }
+    yam10_wave_def[YAM10_WF_NOISE].kind=YAM10_WK_NOISE;
+    yam10_wave_def[YAM10_WF_NOISE1].kind=YAM10_WK_NOISE1;
+    yam10_wave_def[YAM10_WF_SH].kind=YAM10_WK_SH;
+    for (w=0; w<YAM10_POLY_COUNT; w++) {
+      YAM10WaveDef& d=yam10_wave_def[yam10_polys[w].ws];
+      d.kind=YAM10_WK_POLY;
+      d.polyWidth=yam10_polys[w].width;
+      d.polyTaps=yam10_polys[w].taps;
+    }
   }
   yam10_wf_built=1;
 }
@@ -366,7 +518,7 @@ struct YAM10FilterParam {
 
 struct YAM10OpParam {
   bool enable, fixedMode, ksr, customWave;
-  unsigned char ws;        /* 0-15, 15 = custom wavetable */
+  unsigned char ws;        /* 0 to YAM10_WAVES-1; the wavetable is customWave */
   unsigned char tl;        /* 0-127, 0.75 dB/step */
   unsigned char ar, dr, d2r;
   unsigned char sl, rr;
@@ -709,10 +861,12 @@ public:
       if (p.fb>0) mod+=((int)o.out+(int)o.prev)>>(11-p.fb);
 
       uint32_t idx=((o.phase>>10)+(uint32_t)(mod>>1))&0x3ff;
-      uint8_t wf=p.customWave?24:((p.ws>23)?23:p.ws);
+      uint8_t wf=p.customWave?YAM10_WAVE_WT:((p.ws>=YAM10_WAVES)?0:p.ws);
+      const YAM10WaveDef& wd=yam10_wave_def[(wf==YAM10_WAVE_WT)?0:wf];
+      uint8_t kind=(wf==YAM10_WAVE_WT)?YAM10_WK_WAVETABLE:wd.kind;
       uint16_t lg, neg;
 
-      if (wf==21 || wf==22) {                         /* noise, pitched */
+      if (kind==YAM10_WK_NOISE || kind==YAM10_WK_NOISE1) {  /* noise, pitched */
         /* the shift register is clocked off the phase, so the note and any
          * pitch or arpeggio macro move the noise with it */
         uint32_t ns=o.phase>>15;
@@ -724,7 +878,7 @@ public:
           }
           o.noiseStep=ns;
         }
-        if (wf==22) {                                 /* 1-bit noise */
+        if (kind==YAM10_WK_NOISE1) {                  /* 1-bit noise */
           neg=(o.noise&1)?0:0x8000;
           lg=0;
         } else {
@@ -732,7 +886,24 @@ public:
           lg=(uint16_t)(n<0?-n:n); neg=(n<0)?0x8000:0;
           lg=(lg<1)?0x1000:(uint16_t)(-(int)(log2((double)lg/4096.0)*256.0));
         }
-      } else if (wf==23) {                            /* sample & hold */
+      } else if (kind==YAM10_WK_POLY) {               /* periodic, short register */
+        uint32_t mask=(1u<<wd.polyWidth)-1u;
+        uint32_t ns=o.phase>>15;
+        uint32_t adv=ns-o.noiseStep;
+        if ((o.noise&mask)==0) o.noise=1;
+        if (adv) {
+          if (adv>32) adv=32;
+          for (uint32_t k=0; k<adv; k++) {
+            uint32_t fb=o.noise&wd.polyTaps;
+            fb^=fb>>4; fb^=fb>>2; fb^=fb>>1;    /* parity of the tapped bits */
+            o.noise=((o.noise>>1)|((fb&1u)<<(wd.polyWidth-1)))&mask;
+            if (o.noise==0) o.noise=1;          /* a short register must not lock up */
+          }
+          o.noiseStep=ns;
+        }
+        neg=(o.noise&1)?0:0x8000;
+        lg=0;
+      } else if (kind==YAM10_WK_SH) {                 /* sample & hold */
         uint32_t cyc=o.phase>>20;                     /* which cycle we are in */
         if (cyc!=o.shCycle) {
           o.shCycle=cyc;
@@ -742,7 +913,7 @@ public:
         int16_t n=o.sh;
         lg=(uint16_t)(n<0?-n:n); neg=(n<0)?0x8000:0;
         lg=(lg<1)?0x1000:(uint16_t)(-(int)(log2((double)lg/4096.0)*256.0));
-      } else if (wf==24 && p.waveData!=NULL && p.waveLen>=2) {
+      } else if (kind==YAM10_WK_WAVETABLE && p.waveData!=NULL && p.waveLen>=2) {
         /* custom wavetable of any length, converted into the log domain */
         int wi=(int)(((uint64_t)idx*(uint32_t)p.waveLen)>>10);
         if (wi>=p.waveLen) wi=p.waveLen-1;
@@ -751,7 +922,7 @@ public:
         neg=(v<0)?0x8000:0;
         double a=fabs(v);
         lg=(a<(1.0/4096.0))?0x1000:(uint16_t)(-(int)(log2(a)*256.0));
-      } else if (wf<21) {
+      } else if (kind==YAM10_WK_TABLE) {
         uint16_t e=yam10_wf[wf][idx];
         lg=e&0x7fff; neg=e&0x8000;
       } else {
