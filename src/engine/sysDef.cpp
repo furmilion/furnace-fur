@@ -28,6 +28,8 @@ DivSystem DivEngine::sysFileMapFur[DIV_MAX_CHIP_FILE_IDS];
 DivSystem DivEngine::sysFileMapDMF[DIV_MAX_CHIP_FILE_IDS];
 
 DivSystem DivEngine::systemFromFileFur(unsigned short val) {
+  // the file hands us a raw 16 bit id and the map holds DIV_MAX_CHIP_FILE_IDS
+  if (val>=DIV_MAX_CHIP_FILE_IDS) return DIV_SYSTEM_NULL;
   return sysFileMapFur[val];
 }
 
