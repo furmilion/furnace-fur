@@ -6676,11 +6676,12 @@ void FurnaceGUI::drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex,
     const unsigned char wsClamped=(ws>=YAM10_WAVES)?(YAM10_WAVES-1):ws;
     const unsigned char wkind=custom?YAM10_WK_WAVETABLE:yam10_wave_def[wsClamped].kind;
     const int cycles=(wkind!=YAM10_WK_TABLE && wkind!=YAM10_WK_WAVETABLE)?6:1;
-    unsigned int seed=0x2545f491u+ws;
     float held=0.0f;
     int lastCycle=-1;
     unsigned int polyReg=1;
     int polyStep=0;
+    unsigned int noiseReg=0xACE1u;
+    int noiseStep=0;
 
     for (int i=0; i<=waveformLen; i++) {
       float x=(float)i/(float)waveformLen;
@@ -6694,9 +6695,22 @@ void FurnaceGUI::drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex,
         double half=(double)(wt->max>0?wt->max:255)*0.5;
         yv=(float)(((double)wt->data[wi]-half)/(half>0.0?half:1.0));
       } else if (wkind==YAM10_WK_NOISE || wkind==YAM10_WK_NOISE1) {
-        seed=seed*1103515245u+12345u;
-        yv=(wkind==YAM10_WK_NOISE1)?(((seed>>16)&1)?1.0f:-1.0f)
-                   :(((float)((seed>>16)&0xffff)/32768.0f)-1.0f);
+        // step the register the chip steps, at the 32 steps a cycle it uses,
+        // rather than standing in for it with a different generator
+        int want=(int)((double)i*32.0*(double)cycles/(double)waveformLen);
+        while (noiseStep<want) {
+          noiseReg=(noiseReg>>1)^((unsigned int)(-(int)(noiseReg&1))&0xB400u);
+          noiseStep++;
+        }
+        if (wkind==YAM10_WK_NOISE1) {
+          yv=(noiseReg&1)?1.0f:-1.0f;
+        } else {
+          int n=(int)(noiseReg&0x1fff)-0x1000;
+          unsigned short lg=(unsigned short)((n<0)?-n:n);
+          unsigned short neg=(n<0)?0x8000:0;
+          lg=(lg<1)?0x1000:(unsigned short)(-(int)(log2((double)lg/4096.0)*256.0));
+          yv=(lg>=0x1000)?0.0f:((float)yam10_exp(lg,neg)/4084.0f);
+        }
       } else if (wkind==YAM10_WK_POLY) {
         // step the same short register the chip steps, so the picture is the
         // pattern that will play rather than an impression of one
@@ -6712,11 +6726,16 @@ void FurnaceGUI::drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex,
         }
         yv=(polyReg&1)?1.0f:-1.0f;
       } else if (wkind==YAM10_WK_SH) {
+        // the same register again, but clocked once a cycle as the chip does
         int cyc=(int)(x*(float)cycles);
         if (cyc!=lastCycle) {
           lastCycle=cyc;
-          seed=seed*1103515245u+12345u;
-          held=((float)((seed>>16)&0xffff)/32768.0f)-1.0f;
+          noiseReg=(noiseReg>>1)^((unsigned int)(-(int)(noiseReg&1))&0xB400u);
+          int n=(int)(noiseReg&0x1fff)-0x1000;
+          unsigned short lg=(unsigned short)((n<0)?-n:n);
+          unsigned short neg=(n<0)?0x8000:0;
+          lg=(lg<1)?0x1000:(unsigned short)(-(int)(log2((double)lg/4096.0)*256.0));
+          held=(lg>=0x1000)?0.0f:((float)yam10_exp(lg,neg)/4084.0f);
         }
         yv=held;
       } else {
