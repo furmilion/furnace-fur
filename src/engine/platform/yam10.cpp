@@ -663,8 +663,12 @@ int DivPlatformYAM10::dispatch(DivCommand c) {
 
 void DivPlatformYAM10::muteChannel(int ch, bool mute) {
   isMuted[ch]=mute;
+  yam10BuildVolCurve();
   for (int j=0; j<YAM10_OPS; j++) {
-    chip.par[ch].op[j].outLvl=mute?0:chan[ch].state.op[j].outLvl;
+    // come back at the volume the channel is actually playing at, not the
+    // instrument's own level
+    chip.par[ch].op[j].outLvl=mute?0:
+      (unsigned char)((int)chan[ch].state.op[j].outLvl*yam10VolCurve[chan[ch].outVol&127]/127);
   }
 }
 
