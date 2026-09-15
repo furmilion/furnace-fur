@@ -357,14 +357,15 @@ struct DivInstrumentYAM10 {
     unsigned char outLvl;      // carrier output level
     unsigned char pan;         // 0-255, 128 = centre
     unsigned char modIn;       // bitmask of operators modulating this one
+    unsigned char duty;        // pulse width in 256ths, only read by the pulse wave
     unsigned short fixedFreq;  // block in bits 10-12, F-num in bits 0-9
     unsigned short phaseReset; // reset period in engine ticks, 0 = off
     short customWaveIndex;     // wavetable to use when customWave
     Operator():
       enable(false), fixedMode(false), ksr(false), customWave(false),
-      ws(0), tl(0), ar(31), dr(0), d2r(0), sl(0), rr(7), rs(0), mult(1),
-      delay(0), dtFine(0), dtSemi(0), fb(0), outLvl(0), pan(128), modIn(0),
-      fixedFreq(0), phaseReset(0), customWaveIndex(0) {}
+      ws(0), tl(0), ar(31), dr(0), d2r(0), sl(0), rr(7), rs(0), delay(0),
+      mult(1), dtFine(0), dtSemi(0), fb(0), outLvl(0), pan(128), modIn(0),
+      duty(32), fixedFreq(0), phaseReset(0), customWaveIndex(0) {}
     bool operator==(const Operator& o) const;
     bool operator!=(const Operator& o) const { return !(*this==o); }
   } op[6];

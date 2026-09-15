@@ -10,7 +10,7 @@ what it carries:
 - no algorithm list. each operator has a modulation input mask, so any operator may modulate any other, including itself.
 - feedback on every operator rather than only the first.
 - a delay on every operator, so one can come in after another.
-- 75 waveforms grouped by family, from three kinds of noise and eight periodic ones to the sine, triangle, sawtooth and square families and their cubed and logarithmic relatives, plus custom wavetables of any length.
+- 79 waveforms grouped by family, from three kinds of noise and twelve periodic ones to the sine, triangle, sawtooth and square families and their cubed and logarithmic relatives, plus a pulse of any width and custom wavetables of any length.
 - ADSR with a second decay.
 - per-operator panning, detune in both semitones and cents, and fixed pitch reaching down to a fraction of a hertz.
 - a per-channel DSP chain: three filters in series, distortion, chorus, reverb, a three band compressor, an EQ, phase inversion and echo.
@@ -49,7 +49,7 @@ the cubed families are the same idea taken one power further. cubing keeps the s
 
 the absolute sawtooth folds the negative half up rather than mirroring it, so a unipolar ramp runs twice a cycle. taking the plain absolute value of a sawtooth would only give a triangle, which is already waveform 7.
 
-the square family has no absolute member, since that would be a constant, and no squished absolute member, since that would repeat the half square. the three pulses are the widths every PSG offers: 37 is 12.5 per cent, 38 is 25 and 39 is 75. the square itself is 50.
+the square family has no absolute member, since that would be a constant, and no squished absolute member, since that would repeat the half square. 37 is a pulse whose width you set yourself, anywhere from 0 to 99.6 per cent, and it starts at the 12.5 it used to be fixed at. the square is the same shape held at 50. 38 and 39 are the old fixed 25 and 75 per cent pulses. they still play, so nothing written with them changes, but the picker no longer lists them because 37 reaches both exactly.
 
 21 to 23 are generated as they play rather than read from a table, and all three are clocked from the operator's own phase, so they follow the note and any pitch or arpeggio macro:
 
@@ -57,20 +57,31 @@ the square family has no absolute member, since that would be a constant, and no
 - 22 is the same but one bit deep, so it only ever sits at full scale either side of zero.
 - 23 is sample and hold, taking exactly one step per cycle. it is still noise rather than a tone, but a much coarser one, and it makes a good modulator.
 
-67 to 74 are generated the same way, from a much shorter register, so the pattern comes back around often enough to be heard as a rough pitch rather than as noise. all of them sit at full scale either side of zero. the register steps 32 times a cycle, so a pattern of n steps repeats every n over 32 cycles.
+67 to 78 are generated the same way, from much shorter patterns, so each one comes back around often enough to be heard as a rough pitch rather than as noise. all of them sit at full scale either side of zero.
 
-| | |
-| --- | --- |
-| 67 | 7 steps |
-| 68 | 15 steps |
-| 69 | 63 steps |
-| 70 | 127 steps |
-| 71 | the four bit counter an Atari 2600 uses, 15 steps |
-| 72 | its five bit counter, 31 steps |
-| 73 | nine bits, 511 steps |
-| 74 | the 93 step pattern an NES makes in its short mode |
+a pattern is laid over a whole number of cycles of the note, picked so that no more than 32 of its steps land in any one cycle. a short pattern fits inside a single cycle and sounds at the note you played. a longer one is spread over 2, 4 or 16 cycles, which puts it one, two or four octaves down. that way every one of them stays in tune with the rest of the song rather than landing at some ratio in between, and a long pattern does not have to carry content far past what the rate can hold.
 
-67 to 70 and 73 are plain shift registers picked for their length. 71, 72 and 74 use the taps the hardware they are named after uses, so they carry that hardware's particular rattle rather than just its period. 68 and 71 are both 15 steps long but tapped differently, so they do not sound the same.
+| | | |
+| --- | --- | --- |
+| 67 | 7 steps | at the note |
+| 68 | 15 steps | at the note |
+| 69 | 63 steps | 1 octave down |
+| 70 | 127 steps | 2 octaves down |
+| 71 | the four bit counter a POKEY uses, 15 steps | at the note |
+| 72 | the five bit counter an Atari 2600 uses, 31 steps | at the note |
+| 73 | the nine bit counter a POKEY uses, 511 steps | 4 octaves down |
+| 74 | the 93 step pattern an NES makes in its short mode | 2 octaves down |
+
+67 to 70 are plain shift registers picked for their length. 71 to 74 use the taps the hardware they are named after uses, so they carry that hardware's particular rattle rather than just its period. 68 and 71 are both 15 steps long but tapped differently, so they do not sound the same. 74 is gated the way the NES gates its channel, on the bit being clear, which is why it is a narrow pulse train rather than an even noise.
+
+75 to 78 are the tones an Atari 2600 makes that the chip does not already have. that chip runs a four bit counter and a five bit counter beside each other, and the AUDC setting decides which of them clocks the other and how each is fed back. four of its sixteen settings are plain dividers, which come out as pulses that waveform 37 already covers, and its four bit counter turns out to run the same bits as POKEY's, so what is left is these four.
+
+| | | |
+| --- | --- | --- |
+| 75 | the five bit counter into divide by 6, 93 steps | 2 octaves down |
+| 76 | divide by 15 into the four bit counter, 465 steps | 4 octaves down |
+| 77 | the five bit counter into the four bit counter, 465 steps | 4 octaves down |
+| 78 | the nine bit white noise, 511 steps | 4 octaves down |
 
 selecting the wavetable checkbox reads a wavetable instead. any length works; the chip reads it directly.
 

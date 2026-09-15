@@ -1309,7 +1309,7 @@ bool DivInstrumentYAM10::Operator::operator==(const DivInstrumentYAM10::Operator
     ar==o.ar && dr==o.dr && d2r==o.d2r && sl==o.sl && rr==o.rr &&
     rs==o.rs && mult==o.mult && delay==o.delay && dtFine==o.dtFine && dtSemi==o.dtSemi &&
     fb==o.fb && outLvl==o.outLvl && pan==o.pan && modIn==o.modIn &&
-    fixedFreq==o.fixedFreq && phaseReset==o.phaseReset &&
+    duty==o.duty && fixedFreq==o.fixedFreq && phaseReset==o.phaseReset &&
     customWaveIndex==o.customWaveIndex
   );
 }
@@ -1448,10 +1448,11 @@ void DivInstrument::writeFeatureYA(SafeWriter* w) {
     w->writeS(o.phaseReset);
     w->writeS(o.customWaveIndex);
   }
-  // marks the waveform numbering as the grouped one
-  w->writeC(1);
+  // which waveform numbering this was written with
+  w->writeC(2);
   // appended after that marker
   for (int i=0; i<6; i++) w->writeC(yam10.op[i].delay);
+  for (int i=0; i<6; i++) w->writeC(yam10.op[i].duty);
 
   FEATURE_END;
 }
@@ -2956,9 +2957,32 @@ void DivInstrument::readFeatureYA(SafeReader& reader, short version) {
       if (yam10.op[i].ws<24) yam10.op[i].ws=yam10WaveOrder[yam10.op[i].ws];
     }
   } else {
-    reader.readC();
+    unsigned char waveGen=reader.readC();
     if (reader.tell()+6<=endOfFeat) {
       for (int i=0; i<6; i++) yam10.op[i].delay=reader.readC();
+    }
+    // the pulse wave used to be fixed at 12.5%, so a block that stops here
+    // keeps the default that matches it
+    if (reader.tell()+6<=endOfFeat) {
+      for (int i=0; i<6; i++) yam10.op[i].duty=reader.readC();
+    }
+    // four of the 2600 waveforms turned out to be shapes the chip already
+    // had, so they went and the ones after them moved down. the three that
+    // were plain pulses become the pulse at the width they used to run at.
+    if (waveGen<2) {
+      for (int i=0; i<6; i++) {
+        switch (yam10.op[i].ws) {
+          case 75: yam10.op[i].ws=37; yam10.op[i].duty=128; break;
+          case 76: yam10.op[i].ws=71; break;
+          case 77: yam10.op[i].ws=37; yam10.op[i].duty=107; break;
+          case 78: yam10.op[i].ws=37; yam10.op[i].duty=121; break;
+          case 79: yam10.op[i].ws=75; break;
+          case 80: yam10.op[i].ws=76; break;
+          case 81: yam10.op[i].ws=77; break;
+          case 82: yam10.op[i].ws=78; break;
+          default: break;
+        }
+      }
     }
   }
 

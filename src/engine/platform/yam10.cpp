@@ -144,6 +144,7 @@ void yam10ApplyInsToParam(YAM10ChanParam& dst, const DivInstrumentYAM10& srcIn, 
     d.outLvl=muted?0:(unsigned char)((int)o.outLvl*yam10VolCurve[vol&127]/127);
     d.pan=o.pan;
     d.modIn=o.modIn;
+    d.duty=o.duty;
     // block and F-num, like OPZ. Hz = fnum * 2^block / 8
     d.fixedFreq=(double)(o.fixedFreq&1023)*(double)(1<<((o.fixedFreq>>10)&7))/8.0;
     d.phaseResetPeriod=o.phaseReset;

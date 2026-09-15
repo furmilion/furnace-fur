@@ -6573,7 +6573,7 @@ static const char* yam10WaveNames[YAM10_WAVES]={
   _N("Quarter Squished Squared Sine"), _N("Absolute Saw"), _N("Pulse Saw"),
   _N("Squished Saw"), _N("Squished AbsSaw"), _N("Quarter Squished Saw"),
   _N("Half Square"), _N("Pulse Square"), _N("Squished Square"),
-  _N("Quarter Squished Square"), _N("Pulse 12.5%"), _N("Pulse 25%"),
+  _N("Quarter Squished Square"), _N("Pulse"), _N("Pulse 25%"),
   _N("Pulse 75%"), _N("Half Log Saw"), _N("Absolute Log Saw"),
   _N("Pulse Log Saw"), _N("Squished Log Saw"), _N("Squished AbsLog Saw"),
   _N("Quarter Squished Log Saw"), _N("Cubed Sine"), _N("Half Cubed Sine"),
@@ -6584,14 +6584,16 @@ static const char* yam10WaveNames[YAM10_WAVES]={
   _N("Cubed Saw"), _N("Half Cubed Saw"), _N("Absolute Cubed Saw"),
   _N("Pulse Cubed Saw"), _N("Squished Cubed Saw"), _N("Squished AbsCubed Saw"),
   _N("Quarter Squished Cubed Saw"), _N("Periodic Noise (7 step)"), _N("Periodic Noise (15 step)"),
-  _N("Periodic Noise (63 step)"), _N("Periodic Noise (127 step)"), _N("Atari Noise (4-bit)"),
-  _N("Atari Noise (5-bit)"), _N("Atari Noise (9-bit)"), _N("NES Short Noise")
+  _N("Periodic Noise (63 step)"), _N("Periodic Noise (127 step)"), _N("POKEY Noise (4-bit)"),
+  _N("Atari 2600 (5-bit poly)"), _N("POKEY Noise (9-bit)"), _N("NES Short Noise"),
+  _N("Atari 2600 (poly 5 to div 6)"), _N("Atari 2600 (div 15 to poly 4)"),
+  _N("Atari 2600 (poly 5 to poly 4)"), _N("Atari 2600 (white noise)")
 };
 
 // what the picker shows, in the order it shows it. every family carries the
 // same derivations in the same order, so a row means the same thing wherever
 // you are in the list.
-#define YAM10_WAVE_GROUP_MAX 8
+#define YAM10_WAVE_GROUP_MAX 12
 
 struct YAM10WaveGroup {
   const char* name;
@@ -6608,9 +6610,11 @@ static const YAM10WaveGroup yam10WaveGroups[]={
   {_N("Sawtooth"),{17,18,28,29,30,31,32},7},
   {_N("Cubed Sawtooth"),{60,61,62,63,64,65,66},7},
   {_N("Logarithmic Saw"),{20,40,41,42,43,44,45},7},
-  {_N("Square and Pulse"),{19,33,34,35,36,37,38,39},8},
+  {_N("Square and Pulse"),{19,33,34,35,36,37},6},
   {_N("Noise"),{21,22,23},3},
-  {_N("Periodic Noise"),{67,68,69,70,71,72,73,74},8},
+  {_N("Periodic Noise"),{67,68,69,70},4},
+  {_N("Atari 2600"),{72,75,76,77,78},5},
+  {_N("POKEY and NES"),{71,73,74},3},
 };
 #define YAM10_WAVE_GROUP_COUNT ((int)(sizeof(yam10WaveGroups)/sizeof(yam10WaveGroups[0])))
 
@@ -6644,7 +6648,7 @@ static const char* yam10ParamLongNames[6]={
 #define YAM10_LONG_NAME(x) _(yam10ParamLongNames[x])
 
 // reads the chip's own waveform bank, so the picture is always what plays
-void FurnaceGUI::drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex, const ImVec2& size) {
+void FurnaceGUI::drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex, unsigned char duty, const ImVec2& size) {
   ImDrawList* dl=ImGui::GetWindowDrawList();
   ImGuiWindow* window=ImGui::GetCurrentWindow();
 
@@ -6671,15 +6675,14 @@ void FurnaceGUI::drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex,
     if (waveformLen>512) waveformLen=512;
     ImVec2 waveform[513];
 
-    // anything generated as it plays wants a few cycles, so that noise reads
-    // as noise and a short register shows where it comes back around
+    // one cycle of the note for everything, so every picture is drawn to the
+    // same scale and a long pattern does not collapse into hash. sample and
+    // hold is the exception: it moves once a cycle, so one would be flat
     const unsigned char wsClamped=(ws>=YAM10_WAVES)?(YAM10_WAVES-1):ws;
     const unsigned char wkind=custom?YAM10_WK_WAVETABLE:yam10_wave_def[wsClamped].kind;
-    const int cycles=(wkind!=YAM10_WK_TABLE && wkind!=YAM10_WK_WAVETABLE)?6:1;
+    const int cycles=(wkind==YAM10_WK_SH)?6:1;
     float held=0.0f;
     int lastCycle=-1;
-    unsigned int polyReg=1;
-    int polyStep=0;
     unsigned int noiseReg=0xACE1u;
     int noiseStep=0;
 
@@ -6712,19 +6715,16 @@ void FurnaceGUI::drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex,
           yv=(lg>=0x1000)?0.0f:((float)yam10_exp(lg,neg)/4084.0f);
         }
       } else if (wkind==YAM10_WK_POLY) {
-        // step the same short register the chip steps, so the picture is the
-        // pattern that will play rather than an impression of one
+        // the same prebuilt pattern the chip reads, stepped the way the
+        // oscillator steps it, so the picture cannot drift from what plays.
+        // a pattern laid over several cycles shows the first of them
         const YAM10WaveDef& wd=yam10_wave_def[wsClamped];
-        unsigned int mask=(1u<<wd.polyWidth)-1u;
-        int want=(int)((double)i*32.0*(double)cycles/(double)waveformLen);
-        while (polyStep<want) {
-          unsigned int fb=polyReg&wd.polyTaps;
-          fb^=fb>>4; fb^=fb>>2; fb^=fb>>1;
-          polyReg=((polyReg>>1)|((fb&1u)<<(wd.polyWidth-1)))&mask;
-          if (polyReg==0) polyReg=1;
-          polyStep++;
-        }
-        yv=(polyReg&1)?1.0f:-1.0f;
+        int step=(int)((double)i*(double)wd.polyPeriod/
+                       ((double)waveformLen*(double)(1<<wd.polyShift)));
+        if (step>=(int)wd.polyPeriod) step=(int)wd.polyPeriod-1;
+        yv=yam10_poly_bits[wd.polyIndex][step]?1.0f:-1.0f;
+      } else if (wkind==YAM10_WK_PULSE) {
+        yv=(((unsigned int)(x*1024.0f))<((unsigned int)duty<<2))?1.0f:-1.0f;
       } else if (wkind==YAM10_WK_SH) {
         // the same register again, but clocked once a cycle as the chip does
         int cyc=(int)(x*(float)cycles);
@@ -6758,42 +6758,58 @@ void FurnaceGUI::drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex,
 // carries the picture the chip will actually play rather than a stock icon.
 // the number is shown beside the name because that is what the waveform
 // effects take.
-bool FurnaceGUI::drawYAM10WaveSelect(const char* id, unsigned char& ws) {
+bool FurnaceGUI::drawYAM10WaveSelect(const char* id, unsigned char& ws, unsigned char duty) {
   bool changed=false;
   if (ws>=YAM10_WAVES) ws=0;
+  ImGuiStyle& style=ImGui::GetStyle();
+  const float rowHeight=ImGui::GetFontSize()*1.5f;
+  const float previewW=52.0f*dpiScale;
+
+  // the popup has to hold the longest name outright, otherwise the list reads
+  // as a column of truncated words. measuring beats guessing a width, and the
+  // answer only changes when the font does.
+  static float listWidth=0.0f;
+  static float measuredAt=-1.0f;
+  if (measuredAt!=ImGui::GetFontSize()) {
+    float widest=0.0f;
+    for (int w=0; w<YAM10_WAVES; w++) {
+      String entry=fmt::sprintf("%s (%d)",_(yam10WaveNames[w]),w);
+      float tw=ImGui::CalcTextSize(entry.c_str()).x;
+      if (tw>widest) widest=tw;
+    }
+    listWidth=previewW+widest+style.ItemSpacing.x+style.WindowPadding.x*2.0f+style.ScrollbarSize;
+    measuredAt=ImGui::GetFontSize();
+  }
+
+  // the popup does its own scrolling. putting a scrolling table inside it gave
+  // two scrollbars and let the popup cap the table's height.
+  ImGui::SetNextWindowSizeConstraints(ImVec2(listWidth,rowHeight*12.0f),ImVec2(canvasW,canvasH));
+
   String label=fmt::sprintf("%s (%d)",yam10WaveName(ws,false),(int)ws);
-  if (ImGui::BeginCombo(id,label.c_str())) {
-    const float rowHeight=ImGui::GetFontSize()*1.5f;
-    const float previewW=52.0f*dpiScale;
-    if (ImGui::BeginTable("YAM10WaveList",1,ImGuiTableFlags_ScrollY,ImVec2(280.0f*dpiScale,360.0f*dpiScale))) {
-      for (int g=0; g<YAM10_WAVE_GROUP_COUNT; g++) {
-        const YAM10WaveGroup& grp=yam10WaveGroups[g];
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        ImGui::SeparatorText(_(grp.name));
-        for (int i=0; i<grp.count; i++) {
-          const unsigned char w=grp.ws[i];
-          ImGui::TableNextRow();
-          ImGui::TableNextColumn();
-          ImGui::PushID((int)w);
-          const ImVec2 rowStart=ImGui::GetCursorPos();
-          if (ImGui::Selectable("##yam10WsRow",ws==w,ImGuiSelectableFlags_None,ImVec2(0.0f,rowHeight))) {
-            ws=w;
-            changed=true;
-          }
-          if (ws==w) {
-            ImGui::SetItemDefaultFocus();
-            if (ImGui::IsWindowAppearing()) ImGui::SetScrollHereY();
-          }
-          ImGui::SetCursorPos(rowStart);
-          drawYAM10Waveform(w,false,-1,ImVec2(previewW,rowHeight));
-          ImGui::SameLine();
-          ImGui::AlignTextToFramePadding();
-          ImGui::Text("%s (%d)",_(yam10WaveNames[w]),(int)w);
-          ImGui::PopID();
+  if (ImGui::BeginCombo(id,label.c_str(),ImGuiComboFlags_HeightLargest)) {
+    for (int g=0; g<YAM10_WAVE_GROUP_COUNT; g++) {
+      const YAM10WaveGroup& grp=yam10WaveGroups[g];
+      ImGui::SeparatorText(_(grp.name));
+      for (int i=0; i<grp.count; i++) {
+        const unsigned char w=grp.ws[i];
+        ImGui::PushID((int)w);
+        const ImVec2 rowStart=ImGui::GetCursorPos();
+        if (ImGui::Selectable("##yam10WsRow",ws==w,ImGuiSelectableFlags_None,ImVec2(0.0f,rowHeight))) {
+          ws=w;
+          changed=true;
         }
+        if (ws==w) {
+          ImGui::SetItemDefaultFocus();
+          // open on the current waveform rather than at the top of 75 of them
+          if (ImGui::IsWindowAppearing()) ImGui::SetScrollHereY(0.5f);
+        }
+        ImGui::SetCursorPos(rowStart);
+        drawYAM10Waveform(w,false,-1,duty,ImVec2(previewW,rowHeight));
+        ImGui::SameLine();
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("%s (%d)",_(yam10WaveNames[w]),(int)w);
+        ImGui::PopID();
       }
-      ImGui::EndTable();
     }
     ImGui::EndCombo();
   }
@@ -7015,10 +7031,26 @@ void FurnaceGUI::drawInsYAM10(DivInstrument* ins) {
         // ---- waveform ----
         ImGui::TableNextColumn();
         ImGui::Text("%s",_("Waveform"));
-        drawYAM10Waveform(op.ws,op.customWave,op.customWaveIndex,ImVec2(ImGui::GetContentRegionAvail().x,waveHeight));
+        drawYAM10Waveform(op.ws,op.customWave,op.customWaveIndex,op.duty,ImVec2(ImGui::GetContentRegionAvail().x,waveHeight));
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        if (drawYAM10WaveSelect("##YAM10WS",op.ws)) { PARAMETER }
+        if (drawYAM10WaveSelect("##YAM10WS",op.ws,op.duty)) { PARAMETER }
+
+        // only the pulse has a width to set, and the row is left in place
+        // disabled so picking it does not shuffle everything below
+        ImGui::BeginDisabled(op.customWave || op.ws!=YAM10_WF_PULSE);
+        float dutyPercent=(float)op.duty*100.0f/256.0f;
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        if (CWSliderFloat("##YAM10Duty",&dutyPercent,0.0f,99.6f,_("width: %.1f%%"))) { PARAMETER
+          int d=(int)(dutyPercent*256.0f/100.0f+0.5f);
+          if (d<0) d=0;
+          if (d>255) d=255;
+          op.duty=(unsigned char)d;
+        } rightClickable
+        if (ImGui::IsItemHovered() && op.ws==YAM10_WF_PULSE && !op.customWave) {
+          ImGui::SetTooltip("%s",_("pulse width\n12.5, 25, 50 and 75 are the usual ones"));
+        }
+        ImGui::EndDisabled();
 
         bool customWave=op.customWave;
         if (ImGui::Checkbox(YAM10_SHORT_NAME(YAM10_WT),&customWave)) { PARAMETER
