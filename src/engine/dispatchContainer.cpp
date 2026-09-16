@@ -83,6 +83,7 @@
 #include "platform/k053260.h"
 #include "platform/ted.h"
 #include "platform/c140.h"
+#include "platform/gp.h"
 #include "platform/gbadma.h"
 #include "platform/gbaminmod.h"
 #include "platform/pcmdac.h"
@@ -714,6 +715,9 @@ void DivDispatchContainer::init(DivSystem sys, DivEngine* eng, int chanCount, do
       break;
     case DIV_SYSTEM_TED:
       dispatch=new DivPlatformTED;
+      break;
+    case DIV_SYSTEM_GP:
+      dispatch=new DivPlatformGP;
       break;
     case DIV_SYSTEM_C140:
       dispatch=new DivPlatformC140;

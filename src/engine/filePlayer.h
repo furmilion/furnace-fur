@@ -21,6 +21,7 @@
 #define _FILEPLAYER_H
 
 #include "../ta-utils.h"
+#include <climits>
 #include "../timeutils.h"
 #include <thread>
 #include <mutex>

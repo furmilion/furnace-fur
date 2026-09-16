@@ -249,6 +249,142 @@ bool DivSample::isLoopable() {
   return loop && ((loopStart>=0 && loopStart<loopEnd) && (loopEnd>loopStart && loopEnd<=(int)samples));
 }
 
+
+// Roland FCE-DPCM, the format the SC-55 wave ROMs are stored in. each sample
+// is a signed delta byte, and every 16-sample block carries a 4-bit shift code
+// that scales those deltas on their way into the chip's 20-bit accumulator.
+// codes 0 to 10 scale up, codes 11 to 15 wrap round to fractions of a step,
+// which is what the hardware shifter actually does.
+static const double fceStepMul[16]={
+  1.0,2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0,1024.0,
+  1.0/32.0,1.0/16.0,1.0/8.0,1.0/4.0,1.0/2.0
+};
+
+static inline int fceSx20(int val) {
+  return (val<<12)>>12;
+}
+
+// what the chip adds to its accumulator for one delta
+static inline int fceRefStep(signed char delta, int code) {
+  int shift=(10-code)&15;
+  int scaled=((((int)delta)<<10)<<1)>>shift;
+  return (scaled>>1)+(scaled&1);
+}
+
+static int fcePickCode(double biggestJump) {
+  for (int i=11; i<16; i++) {
+    if (fceStepMul[i]*127.0>=biggestJump) return i;
+  }
+  for (int i=0; i<=10; i++) {
+    if (fceStepMul[i]*127.0>=biggestJump) return i;
+  }
+  return 10;
+}
+
+static inline void fcePutCode(unsigned char* codes, unsigned int block, int code) {
+  unsigned char& b=codes[block>>1];
+  if (block&1) {
+    b=(b&0x0f)|(unsigned char)(code<<4);
+  } else {
+    b=(b&0xf0)|(unsigned char)code;
+  }
+}
+
+static inline int fceGetCode(const unsigned char* codes, unsigned int block) {
+  unsigned char b=codes[block>>1];
+  return (block&1)?((b>>4)&15):(b&15);
+}
+
+static void fceEncode(const short* src, unsigned int samples, unsigned char* deltas, unsigned char* codes, bool loop, unsigned int loopStart, unsigned int loopEnd) {
+  int ref=0;
+  int refEnteringLoop=0;
+  bool haveLoopRef=false;
+
+  for (unsigned int base=0; base<samples; base+=16) {
+    unsigned int len=samples-base;
+    if (len>16) len=16;
+
+    // the block's code has to cover the largest step inside it
+    double biggest=0.0;
+    int running=ref;
+    for (unsigned int i=0; i<len; i++) {
+      int target=((int)src[base+i])<<4;
+      double need=fabs((double)(target-running));
+      if (need>biggest) biggest=need;
+      running=target;
+    }
+    int code=fcePickCode(biggest);
+    fcePutCode(codes,base>>4,code);
+
+    for (unsigned int i=0; i<len; i++) {
+      if (loop && !haveLoopRef && (base+i)==loopStart) {
+        refEnteringLoop=ref;
+        haveLoopRef=true;
+      }
+      int target=((int)src[base+i])<<4;
+      double want=(double)(target-ref)/fceStepMul[code];
+      int q=(int)((want<0.0)?(want-0.5):(want+0.5));
+      if (q>127) q=127;
+      if (q<-128) q=-128;
+      deltas[base+i]=(unsigned char)(q&0xff);
+      ref=fceSx20(ref+fceRefStep((signed char)q,code));
+    }
+  }
+
+  if (!loop || !haveLoopRef) return;
+  if (loopEnd<=loopStart || loopEnd>samples) return;
+
+  // the accumulator is not reset when playback jumps back to the loop point,
+  // so if the loop does not end where it started the sample creeps away from
+  // zero a little more on every pass. redo the last block of the loop so it
+  // lands exactly where the loop began.
+  unsigned int base=(loopEnd-1)&~15u;
+  unsigned int len=loopEnd-base;
+  if (len<1 || len>16) return;
+
+  int replay=0;
+  for (unsigned int i=0; i<base; i++) {
+    replay=fceSx20(replay+fceRefStep((signed char)deltas[i],fceGetCode(codes,i>>4)));
+  }
+
+  int targets[16];
+  for (unsigned int i=0; i<len; i++) {
+    targets[i]=((int)src[base+i])<<4;
+  }
+  targets[len-1]=refEnteringLoop;
+
+  double biggest=0.0;
+  int running=replay;
+  for (unsigned int i=0; i<len; i++) {
+    double need=fabs((double)(targets[i]-running));
+    if (need>biggest) biggest=need;
+    running=targets[i];
+  }
+  int code=fcePickCode(biggest);
+  fcePutCode(codes,base>>4,code);
+
+  int r=replay;
+  for (unsigned int i=0; i<len; i++) {
+    double want=(double)(targets[i]-r)/fceStepMul[code];
+    int q=(int)((want<0.0)?(want-0.5):(want+0.5));
+    if (q>127) q=127;
+    if (q<-128) q=-128;
+    deltas[base+i]=(unsigned char)(q&0xff);
+    r=fceSx20(r+fceRefStep((signed char)q,code));
+  }
+}
+
+static void fceDecode(const unsigned char* deltas, const unsigned char* codes, unsigned int samples, short* dest) {
+  int ref=0;
+  for (unsigned int i=0; i<samples; i++) {
+    ref=fceSx20(ref+fceRefStep((signed char)deltas[i],fceGetCode(codes,i>>4)));
+    int val=ref>>4;
+    if (val>32767) val=32767;
+    if (val<-32768) val=-32768;
+    dest[i]=(short)val;
+  }
+}
+
 int DivSample::getSampleOffset(int offset, int length, DivSampleDepth depth) {
   if ((length==0) || (offset==length)) {
     int off=offset;
@@ -287,6 +423,9 @@ int DivSample::getSampleOffset(int offset, int length, DivSampleDepth depth) {
         off=offset;
         break;
       case DIV_SAMPLE_DEPTH_C219:
+        off=offset;
+        break;
+      case DIV_SAMPLE_DEPTH_FCE:
         off=offset;
         break;
       case DIV_SAMPLE_DEPTH_IMA_ADPCM:
@@ -357,6 +496,11 @@ int DivSample::getSampleOffset(int offset, int length, DivSampleDepth depth) {
         off=offset;
         len=length;
         break;
+      case DIV_SAMPLE_DEPTH_FCE:
+        // deltas first, then the block shift codes
+        off=offset;
+        len=length+((length+31)/32);
+        break;
       case DIV_SAMPLE_DEPTH_IMA_ADPCM:
         off=(offset+1)/2;
         len=(length+1)/2;
@@ -426,6 +570,9 @@ int DivSample::getEndPosition(DivSampleDepth depth) {
       break;
     case DIV_SAMPLE_DEPTH_C219:
       off=lengthC219;
+      break;
+    case DIV_SAMPLE_DEPTH_FCE:
+      off=lengthFCE;
       break;
     case DIV_SAMPLE_DEPTH_IMA_ADPCM:
       off=lengthIMA;
@@ -630,6 +777,12 @@ bool DivSample::initInternal(DivSampleDepth d, int count) {
       lengthC219=count;
       dataC219=new unsigned char[(count+4095)&(~0xfff)];
       memset(dataC219,0,(count+4095)&(~0xfff));
+      break;
+    case DIV_SAMPLE_DEPTH_FCE: // Roland FCE-DPCM
+      if (dataFCE!=NULL) delete[] dataFCE;
+      lengthFCE=count+((count+31)/32);
+      dataFCE=new unsigned char[(lengthFCE+4095)&(~0xfff)];
+      memset(dataFCE,0,(lengthFCE+4095)&(~0xfff));
       break;
     case DIV_SAMPLE_DEPTH_IMA_ADPCM: // IMA ADPCM
       if (dataIMA!=NULL) delete[] dataIMA;
@@ -1342,6 +1495,9 @@ void DivSample::render(unsigned int formatMask) {
           if (dataC219[i]&0x80) data16[i]=-data16[i];
         }
         break;
+      case DIV_SAMPLE_DEPTH_FCE: // Roland FCE-DPCM
+        fceDecode(dataFCE,dataFCE+samples,samples,data16);
+        break;
       case DIV_SAMPLE_DEPTH_IMA_ADPCM: // IMA ADPCM
         if (adpcm_decode_block(data16,dataIMA,lengthIMA,samples)==0) logE("oh crap!");
         break;
@@ -1538,6 +1694,10 @@ void DivSample::render(unsigned int formatMask) {
       dataC219[i]=x|(negate?0x80:0);
     }
   }
+  if (NOT_IN_FORMAT(DIV_SAMPLE_DEPTH_FCE)) { // Roland FCE-DPCM
+    if (!initInternal(DIV_SAMPLE_DEPTH_FCE,samples)) return;
+    fceEncode(data16,samples,dataFCE,dataFCE+samples,loop,(unsigned int)MAX(0,loopStart),(unsigned int)MAX(0,loopEnd));
+  }
   if (NOT_IN_FORMAT(DIV_SAMPLE_DEPTH_IMA_ADPCM)) { // IMA ADPCM
     if (!initInternal(DIV_SAMPLE_DEPTH_IMA_ADPCM,samples)) return;
     int delta[2];
@@ -1609,6 +1769,8 @@ void* DivSample::getCurBuf() {
       return dataMuLaw;
     case DIV_SAMPLE_DEPTH_C219:
       return dataC219;
+    case DIV_SAMPLE_DEPTH_FCE:
+      return dataFCE;
     case DIV_SAMPLE_DEPTH_IMA_ADPCM:
       return dataIMA;
     case DIV_SAMPLE_DEPTH_12BIT:
@@ -1649,6 +1811,8 @@ unsigned int DivSample::getCurBufLen() {
       return lengthMuLaw;
     case DIV_SAMPLE_DEPTH_C219:
       return lengthC219;
+    case DIV_SAMPLE_DEPTH_FCE:
+      return lengthFCE;
     case DIV_SAMPLE_DEPTH_IMA_ADPCM:
       return lengthIMA;
     case DIV_SAMPLE_DEPTH_12BIT:
@@ -1767,6 +1931,7 @@ DivSample::~DivSample() {
   if (dataVOX) delete[] dataVOX;
   if (dataMuLaw) delete[] dataMuLaw;
   if (dataC219) delete[] dataC219;
+  if (dataFCE) delete[] dataFCE;
   if (dataIMA) delete[] dataIMA;
   if (data12) delete[] data12;
   if (data4) delete[] data4;
