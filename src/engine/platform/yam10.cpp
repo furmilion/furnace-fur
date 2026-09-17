@@ -1,3 +1,22 @@
+/**
+ * Furnace Tracker - multi-system chiptune tracker
+ * Copyright (C) 2021-2026 tildearrow and contributors
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 #include "yam10.h"
 #include "../engine.h"
 #include "../../ta-log.h"
@@ -125,6 +144,7 @@ void yam10ApplyInsToParam(YAM10ChanParam& dst, const DivInstrumentYAM10& srcIn, 
     d.outLvl=muted?0:(unsigned char)((int)o.outLvl*yam10VolCurve[vol&127]/127);
     d.pan=o.pan;
     d.modIn=o.modIn;
+    d.duty=o.duty;
     // block and F-num, like OPZ. Hz = fnum * 2^block / 8
     d.fixedFreq=(double)(o.fixedFreq&1023)*(double)(1<<((o.fixedFreq>>10)&7))/8.0;
     d.phaseResetPeriod=o.phaseReset;
@@ -235,7 +255,7 @@ void DivPlatformYAM10::tick(bool sysTick) {
       if (m.rs.had)   { o.rs=m.rs.val&3;      d.rs=o.rs; }
       if (m.ksr.had)  { o.ksr=m.ksr.val;      d.ksr=o.ksr; }
       if (m.dam.had)  { o.delay=m.dam.val&7;  d.delay=o.delay; }
-      if (m.ws.had)   { o.ws=(m.ws.val>23)?23:m.ws.val; d.ws=o.ws; }
+      if (m.ws.had)   { o.ws=(m.ws.val<0||m.ws.val>=YAM10_WAVES)?0:(unsigned char)m.ws.val; d.ws=o.ws; }
       if (m.dt.had)   { o.dtSemi=m.dt.val;    d.dtSemi=o.dtSemi; }
       if (m.dt2.had)  { o.fb=m.dt2.val&7;     d.fb=o.fb; }
       if (m.egt.had)  { o.outLvl=m.egt.val&127; d.outLvl=o.outLvl; }
@@ -391,7 +411,7 @@ int DivPlatformYAM10::dispatch(DivCommand c) {
       YAM10_OP_LOOP(ksr,c.value2&1)
       break;
     case DIV_CMD_FM_WS:
-      YAM10_OP_LOOP(ws,(c.value2>19)?19:c.value2)
+      YAM10_OP_LOOP(ws,(c.value2>=YAM10_WAVES)?0:c.value2)
       break;
     case DIV_CMD_FM_DT:
       YAM10_OP_LOOP(dtSemi,(signed char)(c.value2-64))
@@ -618,6 +638,21 @@ int DivPlatformYAM10::dispatch(DivCommand c) {
     case DIV_CMD_YAM10_WS_HI:
       YAM10_OP_LOOP(ws,(unsigned char)(16+(c.value2&7)))
       break;
+    case DIV_CMD_YAM10_WS_SEL:
+      // 5Dxx picks who 5Exx talks to. one digit cannot carry a waveform
+      // number any more, so the operator and the waveform take an effect each
+      chan[c.chan].wsSel=(c.value>YAM10_OPS)?0:(unsigned char)c.value;
+      break;
+    case DIV_CMD_YAM10_WS_FULL: {
+      int sel=(int)chan[c.chan].wsSel-1;
+      unsigned char v=(c.value<0||c.value>=YAM10_WAVES)?0:(unsigned char)c.value;
+      for (int o=0; o<YAM10_OPS; o++) {
+        if (sel>=0 && o!=sel) continue;
+        chan[c.chan].state.op[o].ws=v;
+        chip.par[c.chan].op[o].ws=v;
+      }
+      break;
+    }
     case DIV_CMD_YAM10_EQ_ON:
       chan[c.chan].state.eqBand[chan[c.chan].eqSel].on=c.value&1;
       chip.par[c.chan].eqBand[chan[c.chan].eqSel].on=chan[c.chan].state.eqBand[chan[c.chan].eqSel].on;
@@ -663,8 +698,12 @@ int DivPlatformYAM10::dispatch(DivCommand c) {
 
 void DivPlatformYAM10::muteChannel(int ch, bool mute) {
   isMuted[ch]=mute;
+  yam10BuildVolCurve();
   for (int j=0; j<YAM10_OPS; j++) {
-    chip.par[ch].op[j].outLvl=mute?0:chan[ch].state.op[j].outLvl;
+    // come back at the volume the channel is actually playing at, not the
+    // instrument's own level
+    chip.par[ch].op[j].outLvl=mute?0:
+      (unsigned char)((int)chan[ch].state.op[j].outLvl*yam10VolCurve[chan[ch].outVol&127]/127);
   }
 }
 
@@ -718,11 +757,16 @@ void DivPlatformYAM10::setFlags(const DivConfig& flags) {
   // 32*Hz*(divider/clock). divider=clock*8 lands on Hz*256, which is what the
   // freqChanged block below divides by. clock*256 made every note five
   // octaves sharp.
-  pitchTable.init(parent->song.tuning,chipClock,(double)chipClock*8.0,0xffffff,false,parent->song.compatFlags.linearPitch);
+  notifyPitchTable();
   for (int i=0; i<YAM10_CHANS; i++) {
     if (oscBuf[i]!=NULL) oscBuf[i]->setRate(rate);
   }
   chip.init(rate);
+}
+
+// the engine calls this when the song's tuning or pitch linearity changes
+void DivPlatformYAM10::notifyPitchTable(int sample) {
+  pitchTable.init(parent->song.tuning,chipClock,(double)chipClock*8.0,0xffffff,false,parent->song.compatFlags.linearPitch);
 }
 
 void DivPlatformYAM10::poke(unsigned int addr, unsigned short val) {}

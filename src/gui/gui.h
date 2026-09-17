@@ -26,6 +26,7 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_impl_sdl2.h"
+#include "oscTrigger.h"
 #include <SDL.h>
 #include <fftw3.h>
 #include <stdint.h>
@@ -41,6 +42,7 @@
 #include "fileDialog.h"
 #include "newFilePicker.h"
 #include "newSettings.h"
+#include "pianoRoll.h"
 
 #define FURNACE_APP_ID "org.tildearrow.furnace"
 
@@ -388,6 +390,7 @@ enum FurnaceGUIColors {
   GUI_COLOR_INSTR_SUPERVISION,
   GUI_COLOR_INSTR_UPD1771C,
   GUI_COLOR_INSTR_SID3,
+  GUI_COLOR_INSTR_KLATTSCH,
   GUI_COLOR_INSTR_YAM10,
   GUI_COLOR_INSTR_UNKNOWN,
 
@@ -543,6 +546,22 @@ enum FurnaceGUIColors {
 
   GUI_COLOR_EE_VALUE,
   GUI_COLOR_PLAYBACK_STAT,
+
+  GUI_COLOR_PIANO_ROLL_BG,
+  GUI_COLOR_PIANO_ROLL_KEY_WHITE,
+  GUI_COLOR_PIANO_ROLL_KEY_BLACK,
+  GUI_COLOR_PIANO_ROLL_KEY_BORDER,
+  GUI_COLOR_PIANO_ROLL_GRID,
+  GUI_COLOR_PIANO_ROLL_GRID_HI1,
+  GUI_COLOR_PIANO_ROLL_GRID_HI2,
+  GUI_COLOR_PIANO_ROLL_NOTE,
+  GUI_COLOR_PIANO_ROLL_NOTE_OFF,
+  GUI_COLOR_PIANO_ROLL_NOTE_REL,
+  GUI_COLOR_PIANO_ROLL_SELECTION,
+  GUI_COLOR_PIANO_ROLL_FX_NUM,
+  GUI_COLOR_PIANO_ROLL_FX_VAL,
+  GUI_COLOR_PIANO_ROLL_FX_VOL,
+
   GUI_COLOR_MAX
 };
 
@@ -1880,6 +1899,11 @@ class FurnaceGUI {
   int pendingRawSampleDepth, pendingRawSampleChannels, pendingRawSampleRate;
   bool pendingRawSampleUnsigned, pendingRawSampleBigEndian, pendingRawSampleSwapNibbles, pendingRawSampleReplace;
 
+  // a .mid is held here while the import dialog is up. midiImportPending tells
+  // load() the options have been picked, so it doesn't bounce the file back.
+  String pendingMIDIPath;
+  bool displayMIDIImport, midiImportPending;
+
   ImGuiWindowFlags globalWinFlags;
 
   FurnaceGUIFileDialogs curFileDialog;
@@ -2068,6 +2092,7 @@ class FurnaceGUI {
     int opllCore;
     int ayCore;
     int swanCore;
+    int opzCore;
     int dsidQuality;
     int gbQuality;
     int pnQuality;
@@ -2089,6 +2114,7 @@ class FurnaceGUI {
     int opllCoreRender;
     int ayCoreRender;
     int swanCoreRender;
+    int opzCoreRender;
     int dsidQualityRender;
     int gbQualityRender;
     int pnQualityRender;
@@ -2192,6 +2218,7 @@ class FurnaceGUI {
     String defaultAuthorName;
     String locale;
     DivConfig initialSys;
+    float prFontScale;
 
     Settings():
       audioHiPass(true),
@@ -2320,6 +2347,7 @@ class FurnaceGUI {
       opllCore(0),
       ayCore(0),
       swanCore(0),
+      opzCore(0),
       dsidQuality(3),
       gbQuality(3),
       pnQuality(3),
@@ -2341,6 +2369,7 @@ class FurnaceGUI {
       opllCoreRender(0),
       ayCoreRender(0),
       swanCoreRender(0),
+      opzCoreRender(0),
       dsidQualityRender(3),
       gbQualityRender(3),
       pnQualityRender(3),
@@ -2441,7 +2470,8 @@ class FurnaceGUI {
       emptyLabel2(".."),
       sdlAudioDriver(""),
       defaultAuthorName(""),
-      locale("") {}
+      locale(""),
+      prFontScale(1.0f) {}
   } settings;
 
   ImGuiTextFilter settingsFilter;
@@ -2520,6 +2550,105 @@ class FurnaceGUI {
   bool waveListOpen, waveEditOpen, sampleListOpen, sampleEditOpen, aboutOpen, settingsOpen;
   bool mixerOpen, debugOpen, inspectorOpen, oscOpen, volMeterOpen, statsOpen, compatFlagsOpen;
   bool pianoOpen, notesOpen, tunerOpen, spectrumOpen, channelsOpen, regViewOpen, logOpen, effectListOpen, chanOscOpen;
+  bool pianoRollOpen;
+  int prChan;
+  int prSelRow0, prSelRow1;
+  float prZoom, prNoteH, prTimelineH, prEffectLaneH;
+  bool prShowAllChans;
+  // piano roll interaction state types live in pianoRoll.h
+  float prSyncScrollX=0.0f;
+  bool prFollow=true;
+  bool prShowPitchSlide=true;
+  bool prShowVolBars=true;
+  int prEffectLane=0;
+  bool prPainting=false;
+  bool prErasing=false;
+  bool prResizing=false;
+  int prResizeRow=-1;
+  bool prSelecting=false;
+  int prSelR0=-1, prSelR1=-1, prSelN0=-1, prSelN1=-1;
+  bool prFxUndoOpen=false;
+  bool prNoteUndoOpen=false;
+  float prPanDX=0.0f, prPanDY=0.0f;
+  int prPianoHeld=-1;
+  int prFxLastDragRow=-1;
+  bool prFxSlopeActive=false;
+  int prFxSlopeR0=-1, prFxSlopeR1=-1;
+  int prFxSlopeV0=0, prFxSlopeV1=0;
+  float prFxSlopeTension=0.0f;
+  int prLastNote=96;
+  int prPaintNote=-1;
+  int prQuantize=1;
+  int prScaleRoot=0;
+  int prScaleType=0;
+  int prDragSelStartR=-1;
+  int prDragSelStartN=-1;
+  int prChanEnd=-1;
+  bool prPolyEnabled=false;
+  int prPaintHeld=-1;
+  int prPaintChan=-1;
+  int prPaintLen=1;
+  int prMode=0;
+  bool prDrawSizing=false;
+  int prDrawRow=-1;
+  bool prDrawDragged=false;
+  bool prDragMaybe=false;
+  bool prDragging=false;
+  int prDragStartR=-1, prDragStartN=-1;
+  int prDragDeltaR=0, prDragDeltaN=0;
+  ImVec2 prDragMouseStart=ImVec2(0,0);
+  std::vector<PrDragNote> prDragBuf;
+  bool prDragHasCopy=false;
+  int prPreviewTimer=0;
+  int prPreviewChan=-1;
+  int prFollowPrevPlayOrd=-1;
+  int prSnapTargetOrd=-1;
+  float prPrevZoom=1.0f;
+  bool prKbdShowConfig=false;
+  bool prFxHelpOpen=false;
+  bool prColorByIns=false;
+  bool prNoteTooltip=true;
+  int prLoopR0=-1, prLoopR1=-1;
+  bool prLoopDragging=false;
+  int prLoopDragStart=-1;
+  bool prScrollInit=false;
+  int prLastScrollChan=-1;
+  float prFollowOffset=0.35f;
+  bool prWasPlaying=false;
+  float prFollowScrollTarget=-1.0f;
+  bool prFxViewAll=false;
+  bool prFxRows=false;
+  int prFxPreviewLast=-1;
+  int prCtxRow=-1, prCtxNote=-1;
+  bool prFxPickerOpen=false;
+  int prFxPickerRow=-1;
+  int prFxPickerEffIdx=0;
+  char prFxPickerSearch[128]="";
+  std::vector<PrFxEntry> prFxPickerList;
+  // per-effect valid value span (engine-probed), cached per channel
+  int prFxValidChan=-1;
+  short prFxValidLo[256];
+  short prFxValidHi[256];
+  // which x/y band a drag is locked to (0=x/left, 1=y/right, -1=none)
+  int prFxXyBand=-1;
+  // value duplicated across a left-drag (captured from the cell the drag began on)
+  int prFxFillVal=-1;
+  int prFxFillCode=-1;
+  // right-drag erase in progress on an effect-code (selector) lane
+  bool prFxCodeErasing=false;
+  // FX-lane row selection + clipboard (Ctrl+drag to select, Ctrl+C/X/V)
+  int prFxSelR0=-1, prFxSelR1=-1;
+  int prFxHoverRow=-1; // row under the mouse in the FX lane (paste target)
+  std::vector<PrFxClipEntry> prFxClipData;
+  int prFxClipKind=0; // 0 = effect (code+value), 1 = value only, 2 = volume
+  bool prClipIsFx=false;
+  std::vector<PrClipEntry> prClipboard;
+  int prClipRows=0;
+  std::vector<PrPolyGroup> prPolyGroups;
+  int prNewGrpFrom=0;
+  int prNewGrpTo=0;
+  String prPolyMarkerCache;
+  std::vector<PrPitchPoint> prPitchTraj;
   bool subSongsOpen, findOpen, spoilerOpen, patManagerOpen, sysManagerOpen, clockOpen, speedOpen;
   bool groovesOpen, xyOscOpen, memoryOpen, csPlayerOpen, cvOpen, userPresetsOpen, refPlayerOpen;
   bool multiInsSetupOpen, backupsManagerOpen;
@@ -2534,6 +2663,22 @@ class FurnaceGUI {
 
   SelectionPoint selStart, selEnd, cursor, cursorDrag, dragStart, dragEnd;
   SelectionPoint undoSelStart, undoSelEnd, undoCursor;
+  struct PendingPhonemeEntry {
+    int chan=-1;
+    int ord=-1;
+    int row=-1;
+    int col=-1;
+    bool canCoalesce=false;
+    String buffer;
+  };
+  PendingPhonemeEntry pendingPhoneme;
+  struct KlattschCell {
+    DivPattern* pat=NULL;
+    int chan=-1;
+    int ord=-1;
+    int row=-1;
+    int col=-1;
+  };
   unsigned char curNibble;
   bool selecting, selectingFull, dragging, orderNibble, followOrders, followPattern, wasFollowing, changeAllOrders, mobileUI;
   bool collapseWindow, demandScrollX, fancyPattern, firstFrame, tempoView, waveHex, waveSigned, waveGenVisible, lockLayout, editOptsVisible, latchNibble, nonLatchNibble;
@@ -2793,12 +2938,15 @@ class FurnaceGUI {
   ImVec2 subPortPos;
 
   // oscilloscope
+  TriggerAnalog* trigger[DIV_MAX_OUTPUTS];
   int oscTotal, oscWidth;
   float* oscValues[DIV_MAX_OUTPUTS];
   float* oscValuesAverage;
   float oscZoom;
   float oscWindowSize;
   float oscInput, oscInput1;
+  float triggerLevel;
+  int triggerState;
   bool oscZoomSlider;
 
   // per-channel oscilloscope
@@ -3055,6 +3203,7 @@ class FurnaceGUI {
 
   // speed window specific
   Uint64 lastTapTime;
+  double lastTapDelta;
   float grooveTargetBPM;
 
   // user presets window
@@ -3214,7 +3363,8 @@ class FurnaceGUI {
   void drawYAM10EQ(DivInstrumentYAM10& y, const ImVec2& size);
   void drawInsYAM10(DivInstrument* ins);
   void drawInsYAM10DSP(DivInstrument* ins);
-  void drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex, const ImVec2& size);
+  void drawYAM10Waveform(unsigned char ws, bool custom, int waveIndex, unsigned char duty, const ImVec2& size);
+  bool drawYAM10WaveSelect(const char* id, unsigned char& ws, unsigned char duty);
   void drawInsSID3(DivInstrument* ins);
   void drawWaveList(bool asChild=false);
   void drawWaveEdit();
@@ -3228,6 +3378,19 @@ class FurnaceGUI {
   void drawMemory();
   void drawCompatFlags();
   void drawPiano();
+  void drawPianoRoll();
+  // piano roll helpers
+  void prPolySerialize(DivSong* s);
+  void prPolyDeserialize(DivSong* s);
+  void prPolyCommit(DivSong* s);
+  bool prScaleHasNote(int pitchClass);
+  int prSnapScale(int note);
+  // simulate channel ch's pitch contour over the song
+  void prSimPitch(int ch, std::vector<PrPitchPoint>& out);
+  void drawPianoRollChannelPopup(int totalChans);
+  void drawPianoRollPolyPopup(int totalChans);
+  void drawPianoRollContextMenu(DivPattern* pat, int patLen, int volMax);
+  void drawPianoRollKeys(DivPattern* pat, int patLen, int volMax);
   void drawNotes(bool asChild=false);
   void drawTuner();
   void drawSpectrum();
@@ -3340,6 +3503,9 @@ class FurnaceGUI {
   void noteInput(int num, int key, int vol=-1, int chanOff=0);
   void rawFreqInput(int num);
   void valueInput(int num, bool direct=false, int target=-1);
+  KlattschCell klattschCellAtCursor();
+  bool writeKlattschPhoneme(const KlattschCell& cell, int phonemeIndex, bool coalesce=false);
+  bool tryArpabetInput(int sdlKeysym);
   void orderInput(int num);
 
   void doGenerateWave();

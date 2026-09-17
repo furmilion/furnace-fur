@@ -1,4 +1,23 @@
 /**
+ * Furnace Tracker - multi-system chiptune tracker
+ * Copyright (C) 2021-2026 tildearrow and contributors
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
+/**
  * YAM10 - a fictional 10-channel, 6-operator FM chip, by rednoobmusic.
  *
  * Synthesis is done the way the real Yamaha parts do it rather than in
@@ -29,9 +48,25 @@
 #include <string.h>
 #include <stdint.h>
 
+/* MSVC only hands out M_PI and friends when _USE_MATH_DEFINES was set before
+   math.h, and this header is pulled into translation units that do not set
+   it, so carry our own rather than depend on include order. */
+#define YAM10_PI 3.14159265358979323846
+#define YAM10_SQRT2 1.41421356237309504880
+
 #define YAM10_CHANS 10
 #define YAM10_OPS 6
-#define YAM10_WAVES 25
+/* how many waveforms the chip carries. the wavetable is not one of them, it
+   sits one past the end so a waveform can be added without moving it. */
+#define YAM10_WAVES 79
+#define YAM10_WF_NOISE  21
+#define YAM10_WF_NOISE1 22
+#define YAM10_WF_SH     23
+/* the duty is a per operator setting, so this one is worked out as it plays
+   rather than being a fixed row */
+#define YAM10_WF_PULSE  37
+/* not a row in the bank: the oscillator reads a wavetable instead */
+#define YAM10_WAVE_WT 0x7f
 #define YAM10_MAX_ECHO 48000
 #define YAM10_FILTERS 3
 #define YAM10_EQ_BANDS 32
@@ -119,7 +154,8 @@ static const uint16_t yam10_exprom[256] = {
 
 /* waveform bank, built once: [wave][1024] of log-domain magnitude.
  * bit 15 of an entry means "silent", matching the OPL convention. */
-static uint16_t yam10_wf[YAM10_WAVES][1024];
+static uint16_t yam10_wf[YAM10_WAVES+1][1024];
+
 static uint8_t yam10_wf_built=0;
 
 static inline uint16_t yam10_logsin(uint32_t p) {
@@ -145,10 +181,115 @@ static inline uint16_t yam10_logsin_even(uint32_t p) {
   return (p&0x80)?yam10_logsinrom[((p^0xff)<<1)&0xff]:yam10_logsinrom[(p<<1)&0xff];
 }
 
-/* the waveforms are grouped by family: the sines first, then the triangles,
-   then the squared sines, then saw, square and noise. anything derived from
-   a wave is built after it, and the two squished squared sines read the
-   plain one at twice the phase so they wait for a second pass. */
+/* a waveform is either read from the bank above or generated as it plays.
+   keeping that in a table rather than in the number itself means a new
+   waveform of either sort can take the next free number, and a song saved
+   before it was added still means what it meant. */
+enum YAM10WaveKind {
+  YAM10_WK_TABLE=0,   /* read from yam10_wf */
+  YAM10_WK_NOISE,     /* the long register, full depth */
+  YAM10_WK_NOISE1,    /* the long register, one bit deep */
+  YAM10_WK_SH,        /* one step a cycle, so a much coarser noise */
+  YAM10_WK_POLY,      /* a short register, so the pattern repeats and pitches */
+  YAM10_WK_WAVETABLE,
+  YAM10_WK_PULSE      /* square at whatever duty the operator asks for */
+};
+
+/* width is how many bits the register holds and taps is the xor feedback
+   mask. a four bit register comes back around every fifteen steps and a five
+   bit one every thirty one, which is heard as a rough pitch rather than as
+   noise. */
+struct YAM10WaveDef {
+  uint8_t kind;
+  uint8_t polyWidth;
+  uint16_t polyPeriod;
+  uint8_t polyShift;   /* pattern spans 1<<polyShift cycles of the note */
+  uint8_t polyIndex;   /* which pattern in yam10_poly_bits */
+};
+
+/* filled by yam10_build_wf. almost every waveform reads the bank, so the
+   exceptions are listed rather than the rule. */
+static YAM10WaveDef yam10_wave_def[YAM10_WAVES];
+
+/* how a pattern is generated. most are a short shift register, shifting the
+   same way as the long one above. the 2600 is not a shift register at all:
+   it runs a four bit pulse counter and a five bit noise counter that feed
+   each other, and AUDC picks which feeds which. that is where its particular
+   set of tones comes from. */
+enum YAM10PolyRule {
+  YAM10_PR_LFSR=0,
+  YAM10_PR_TIA        /* taps holds the AUDC value */
+};
+
+struct YAM10PolyDef {
+  uint8_t ws;
+  uint8_t width;
+  uint16_t taps;
+  uint8_t shiftLeft; /* POKEY runs its registers the other way from the rest */
+  uint16_t period;   /* steps before the pattern comes back around */
+  uint8_t rule;
+  uint8_t invertOut; /* the NES gates its channel off when the bit is set */
+};
+
+/* the first four are plain registers picked for their length. everything
+   after them is the real thing, taken from the hardware each is named after:
+   the 2600 from src/engine/platform/sound/tia/AudioChannel.cpp, POKEY from
+   src/engine/platform/sound/pokey/mzpokeysnd.c, and the NES short mode.
+   POKEY shifts left where the others shift right, which is why the direction
+   is a field rather than an assumption. */
+static const YAM10PolyDef yam10_polys[]={
+  {67,3,0x005,0,7,YAM10_PR_LFSR,0},
+  {68,4,0x009,0,15,YAM10_PR_LFSR,0},
+  {69,6,0x021,0,63,YAM10_PR_LFSR,0},
+  {70,7,0x041,0,127,YAM10_PR_LFSR,0},
+  {71,4,0x00c,1,15,YAM10_PR_LFSR,0},   /* POKEY's four bit poly */
+  {72,5,0x005,0,31,YAM10_PR_LFSR,0},   /* the 2600's noise counter on its own */
+  {73,9,0x108,1,511,YAM10_PR_LFSR,0},  /* POKEY's nine bit poly */
+  {74,15,0x041,0,93,YAM10_PR_LFSR,1},  /* the NES in its short mode */
+  /* the 2600's own tones, by AUDC. only the ones that are really the 2600's
+     are here: its four divider settings come out as plain pulses, which is
+     what waveform 37 already is, and its four bit counter turns out to run
+     the same bits as POKEY's. */
+  {75,0,15,0,93,YAM10_PR_TIA,0},       /* five bit poly into div 6 */
+  {76,0,2,0,465,YAM10_PR_TIA,0},       /* div 15 into the four bit poly */
+  {77,0,3,0,465,YAM10_PR_TIA,0},       /* five bit poly into the four bit poly */
+  {78,0,8,0,511,YAM10_PR_TIA,0}        /* the nine bit white noise */
+};
+#define YAM10_POLY_COUNT ((int)(sizeof(yam10_polys)/sizeof(yam10_polys[0])))
+#define YAM10_POLY_MAX 511
+
+/* each pattern is built once and then read. keeping the generator out of the
+   sample loop means a rule that is not a plain shift register can be exact
+   rather than approximated, and costs nothing per sample. */
+static uint8_t yam10_poly_bits[YAM10_POLY_COUNT][YAM10_POLY_MAX];
+
+/* the falling saw, the jump at the half cycle. bit 15 is the sign, the same
+   as yam10_logsin. waves 17 and 18 were doing this inline. */
+static inline uint16_t yam10_saw(uint32_t p) {
+  uint32_t q=(p+512)&0x3ff;
+  uint16_t lin=(q<512)?(uint16_t)(511-q):(uint16_t)(q-512);
+  uint16_t att=(lin==0)?0x1000:(uint16_t)(-(int)(log2((double)lin/511.0)*256.0));
+  return att|((q<512)?0:0x8000);
+}
+
+/* the saw folded up rather than mirrored, so a unipolar ramp runs twice a
+   cycle. taking the plain absolute value of a saw only gives a triangle,
+   which the chip already has at wave 7. */
+static inline uint16_t yam10_saw_abs(uint32_t p) {
+  uint16_t lin=(uint16_t)(511-(p&0x1ff));
+  return (lin==0)?0x1000:(uint16_t)(-(int)(log2((double)lin/511.0)*256.0));
+}
+
+/* raising the linear amplitude to the nth power is multiplying the log
+   domain value by n. the sign is kept, so an odd power keeps its negative
+   lobe, and anything that overflows past silence stays silent. n=2 is what
+   wave 12 always did. */
+static inline uint16_t yam10_pow(uint16_t e, unsigned int n) {
+  uint16_t mag=e&0x7fff, neg=e&0x8000;
+  uint32_t v=(uint32_t)mag*n;
+  return (uint16_t)(((mag>=0x1000)||(v>0xfff))?0x1000:v)|neg;
+}
+
 static void yam10_build_wf(void) {
   uint32_t p;
   if (yam10_wf_built) return;
@@ -180,16 +321,11 @@ static void yam10_build_wf(void) {
        kept, so this is sin times the absolute value of sin, not sin squared
        on its own, which would never go negative. slot 13 is the true one.
        13-16 come from this in the second pass. */
-    yam10_wf[12][p]=(uint16_t)((mag<0x7fff)?((mag*2>0xfff)?0x1000:mag*2):0x1000)|neg;
+    yam10_wf[12][p]=yam10_pow(s,2);
 
     /* 17-18: the saws */
-    {
-      uint32_t q=(p+512)&0x3ff;
-      uint16_t lin=(q<512)?(uint16_t)(511-q):(uint16_t)(q-512);
-      uint16_t att=(lin==0)?0x1000:(uint16_t)(-(int)(log2((double)lin/511.0)*256.0));
-      yam10_wf[17][p]=att|((q<512)?0:0x8000);
-      yam10_wf[18][p]=(p&0x200)?0x1000:yam10_wf[17][p];
-    }
+    yam10_wf[17][p]=yam10_saw(p);
+    yam10_wf[18][p]=(p&0x200)?0x1000:yam10_wf[17][p];
 
     /* 19-20: the squares */
     yam10_wf[19][p]=(p&0x200)?0x8000:0;
@@ -197,11 +333,44 @@ static void yam10_build_wf(void) {
        anything square */
     yam10_wf[20][p]=neg?(((((p&0x1ff)^0x1ff))<<3)|0x8000):((p&0x1ff)<<3);
 
-    /* 21-23 are generated as they play, 24 reads a wavetable */
+    /* 21-23 are generated as they play, so they have no bank entry */
     yam10_wf[21][p]=0;
     yam10_wf[22][p]=0;
     yam10_wf[23][p]=0;
-    yam10_wf[24][p]=0;
+
+    /* 24-25: the two the triangle family was missing */
+    yam10_wf[24][p]=(p&0x100)?0x1000:(yam10_tri(p)&0x7fff);   /* pulse */
+    yam10_wf[25][p]=(p&0x300)?0x1000:yam10_tri(p*4);          /* quarter squished */
+
+    /* 26: pulse squared sine. the quarter squished one reads wave 12 at four
+       times the phase, so it waits for the second pass. */
+    yam10_wf[26][p]=(p&0x100)?0x1000:(yam10_pow(s,2)&0x7fff);
+
+    /* 28-32: the rest of the saw family */
+    yam10_wf[28][p]=yam10_saw_abs(p);                         /* absolute */
+    yam10_wf[29][p]=(p&0x100)?0x1000:yam10_saw_abs(p);        /* pulse */
+    yam10_wf[30][p]=(p&0x200)?0x1000:yam10_saw(p*2);          /* squished */
+    yam10_wf[31][p]=(p&0x200)?0x1000:yam10_saw_abs(p*2);      /* squished abs */
+    yam10_wf[32][p]=(p&0x300)?0x1000:yam10_saw(p*4);          /* quarter squished */
+
+    /* 33-36: the square gated the same ways as every other family. an
+       absolute square is only DC and a squished absolute square repeats 33,
+       so neither gets a number. */
+    yam10_wf[33][p]=(p&0x200)?0x1000:0;                       /* half */
+    yam10_wf[34][p]=(p&0x100)?0x1000:0;                       /* pulse */
+    yam10_wf[35][p]=(p&0x200)?0x1000:((p&0x100)?0x8000:0);    /* squished */
+    yam10_wf[36][p]=(p&0x300)?0x1000:((p&0x80)?0x8000:0);     /* quarter squished */
+
+    /* 37-39: the PSG duties. 50% is wave 19. */
+    yam10_wf[37][p]=(p<128)?0:0x8000;                         /* 12.5% */
+    yam10_wf[38][p]=(p<256)?0:0x8000;                         /* 25% */
+    yam10_wf[39][p]=(p<768)?0:0x8000;                         /* 75% */
+
+    /* the periodic registers are generated as they play */
+    {
+      int w;
+      for (w=0; w<YAM10_POLY_COUNT; w++) yam10_wf[yam10_polys[w].ws][p]=0;
+    }
   }
   for (p=0; p<1024; p++) {
     uint16_t sq=yam10_wf[12][p];
@@ -209,6 +378,115 @@ static void yam10_build_wf(void) {
     yam10_wf[14][p]=(p&0x200)?0x1000:sq;                /* half */
     yam10_wf[15][p]=(p&0x200)?0x1000:yam10_wf[12][(p*2)&0x3ff];
     yam10_wf[16][p]=(p&0x200)?0x1000:(yam10_wf[12][(p*2)&0x1ff]&0x7fff);
+
+    /* 27: the last gap in the squared sine family */
+    yam10_wf[27][p]=(p&0x300)?0x1000:yam10_wf[12][(p*4)&0x3ff];
+
+    /* 40-45: the logarithmic saw, gated like every other family */
+    yam10_wf[40][p]=(p&0x200)?0x1000:yam10_wf[20][p];
+    yam10_wf[41][p]=yam10_wf[20][p]&0x7fff;
+    yam10_wf[42][p]=(p&0x100)?0x1000:(yam10_wf[20][p]&0x7fff);
+    yam10_wf[43][p]=(p&0x200)?0x1000:yam10_wf[20][(p*2)&0x3ff];
+    yam10_wf[44][p]=(p&0x200)?0x1000:(yam10_wf[20][(p*2)&0x3ff]&0x7fff);
+    yam10_wf[45][p]=(p&0x300)?0x1000:yam10_wf[20][(p*4)&0x3ff];
+
+    /* 46-66: the cubed families. tripling the log domain value cubes the
+       amplitude, so each one is the matching plain wave cubed and the gating
+       comes along with it. */
+    {
+      static const unsigned char yam10_cubeOf[21]={
+        0,1,2,3,4,5,6,        /* 46-52, the sines */
+        7,9,8,24,10,11,25,    /* 53-59, the triangles */
+        17,18,28,29,30,31,32  /* 60-66, the saws */
+      };
+      int w;
+      for (w=0; w<21; w++) {
+        yam10_wf[46+w][p]=yam10_pow(yam10_wf[yam10_cubeOf[w]][p],3);
+      }
+    }
+  }
+
+  /* which waveforms are generated rather than read from the bank */
+  {
+    int w;
+    for (w=0; w<YAM10_WAVES; w++) {
+      yam10_wave_def[w].kind=YAM10_WK_TABLE;
+      yam10_wave_def[w].polyWidth=0;
+      yam10_wave_def[w].polyPeriod=0;
+      yam10_wave_def[w].polyShift=0;
+      yam10_wave_def[w].polyIndex=0;
+    }
+    yam10_wave_def[YAM10_WF_NOISE].kind=YAM10_WK_NOISE;
+    yam10_wave_def[YAM10_WF_NOISE1].kind=YAM10_WK_NOISE1;
+    yam10_wave_def[YAM10_WF_SH].kind=YAM10_WK_SH;
+    yam10_wave_def[YAM10_WF_PULSE].kind=YAM10_WK_PULSE;
+    for (w=0; w<YAM10_POLY_COUNT; w++) {
+      YAM10WaveDef& d=yam10_wave_def[yam10_polys[w].ws];
+      d.kind=YAM10_WK_POLY;
+      d.polyWidth=yam10_polys[w].width;
+      d.polyPeriod=yam10_polys[w].period;
+      d.polyIndex=(uint8_t)w;
+      if (yam10_polys[w].rule==YAM10_PR_TIA) {
+        /* AudioChannel::phase0 and phase1 with the divider always clocking,
+           so what comes out is the raw tone rather than a pitched one. some
+           AUDC settings run in before they settle, so let the counters reach
+           their loop first and only then take a period's worth. there are
+           only 512 states to pass through, so the warm up is generous. */
+        uint8_t audc=(uint8_t)yam10_polys[w].taps;
+        uint8_t noise=0, pulse=0, nbit4=0;
+        uint8_t hold=0, nfb=0;
+        int i;
+        const int warmUp=8192;
+        for (i=0; i<warmUp+(int)yam10_polys[w].period; i++) {
+          uint8_t m=audc&3, pf, pfb;
+          nbit4=noise&1;
+          if (m<2) hold=0;
+          else if (m==2) hold=(uint8_t)((noise&0x1e)!=0x02);
+          else hold=(uint8_t)(!nbit4);
+          if (m==0) {
+            nfb=(uint8_t)((((pulse^noise)&1)!=0) || !(noise || (pulse!=0x0a)) || !(audc&0x0c));
+          } else {
+            nfb=(uint8_t)(((((noise&4)?1:0)^(noise&1))!=0) || noise==0);
+          }
+          pf=(uint8_t)(audc>>2);
+          if (pf==0)      pfb=(uint8_t)(((((pulse&2)?1:0)^(pulse&1))!=0) && (pulse!=0x0a) && (audc&3));
+          else if (pf==1) pfb=(uint8_t)(!(pulse&8));
+          else if (pf==2) pfb=(uint8_t)(!nbit4);
+          else            pfb=(uint8_t)(!((pulse&2) || !(pulse&0x0e)));
+          noise>>=1;
+          if (nfb) noise|=0x10;
+          if (!hold) {
+            pulse=(uint8_t)((~(pulse>>1))&7);
+            if (pfb) pulse|=8;
+          }
+          if (i>=warmUp) yam10_poly_bits[w][i-warmUp]=(uint8_t)(pulse&1);
+        }
+      } else {
+        uint32_t mask=(1u<<yam10_polys[w].width)-1u;
+        uint32_t reg=1;
+        int i;
+        for (i=0; i<(int)yam10_polys[w].period; i++) {
+          yam10_poly_bits[w][i]=(uint8_t)((reg&1u)^yam10_polys[w].invertOut);
+          uint32_t fb=reg&yam10_polys[w].taps;
+          fb^=fb>>8; fb^=fb>>4; fb^=fb>>2; fb^=fb>>1;
+          if (yam10_polys[w].shiftLeft) {
+            reg=((reg<<1)|(fb&1u))&mask;
+          } else {
+            reg=((reg>>1)|((fb&1u)<<(yam10_polys[w].width-1)))&mask;
+          }
+          if (reg==0) reg=1;
+        }
+      }
+      /* a long pattern cannot fit into one cycle of the note: 511 steps at
+         440 Hz would need content past 100 kHz. spread it over a power of two
+         number of cycles instead, so it lands a whole number of octaves down
+         rather than at some ratio that reads as out of tune. */
+      {
+        uint8_t sh=0;
+        while ((yam10_polys[w].period>>sh)>32) sh++;
+        d.polyShift=sh;
+      }
+    }
   }
   yam10_wf_built=1;
 }
@@ -366,7 +644,7 @@ struct YAM10FilterParam {
 
 struct YAM10OpParam {
   bool enable, fixedMode, ksr, customWave;
-  unsigned char ws;        /* 0-15, 15 = custom wavetable */
+  unsigned char ws;        /* 0 to YAM10_WAVES-1; the wavetable is customWave */
   unsigned char tl;        /* 0-127, 0.75 dB/step */
   unsigned char ar, dr, d2r;
   unsigned char sl, rr;
@@ -379,6 +657,7 @@ struct YAM10OpParam {
   unsigned char outLvl;    /* carrier output level */
   unsigned char pan;       /* 0-255, 128 = centre */
   unsigned char modIn;     /* bitmask of operators feeding this one */
+  unsigned char duty;      /* pulse width, 32 is the 12.5% this wave used to be */
   double fixedFreq;        /* Hz, usable down to 0 */
   unsigned int phaseResetPeriod; /* engine ticks, 0 = off */
   const int* waveData;
@@ -386,7 +665,7 @@ struct YAM10OpParam {
   YAM10OpParam():
     enable(false), fixedMode(false), ksr(false), customWave(false),
     ws(0), tl(127), ar(31), dr(0), d2r(0), sl(0), rr(7), rs(0), mult(1), delay(0),
-    dtFine(0), dtSemi(0), fb(0), outLvl(0), pan(128), modIn(0),
+    dtFine(0), dtSemi(0), fb(0), outLvl(0), pan(128), modIn(0), duty(32),
     fixedFreq(0.0), phaseResetPeriod(0), waveData(NULL), waveLen(0), waveMax(255) {}
 };
 
@@ -709,10 +988,12 @@ public:
       if (p.fb>0) mod+=((int)o.out+(int)o.prev)>>(11-p.fb);
 
       uint32_t idx=((o.phase>>10)+(uint32_t)(mod>>1))&0x3ff;
-      uint8_t wf=p.customWave?24:((p.ws>23)?23:p.ws);
+      uint8_t wf=p.customWave?YAM10_WAVE_WT:((p.ws>=YAM10_WAVES)?0:p.ws);
+      const YAM10WaveDef& wd=yam10_wave_def[(wf==YAM10_WAVE_WT)?0:wf];
+      uint8_t kind=(wf==YAM10_WAVE_WT)?YAM10_WK_WAVETABLE:wd.kind;
       uint16_t lg, neg;
 
-      if (wf==21 || wf==22) {                         /* noise, pitched */
+      if (kind==YAM10_WK_NOISE || kind==YAM10_WK_NOISE1) {  /* noise, pitched */
         /* the shift register is clocked off the phase, so the note and any
          * pitch or arpeggio macro move the noise with it */
         uint32_t ns=o.phase>>15;
@@ -724,7 +1005,7 @@ public:
           }
           o.noiseStep=ns;
         }
-        if (wf==22) {                                 /* 1-bit noise */
+        if (kind==YAM10_WK_NOISE1) {                  /* 1-bit noise */
           neg=(o.noise&1)?0:0x8000;
           lg=0;
         } else {
@@ -732,7 +1013,21 @@ public:
           lg=(uint16_t)(n<0?-n:n); neg=(n<0)?0x8000:0;
           lg=(lg<1)?0x1000:(uint16_t)(-(int)(log2((double)lg/4096.0)*256.0));
         }
-      } else if (wf==23) {                            /* sample & hold */
+      } else if (kind==YAM10_WK_POLY) {
+        /* one whole pattern every 1<<polyShift cycles of the note, so it lands
+           a clean number of octaves down rather than at a ratio that reads as
+           out of tune. a long pattern cannot fit in one cycle: 511 steps at
+           440 Hz would carry content past 100 kHz. */
+        uint32_t ns=(uint32_t)(((uint64_t)o.phase*(uint64_t)wd.polyPeriod)>>(20+wd.polyShift));
+        neg=yam10_poly_bits[wd.polyIndex][ns%wd.polyPeriod]?0:0x8000;
+        lg=0;
+      } else if (kind==YAM10_WK_PULSE) {
+        /* duty counts in 256ths of a cycle, so 32 lands on the 12.5% this
+           wave was fixed at before and 64, 128 and 192 give the other
+           duties a PSG offers */
+        neg=(idx<((uint32_t)p.duty<<2))?0:0x8000;
+        lg=0;
+      } else if (kind==YAM10_WK_SH) {                 /* sample & hold */
         uint32_t cyc=o.phase>>20;                     /* which cycle we are in */
         if (cyc!=o.shCycle) {
           o.shCycle=cyc;
@@ -742,7 +1037,7 @@ public:
         int16_t n=o.sh;
         lg=(uint16_t)(n<0?-n:n); neg=(n<0)?0x8000:0;
         lg=(lg<1)?0x1000:(uint16_t)(-(int)(log2((double)lg/4096.0)*256.0));
-      } else if (wf==24 && p.waveData!=NULL && p.waveLen>=2) {
+      } else if (kind==YAM10_WK_WAVETABLE && p.waveData!=NULL && p.waveLen>=2) {
         /* custom wavetable of any length, converted into the log domain */
         int wi=(int)(((uint64_t)idx*(uint32_t)p.waveLen)>>10);
         if (wi>=p.waveLen) wi=p.waveLen-1;
@@ -751,7 +1046,7 @@ public:
         neg=(v<0)?0x8000:0;
         double a=fabs(v);
         lg=(a<(1.0/4096.0))?0x1000:(uint16_t)(-(int)(log2(a)*256.0));
-      } else if (wf<21) {
+      } else if (kind==YAM10_WK_TABLE) {
         uint16_t e=yam10_wf[wf][idx];
         lg=e&0x7fff; neg=e&0x8000;
       } else {
@@ -772,10 +1067,10 @@ public:
         /* 2*sqrt(2) makes centre pan put the operator's full output on each
          * side while staying constant power, so one voice reads clearly on
          * the oscilloscope and four carriers fill the scale. */
-        double amp=(double)out*((double)p.outLvl/127.0)*(2.0*M_SQRT2);
+        double amp=(double)out*((double)p.outLvl/127.0)*(2.0*YAM10_SQRT2);
         double pp=(double)p.pan/255.0;
-        mixL+=amp*cos(pp*M_PI*0.5);
-        mixR+=amp*sin(pp*M_PI*0.5);
+        mixL+=amp*cos(pp*YAM10_PI*0.5);
+        mixR+=amp*sin(pp*YAM10_PI*0.5);
       }
     }
 
@@ -819,8 +1114,8 @@ public:
         ch.chorusPhase+=lfoHz/rate;
         if (ch.chorusPhase>=1.0) ch.chorusPhase-=1.0;
         double wOff=(double)cp.chorusWidth/254.0;
-        double aL=ch.chorusPhase*2.0*M_PI;
-        double aR=(ch.chorusPhase+wOff)*2.0*M_PI;
+        double aL=ch.chorusPhase*2.0*YAM10_PI;
+        double aR=(ch.chorusPhase+wOff)*2.0*YAM10_PI;
         double base=rate*0.006;                        /* 6 ms centre */
         double depth=base*0.9*((double)cp.chorusDepth/127.0);
         double dl=base+depth*sin(aL);

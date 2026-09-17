@@ -101,7 +101,8 @@ enum DivInstrumentType: unsigned short {
   DIV_INS_SUPERVISION=64,
   DIV_INS_UPD1771C=65,
   DIV_INS_SID3=66,
-  DIV_INS_YAM10,
+  DIV_INS_KLATTSCH=67,
+  DIV_INS_YAM10=68,
   DIV_INS_MAX,
   DIV_INS_NULL
 };
@@ -167,11 +168,12 @@ enum DivMacroTypeOp: unsigned char {
 //   - AM, AR, DR, MULT, RR, SL, TL, SSG-EG&8 = EG-S
 //   - KSL, VIB, WS (OPL2/3), KSR
 // - OPZ:
-//   - AM, AR, DR, MULT (CRS), RR, SL, TL, DT2, RS, DT, D2R
+//   - AM, AR, DR, MULT (CRS), RR, SL, TL, DT2, RS, DT, D2R, SSG-EG = TS (tremolo sensitivity)
 //   - WS, DVB = MULT (FINE), DAM = REV, KSL = EGShift, EGT = Fixed, KSR = TL Ramp
 
 struct DivInstrumentFM {
-  unsigned char alg, fb, fms, ams, fms2, ams2, ops, opllPreset, block;
+  unsigned char alg, fb, fms, ams, ops, opllPreset, block;
+  bool fmsLFO, amsLFO, tremLFO;
   bool fixedDrums;
   unsigned short kickFreq, snareHatFreq, tomTopFreq;
 
@@ -218,11 +220,12 @@ struct DivInstrumentFM {
     fb(0),
     fms(0),
     ams(0),
-    fms2(0),
-    ams2(0),
     ops(2),
     opllPreset(0),
     block(0),
+    fmsLFO(false),
+    amsLFO(false),
+    tremLFO(false),
     fixedDrums(false),
     kickFreq(0x520),
     snareHatFreq(0x550),
@@ -341,7 +344,7 @@ struct DivInstrumentMacro {
 struct DivInstrumentYAM10 {
   struct Operator {
     bool enable, fixedMode, ksr, customWave;
-    unsigned char ws;          // 0-14 built in, or custom wavetable
+    unsigned char ws;          // built in waveform; the wavetable is the separate customWave flag
     unsigned char tl;          // 0-127
     unsigned char ar, dr, d2r; // 0-31
     unsigned char sl, rr;      // 0-15
@@ -354,14 +357,15 @@ struct DivInstrumentYAM10 {
     unsigned char outLvl;      // carrier output level
     unsigned char pan;         // 0-255, 128 = centre
     unsigned char modIn;       // bitmask of operators modulating this one
+    unsigned char duty;        // pulse width in 256ths, only read by the pulse wave
     unsigned short fixedFreq;  // block in bits 10-12, F-num in bits 0-9
     unsigned short phaseReset; // reset period in engine ticks, 0 = off
     short customWaveIndex;     // wavetable to use when customWave
     Operator():
       enable(false), fixedMode(false), ksr(false), customWave(false),
-      ws(0), tl(0), ar(31), dr(0), d2r(0), sl(0), rr(7), rs(0), mult(1),
-      delay(0), dtFine(0), dtSemi(0), fb(0), outLvl(0), pan(128), modIn(0),
-      fixedFreq(0), phaseReset(0), customWaveIndex(0) {}
+      ws(0), tl(0), ar(31), dr(0), d2r(0), sl(0), rr(7), rs(0), delay(0),
+      mult(1), dtFine(0), dtSemi(0), fb(0), outLvl(0), pan(128), modIn(0),
+      duty(32), fixedFreq(0), phaseReset(0), customWaveIndex(0) {}
     bool operator==(const Operator& o) const;
     bool operator!=(const Operator& o) const { return !(*this==o); }
   } op[6];
@@ -1144,6 +1148,36 @@ struct DivInstrumentSID3 {
     }
 };
 
+struct DivInstrumentKlattsch {
+  // Values use the same byte encodings as the corresponding pattern effects.
+  unsigned char transition;
+  unsigned char voicing;
+  unsigned char aspiration;
+  unsigned char tilt;
+  unsigned char effort;
+  unsigned char vibrato;
+  unsigned char tremolo;
+  unsigned char gain;
+  unsigned char bandwidth;
+  unsigned char formantShift;
+
+  bool operator==(const DivInstrumentKlattsch& other);
+  bool operator!=(const DivInstrumentKlattsch& other) {
+    return !(*this==other);
+  }
+  DivInstrumentKlattsch():
+    transition(2),
+    voicing(0xff),
+    aspiration(0),
+    tilt(0),
+    effort(0x80),
+    vibrato(0x50),
+    tremolo(0x50),
+    gain(0x38),
+    bandwidth(0),
+    formantShift(0) {}
+};
+
 struct DivInstrumentPOD {
   DivInstrumentType type;
   DivInstrumentFM fm;
@@ -1164,23 +1198,29 @@ struct DivInstrumentPOD {
   DivInstrumentPowerNoise powernoise;
   DivInstrumentSID2 sid2;
   DivInstrumentSID3 sid3;
+  DivInstrumentKlattsch klattsch;
 
   DivInstrumentPOD() :
     type(DIV_INS_FM) {
   }
 };
 
+// these are indexed by macroType, which is a byte. operator macros run
+// base+(op<<5), so six operators reach 211 and the old size of 160 was short
+// by four operators' worth.
+#define DIV_MACRO_TYPE_MAX 256
+
 struct DivInstrumentTemp {
   // the following variables are used by the GUI and not saved in the file
-  int vScroll[160];
-  int vZoom[160];
-  int typeMemory[160][16];
-  unsigned char lenMemory[160];
+  int vScroll[DIV_MACRO_TYPE_MAX];
+  int vZoom[DIV_MACRO_TYPE_MAX];
+  int typeMemory[DIV_MACRO_TYPE_MAX][16];
+  unsigned char lenMemory[DIV_MACRO_TYPE_MAX];
   DivInstrumentTemp() {
-    memset(vScroll,0,160*sizeof(int));
-    memset(vZoom,-1,160*sizeof(int));
-    memset(typeMemory,0,160*16*sizeof(int));
-    memset(lenMemory,0,160*sizeof(unsigned char));
+    memset(vScroll,0,sizeof(vScroll));
+    memset(vZoom,-1,sizeof(vZoom));
+    memset(typeMemory,0,sizeof(typeMemory));
+    memset(lenMemory,0,sizeof(lenMemory));
   }
 };
 
@@ -1281,6 +1321,7 @@ struct DivInstrument: DivInstrumentPOD {
   void writeFeaturePN(SafeWriter* w);
   void writeFeatureS2(SafeWriter* w);
   void writeFeatureS3(SafeWriter* w);
+  void writeFeatureKT(SafeWriter* w);
 
   void readFeatureNA(SafeReader& reader, short version);
   void readFeatureFM(SafeReader& reader, short version);
@@ -1309,6 +1350,7 @@ struct DivInstrument: DivInstrumentPOD {
   void readFeaturePN(SafeReader& reader, short version);
   void readFeatureS2(SafeReader& reader, short version);
   void readFeatureS3(SafeReader& reader, short version);
+  void readFeatureKT(SafeReader& reader, short version);
 
   DivDataErrors readInsDataOld(SafeReader& reader, short version);
   DivDataErrors readInsDataNew(SafeReader& reader, short version, bool fui, DivSong* song);

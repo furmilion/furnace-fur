@@ -138,6 +138,10 @@ const int vgmVersions[7]={
   0x172
 };
 
+const int midiQuantizeValues[12]={
+  4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192
+};
+
 // name, icon, letter icon
 const char* insTypes[DIV_INS_MAX+1][3]={
   {"SN76489/Sega PSG",ICON_FA_BAR_CHART,ICON_FUR_INS_STD},
@@ -207,6 +211,7 @@ const char* insTypes[DIV_INS_MAX+1][3]={
   {"Watara Supervision",ICON_FA_GAMEPAD,ICON_FUR_INS_SUPERVISION},
   {"NEC μPD1771C",ICON_FA_BAR_CHART,ICON_FUR_INS_UPD1771C},
   {"SID3",ICON_FA_KEYBOARD_O,ICON_FUR_INS_SID3},
+  {"klattsch",ICON_FA_MICROPHONE,ICON_FA_MICROPHONE},
   {"YAM10",ICON_FA_AREA_CHART,ICON_FA_AREA_CHART},
   {NULL,ICON_FA_QUESTION,ICON_FA_QUESTION}
 };
@@ -1114,6 +1119,7 @@ const FurnaceGUIColorDef guiColors[GUI_COLOR_MAX]={
   D(GUI_COLOR_INSTR_SUPERVISION,_N("Supervision"),ImVec4(0.52f,1.0f,0.6f,1.0f)),
   D(GUI_COLOR_INSTR_UPD1771C,_N("μPD1771C"),ImVec4(0.94f,0.52f,0.6f,1.0f)),
   D(GUI_COLOR_INSTR_SID3,_N("SID3"),ImVec4(0.6f,0.75f,0.6f,1.0f)),
+  D(GUI_COLOR_INSTR_KLATTSCH,_N("klattsch"),ImVec4(1.0f,0.415f,0.0f,1.0f)),
   D(GUI_COLOR_INSTR_YAM10,_N("YAM10"),ImVec4(0.6f,0.9f,1.0f,1.0f)),
   D(GUI_COLOR_INSTR_UNKNOWN,_N("Other/Unknown"),ImVec4(0.3f,0.3f,0.3f,1.0f)),
 
@@ -1270,6 +1276,21 @@ const FurnaceGUIColorDef guiColors[GUI_COLOR_MAX]={
 
   D(GUI_COLOR_EE_VALUE,_N("External command output"),ImVec4(0.0f,1.0f,1.0f,1.0f)),
   D(GUI_COLOR_PLAYBACK_STAT,_N("Playback status"),ImVec4(0.6f,0.6f,0.6f,1.0f)),
+
+  D(GUI_COLOR_PIANO_ROLL_BG,"",ImVec4(0.10f,0.10f,0.10f,1.0f)),
+  D(GUI_COLOR_PIANO_ROLL_KEY_WHITE,"",ImVec4(0.90f,0.90f,0.90f,1.0f)),
+  D(GUI_COLOR_PIANO_ROLL_KEY_BLACK,"",ImVec4(0.15f,0.15f,0.15f,1.0f)),
+  D(GUI_COLOR_PIANO_ROLL_KEY_BORDER,"",ImVec4(0.30f,0.30f,0.30f,1.0f)),
+  D(GUI_COLOR_PIANO_ROLL_GRID,"",ImVec4(0.25f,0.25f,0.25f,1.0f)),
+  D(GUI_COLOR_PIANO_ROLL_GRID_HI1,"",ImVec4(0.40f,0.40f,0.40f,1.0f)),
+  D(GUI_COLOR_PIANO_ROLL_GRID_HI2,"",ImVec4(0.55f,0.55f,0.55f,1.0f)),
+  D(GUI_COLOR_PIANO_ROLL_NOTE,"",ImVec4(0.20f,0.60f,1.00f,1.0f)),
+  D(GUI_COLOR_PIANO_ROLL_NOTE_OFF,"",ImVec4(0.80f,0.20f,0.20f,1.0f)),
+  D(GUI_COLOR_PIANO_ROLL_NOTE_REL,"",ImVec4(0.80f,0.60f,0.10f,1.0f)),
+  D(GUI_COLOR_PIANO_ROLL_SELECTION,"",ImVec4(1.00f,1.00f,0.00f,0.3f)),
+  D(GUI_COLOR_PIANO_ROLL_FX_NUM,"",ImVec4(0.20f,0.80f,0.20f,1.0f)),
+  D(GUI_COLOR_PIANO_ROLL_FX_VAL,"",ImVec4(0.60f,0.80f,0.20f,1.0f)),
+  D(GUI_COLOR_PIANO_ROLL_FX_VOL,"",ImVec4(0.80f,0.80f,0.20f,1.0f)),
 };
 #undef D
 
@@ -1380,6 +1401,7 @@ const int availableSystems[]={
   DIV_SYSTEM_UPD1771C,
   DIV_SYSTEM_SID3,
   DIV_SYSTEM_MULTIPCM,
+  DIV_SYSTEM_KLATTSCH,
   DIV_SYSTEM_YAM10,
   0 // don't remove this last one!
 };
@@ -1486,6 +1508,7 @@ const int chipsSpecial[]={
   DIV_SYSTEM_SUPERVISION,
   DIV_SYSTEM_UPD1771C,
   DIV_SYSTEM_SID3,
+  DIV_SYSTEM_KLATTSCH,
   0 // don't remove this last one!
 };
 
@@ -1534,4 +1557,10 @@ const char* chipCategoryNames[]={
   _N("Special"),
   _N("Sample"),
   NULL
+};
+
+const char* triggerStates[3]={
+  _N("trigger: off"),
+  _N("trigger: rising edge"),
+  _N("trigger: falling edge")
 };

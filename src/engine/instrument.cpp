@@ -579,11 +579,12 @@ bool DivInstrumentFM::operator==(const DivInstrumentFM& other) {
     _C(fb) &&
     _C(fms) &&
     _C(ams) &&
-    _C(fms2) &&
-    _C(ams2) &&
     _C(ops) &&
     _C(opllPreset) &&
     _C(block) &&
+    _C(fmsLFO) &&
+    _C(amsLFO) &&
+    _C(tremLFO) &&
     _C(fixedDrums) &&
     _C(kickFreq) &&
     _C(snareHatFreq) &&
@@ -877,6 +878,21 @@ bool DivInstrumentSID2::operator==(const DivInstrumentSID2& other) {
   );
 }
 
+bool DivInstrumentKlattsch::operator==(const DivInstrumentKlattsch& other) {
+  return (
+    _C(transition) &&
+    _C(voicing) &&
+    _C(aspiration) &&
+    _C(tilt) &&
+    _C(effort) &&
+    _C(vibrato) &&
+    _C(tremolo) &&
+    _C(gain) &&
+    _C(bandwidth) &&
+    _C(formantShift)
+  );
+}
+
 #undef _C
 
 #define CONSIDER(x,t) \
@@ -982,8 +998,8 @@ void DivInstrument::writeFeatureFM(SafeWriter* w, bool fui) {
 
   // base data
   w->writeC(((fm.alg&7)<<4)|(fm.fb&7));
-  w->writeC(((fm.fms2&7)<<5)|((fm.ams&3)<<3)|(fm.fms&7));
-  w->writeC(((fm.ams2&3)<<6)|((fm.ops==4)?32:0)|(fm.opllPreset&31));
+  w->writeC((fm.tremLFO?0x20:0)|((fm.ams&3)<<3)|(fm.fms&7));
+  w->writeC((fm.fmsLFO?0x80:0)|(fm.amsLFO?0x40:0)|((fm.ops==4)?32:0)|(fm.opllPreset&31));
   w->writeC(fm.block&15);
 
   // operator data
@@ -1293,7 +1309,7 @@ bool DivInstrumentYAM10::Operator::operator==(const DivInstrumentYAM10::Operator
     ar==o.ar && dr==o.dr && d2r==o.d2r && sl==o.sl && rr==o.rr &&
     rs==o.rs && mult==o.mult && delay==o.delay && dtFine==o.dtFine && dtSemi==o.dtSemi &&
     fb==o.fb && outLvl==o.outLvl && pan==o.pan && modIn==o.modIn &&
-    fixedFreq==o.fixedFreq && phaseReset==o.phaseReset &&
+    duty==o.duty && fixedFreq==o.fixedFreq && phaseReset==o.phaseReset &&
     customWaveIndex==o.customWaveIndex
   );
 }
@@ -1432,10 +1448,11 @@ void DivInstrument::writeFeatureYA(SafeWriter* w) {
     w->writeS(o.phaseReset);
     w->writeS(o.customWaveIndex);
   }
-  // marks the waveform numbering as the grouped one
-  w->writeC(1);
+  // which waveform numbering this was written with
+  w->writeC(2);
   // appended after that marker
   for (int i=0; i<6; i++) w->writeC(yam10.op[i].delay);
+  for (int i=0; i<6; i++) w->writeC(yam10.op[i].duty);
 
   FEATURE_END;
 }
@@ -1867,6 +1884,23 @@ void DivInstrument::writeFeatureS3(SafeWriter* w) {
   FEATURE_END;
 }
 
+void DivInstrument::writeFeatureKT(SafeWriter* w) {
+  FEATURE_BEGIN("KT");
+
+  w->writeC(klattsch.transition);
+  w->writeC(klattsch.voicing);
+  w->writeC(klattsch.aspiration);
+  w->writeC(klattsch.tilt);
+  w->writeC(klattsch.effort);
+  w->writeC(klattsch.vibrato);
+  w->writeC(klattsch.tremolo);
+  w->writeC(klattsch.gain);
+  w->writeC(klattsch.bandwidth);
+  w->writeC(klattsch.formantShift);
+
+  FEATURE_END;
+}
+
 // on-disk instrument type for YAM10, fixed so files interchange
 #define YAM10_INS_FILE_TYPE 87
 
@@ -1918,6 +1952,7 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
   bool featurePN=false;
   bool featureS2=false;
   bool featureS3=false;
+  bool featureKT=false;
 
   bool checkForWL=false;
 
@@ -2173,6 +2208,9 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
         if (amiga.useSample) featureSL=true;
         if (ws.enabled) featureWS=true;
         break;
+      case DIV_INS_KLATTSCH:
+        featureKT=true;
+        break;
       case DIV_INS_SUPERVISION:
         featureSM=true;
         if (amiga.useSample) featureSL=true;
@@ -2243,6 +2281,9 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
     }
     if (sid3!=defaultIns.sid3) {
       featureS3=true;
+    }
+    if (klattsch!=defaultIns.klattsch) {
+      featureKT=true;
     }
   }
 
@@ -2405,6 +2446,9 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
   if (featureS3) {
     writeFeatureS3(w);
   }
+  if (featureKT) {
+    writeFeatureKT(w);
+  }
 
   if (fui && (featureSL || featureWL)) {
     w->write("EN",2);
@@ -2486,20 +2530,39 @@ void DivInstrument::readFeatureFM(SafeReader& reader, short version) {
   fm.op[3].enable=(opCount&128);
 
   opCount&=15;
+  // the writer only ever stores 2 or 4. a file saying more than fm.op holds
+  // would have us write operators off the end of the instrument.
+  if (opCount>4) opCount=4;
 
   unsigned char next=reader.readC();
   fm.alg=(next>>4)&7;
   fm.fb=next&7;
 
   next=reader.readC();
-  fm.fms2=(next>>5)&7;
+  unsigned char fms2=(next>>5)&7;
   fm.ams=(next>>3)&3;
   fm.fms=next&7;
 
   next=reader.readC();
-  fm.ams2=(next>>6)&3;
+  unsigned char ams2=(next>>6)&3;
   fm.ops=(next&32)?4:2;
   fm.opllPreset=next&31;
+
+  if (version>=251) {
+    fm.tremLFO=fms2&1;
+    fm.fmsLFO=ams2&2;
+    fm.amsLFO=ams2&1;
+  } else {
+    // attempt to convert by selecting the greatest sensitivity
+    if (fms2>fm.fms) {
+      fm.fms=fms2;
+      fm.fmsLFO=true;
+    }
+    if (ams2>fm.ams) {
+      fm.ams=ams2;
+      fm.amsLFO=true;
+    }
+  }
 
   if (version>=224) {
     next=reader.readC();
@@ -2894,9 +2957,32 @@ void DivInstrument::readFeatureYA(SafeReader& reader, short version) {
       if (yam10.op[i].ws<24) yam10.op[i].ws=yam10WaveOrder[yam10.op[i].ws];
     }
   } else {
-    reader.readC();
+    unsigned char waveGen=reader.readC();
     if (reader.tell()+6<=endOfFeat) {
       for (int i=0; i<6; i++) yam10.op[i].delay=reader.readC();
+    }
+    // the pulse wave used to be fixed at 12.5%, so a block that stops here
+    // keeps the default that matches it
+    if (reader.tell()+6<=endOfFeat) {
+      for (int i=0; i<6; i++) yam10.op[i].duty=reader.readC();
+    }
+    // four of the 2600 waveforms turned out to be shapes the chip already
+    // had, so they went and the ones after them moved down. the three that
+    // were plain pulses become the pulse at the width they used to run at.
+    if (waveGen<2) {
+      for (int i=0; i<6; i++) {
+        switch (yam10.op[i].ws) {
+          case 75: yam10.op[i].ws=37; yam10.op[i].duty=128; break;
+          case 76: yam10.op[i].ws=71; break;
+          case 77: yam10.op[i].ws=37; yam10.op[i].duty=107; break;
+          case 78: yam10.op[i].ws=37; yam10.op[i].duty=121; break;
+          case 79: yam10.op[i].ws=75; break;
+          case 80: yam10.op[i].ws=76; break;
+          case 81: yam10.op[i].ws=77; break;
+          case 82: yam10.op[i].ws=78; break;
+          default: break;
+        }
+      }
     }
   }
 
@@ -3637,6 +3723,23 @@ void DivInstrument::readFeatureS3(SafeReader& reader, short version) {
   READ_FEAT_END;
 }
 
+void DivInstrument::readFeatureKT(SafeReader& reader, short version) {
+  READ_FEAT_BEGIN;
+
+  if (reader.tell()<endOfFeat) klattsch.transition=reader.readC();
+  if (reader.tell()<endOfFeat) klattsch.voicing=reader.readC();
+  if (reader.tell()<endOfFeat) klattsch.aspiration=reader.readC();
+  if (reader.tell()<endOfFeat) klattsch.tilt=reader.readC();
+  if (reader.tell()<endOfFeat) klattsch.effort=reader.readC();
+  if (reader.tell()<endOfFeat) klattsch.vibrato=reader.readC();
+  if (reader.tell()<endOfFeat) klattsch.tremolo=reader.readC();
+  if (reader.tell()<endOfFeat) klattsch.gain=reader.readC();
+  if (reader.tell()<endOfFeat) klattsch.bandwidth=reader.readC();
+  if (reader.tell()<endOfFeat) klattsch.formantShift=reader.readC();
+
+  READ_FEAT_END;
+}
+
 DivDataErrors DivInstrument::readInsDataNew(SafeReader& reader, short version, bool fui, DivSong* song) {
   unsigned char featCode[2];
   bool volIsCutoff=false;
@@ -3726,6 +3829,8 @@ DivDataErrors DivInstrument::readInsDataNew(SafeReader& reader, short version, b
       readFeatureS2(reader,version);
     } else if (memcmp(featCode,"S3",2)==0) { // SID3
       readFeatureS3(reader,version);
+    } else if (memcmp(featCode,"KT",2)==0) { // Klattsch
+      readFeatureKT(reader,version);
     } else {
       if (song==NULL && (memcmp(featCode,"SL",2)==0 || (memcmp(featCode,"WL",2)==0) || (memcmp(featCode,"LS",2)==0) || (memcmp(featCode,"LW",2)==0))) {
         // nothing
@@ -4276,8 +4381,17 @@ DivDataErrors DivInstrument::readInsDataOld(SafeReader &reader, short version) {
 
   // OPZ
   if (version>=77) {
-    fm.fms2=reader.readC();
-    fm.ams2=reader.readC();
+    unsigned char fms2=reader.readC();
+    unsigned char ams2=reader.readC();
+    // attempt to convert by selecting the greatest sensitivity
+    if (fms2>fm.fms) {
+      fm.fms=fms2;
+      fm.fmsLFO=true;
+    }
+    if (ams2>fm.ams) {
+      fm.ams=ams2;
+      fm.amsLFO=true;
+    }
   }
 
   // wave synth

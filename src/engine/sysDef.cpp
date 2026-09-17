@@ -28,6 +28,8 @@ DivSystem DivEngine::sysFileMapFur[DIV_MAX_CHIP_FILE_IDS];
 DivSystem DivEngine::sysFileMapDMF[DIV_MAX_CHIP_FILE_IDS];
 
 DivSystem DivEngine::systemFromFileFur(unsigned short val) {
+  // the file hands us a raw 16 bit id and the map holds DIV_MAX_CHIP_FILE_IDS
+  if (val>=DIV_MAX_CHIP_FILE_IDS) return DIV_SYSTEM_NULL;
   return sysFileMapFur[val];
 }
 
@@ -551,7 +553,7 @@ void DivEngine::registerSystems() {
     {0x55, {DIV_CMD_FM_DT2, _("55xy: Set detune 2 (x: operator from 1 to 4 (0 for all ops); y: detune from 0 to 3)"), effectOpVal<4>, effectValAnd<3>}},
     {0x60, {DIV_CMD_FM_OPMASK, _("60xx: Set operator mask (bits 0-3)")}},
     // I know this is the wrong command name. I don't feel like adding a new command just for this.
-    {0x64, {DIV_CMD_ES5506_ENVELOPE_LVRAMP, _("64xx: Set TL ramp time (YM2164/OPP only!)")}},
+    {0x66, {DIV_CMD_ES5506_ENVELOPE_LVRAMP, _("66xx: Set TL ramp time (YM2164/OPP only!)")}},
   });
 
   EffectHandlerMap fmOPZPostEffectHandlerMap(fmOPMPostEffectHandlerMap);
@@ -564,8 +566,11 @@ void DivEngine::registerSystems() {
     {0x2a, {DIV_CMD_FM_WS, _("2Axy: Set waveform (x: operator from 1 to 4 (0 for all ops); y: waveform from 0 to 7)"), effectOpVal<4>, effectValAnd<7>}},
     {0x2b, {DIV_CMD_FM_EG_SHIFT, _("2Bxy: Set envelope generator shift (x: operator from 1 to 4 (0 for all ops); y: shift from 0 to 3)"), effectOpVal<4>, effectValAnd<3>}},
     {0x2c, {DIV_CMD_FM_FINE, _("2Cxy: Set fine multiplier (x: operator from 1 to 4 (0 for all ops); y: fine)"), effectOpVal<4>, effectValAnd<15>}},
-    {0x64, {DIV_CMD_FM_FMS2, _("64xx: Set LFO2 FM depth (0 to 7)")}},
-    {0x65, {DIV_CMD_FM_AMS2, _("65xx: Set LFO2 AM depth (0 to 3)")}},
+    {0x2d, {DIV_CMD_FM_LFO3, _("2Dxx: Set LFO 3 (bit 7: shape; bit 0-6: speed)")}},
+    {0x2e, {DIV_CMD_FM_LFO4, _("2Exx: Set LFO 4 (bit 7: shape; bit 0-6: speed)")}},
+    {0x60, {DIV_CMD_FM_OPMASK, _("60xx: Set operator mask (bits 0-3)")}},
+    // I know this is the wrong command name. I don't feel like adding a new command just for this.
+    {0x66, {DIV_CMD_ES5506_ENVELOPE_LVRAMP, _("66xx: Set TL ramp time")}},
   });
   const EffectHandler fmOPZFixFreqHandler[4]={
     {DIV_CMD_FM_FIXFREQ, _("3xyy: Set fixed frequency of operator 1 (x: octave from 0 to 7; y: frequency)"), constVal<0>, effectValLong<11>},
@@ -1505,7 +1510,7 @@ void DivEngine::registerSystems() {
 
   sysDefs[DIV_SYSTEM_OPZ]=new DivSysDef(
     _("Yamaha YM2414 (OPZ)"), NULL, 0x98, 0, 8, 8, 8,
-    true, false, 0, false, 0, 0, 0,
+    true, false, 0x150, false, 0, 0, 0,
     _("like OPM, but with more waveforms, fixed frequency mode and totally... undocumented.\nused in the Yamaha TX81Z and some other synthesizers."),
     DivChanDefFunc(fmChanDef<DIV_CH_FM,DIV_INS_OPZ>),
     {
@@ -2746,6 +2751,32 @@ void DivEngine::registerSystems() {
     namcoEffectHandlerMap
   );
 
+  sysDefs[DIV_SYSTEM_KLATTSCH]=new DivSysDef(
+    _("klattsch"), NULL, 0xe7, 0, 1, 1, 16,
+    false, true, 0, false, 0, 0, 0,
+    _("Klatt-style parallel-formant speech synthesizer."),
+    DivChanDefFunc(simpleChanDef<DIV_CH_NOISE,DIV_INS_KLATTSCH>),
+    {
+      {0x10, {DIV_CMD_KLATTSCH_PHONEME, _("10xx: Set phoneme (ARPABET index; type names directly in the pattern)")}},
+      {0x11, {DIV_CMD_KLATTSCH_TRANSITION, _("11xx: Set spectral transition time (ticks)")}},
+      {0x12, {DIV_CMD_KLATTSCH_FORMANT, _("12xx: Set F1 frequency (xx*10 Hz)"), constVal<0>, effectVal}},
+      {0x13, {DIV_CMD_KLATTSCH_FORMANT, _("13xx: Set F2 frequency (xx*16 Hz)"), constVal<1>, effectVal}},
+      {0x14, {DIV_CMD_KLATTSCH_FORMANT, _("14xx: Set F3 frequency (xx*16 Hz)"), constVal<2>, effectVal}},
+      {0x15, {DIV_CMD_KLATTSCH_AMP, _("15xx: Set F1 amplitude (00-FF)"), constVal<0>, effectVal}},
+      {0x16, {DIV_CMD_KLATTSCH_AMP, _("16xx: Set F2 amplitude (00-FF)"), constVal<1>, effectVal}},
+      {0x17, {DIV_CMD_KLATTSCH_AMP, _("17xx: Set F3 amplitude (00-FF)"), constVal<2>, effectVal}},
+      {0x18, {DIV_CMD_KLATTSCH_VOICING, _("18xx: Set voicing (00-FE; FF: instrument default)")}},
+      {0x19, {DIV_CMD_KLATTSCH_ASPIRATION, _("19xx: Set aspiration (00-FE; FF: instrument default)")}},
+      {0x1A, {DIV_CMD_KLATTSCH_TILT, _("1Axx: Set spectral tilt (signed; 00-7F: positive, 80-FE: negative; FF: instrument default)")}},
+      {0x1B, {DIV_CMD_KLATTSCH_EFFORT, _("1Bxx: Set glottal effort (00-FE; FF: instrument default)")}},
+      {0x1C, {DIV_CMD_KLATTSCH_VIBRATO, _("1Cxy: Vibrato (x: rate in Hz; y: depth, 4 Hz steps)")}},
+      {0x1D, {DIV_CMD_KLATTSCH_TREMOLO, _("1Dxy: Tremolo (x: rate in Hz; y: depth)")}},
+      {0x1E, {DIV_CMD_KLATTSCH_GAIN, _("1Exx: Set gain (01-FF: xx/16; 00: instrument default)")}},
+      {0x1F, {DIV_CMD_KLATTSCH_BW_SCALE, _("1Fxx: Formant bandwidth scale (01-FF: xx/64; 00: instrument default)")}},
+      {0x20, {DIV_CMD_KLATTSCH_FORMANT_SHIFT, _("20xx: Formant shift (01-FF: xx/64; 00: instrument default)")}},
+    }
+  );
+
   sysDefs[DIV_SYSTEM_DUMMY]=new DivSysDef(
     _("Dummy System"), NULL, 0xfd, 0, 8, 1, 128,
     false, true, 0, false, 0, 0, 0,
@@ -2868,6 +2899,8 @@ void DivEngine::registerSystems() {
       {0x7b, {DIV_CMD_YAM10_OP_PHRESET, _("7Bxx: Set phase reset of operator 6 in ticks, 0 is off"), constVal<5>, effectVal}},
       {0x7c, {DIV_CMD_YAM10_OP_DELAY, _("7Cxy: Set the delay before an operator attacks (x: operator from 1 to 6 (0 for all ops); y: delay from 0 to 7)"), effectOpVal<6>, effectValAnd<7>}},
       {0x5c, {DIV_CMD_YAM10_WS_HI, _("5Cxy: Set waveform 16 to 23 (x: operator from 1 to 6 (0 for all ops); y: waveform minus 16)"), effectOpVal<6>, effectValAnd<7>}},
+      {0x5d, {DIV_CMD_YAM10_WS_SEL, _("5Dxx: Pick the operator the next waveform effect addresses (0 for all ops, 1 to 6)")}},
+      {0x5e, {DIV_CMD_YAM10_WS_FULL, _("5Exx: Set the waveform of the picked operator, any of them")}},
       {0xaf, {DIV_CMD_YAM10_EQ_SEL, _("AFxx: Pick the EQ band the next EQ effects address (0 to 7)")}},
       {0x56, {DIV_CMD_YAM10_EQ_FREQ, _("56xx: Set the frequency of the picked EQ band")}},
       {0x57, {DIV_CMD_YAM10_EQ_GAIN, _("57xx: Set the gain of the picked EQ band (80 is flat)")}},
