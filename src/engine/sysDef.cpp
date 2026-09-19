@@ -2792,6 +2792,13 @@ void DivEngine::registerSystems() {
     DivChanDefFunc(stockChanDef<DIV_CH_NOISE,DIV_INS_STD>)
   );
 
+  sysDefs[DIV_SYSTEM_GP]=new DivSysDef(
+    _("GP (Toshiba TC24SC201AF-002)"), NULL, 0x103, 0, 28, 28, 28,
+    false, true, 0, false, (1U<<DIV_SAMPLE_DEPTH_FCE), 0, 0,
+    _("the PCM chip Roland used in the SC-55 and its relatives.\n28 sample voices which store their samples in the chip's own delta format, so they pick up its grain."),
+    DivChanDefFunc(stockChanDef<DIV_CH_PCM,DIV_INS_AMIGA>)
+  );
+
   for (int i=0; i<DIV_SYSTEM_MAX; i++) {
     if (sysDefs[i]==NULL) continue;
     if (sysDefs[i]->id!=0) {

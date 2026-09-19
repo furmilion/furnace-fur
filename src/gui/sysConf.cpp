@@ -2703,6 +2703,40 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
       }
       break;
     }
+    case DIV_SYSTEM_GP: {
+      int model=flags.getInt("clockSel",0);
+      bool oversampling=flags.getBool("oversampling",true);
+
+      ImGui::Text(_("Model:"));
+      ImGui::Indent();
+      if (ImGui::RadioButton(_("SC-55mkII / SC-55ST (24MHz)"),model==0)) {
+        model=0;
+        altered=true;
+      }
+      if (ImGui::RadioButton(_("SC-55 / CM-300 / SCC-1 (23.2MHz)"),model==1)) {
+        model=1;
+        altered=true;
+      }
+      ImGui::Unindent();
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(_("sets the chip clock, and with it the rate everything plays back at."));
+      }
+
+      if (ImGui::Checkbox(_("Oversampling"),&oversampling)) {
+        altered=true;
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(_("the chip emits two frames per pass instead of one. turning this off halves the output rate."));
+      }
+
+      if (altered) {
+        e->lockSave([&]() {
+          flags.set("clockSel",model);
+          flags.set("oversampling",oversampling);
+        });
+      }
+      break;
+    }
     case DIV_SYSTEM_C140: {
       int bankType=flags.getInt("bankType",0);
 

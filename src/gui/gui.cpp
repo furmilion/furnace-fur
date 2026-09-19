@@ -7856,6 +7856,9 @@ bool FurnaceGUI::loop() {
       ImGui::Text(_("Data type:"));
       for (int i=0; i<DIV_SAMPLE_DEPTH_MAX; i++) {
         if (sampleDepths[i]==NULL) continue;
+        // the GP format is produced when rendering to the chip, it is not
+        // something you import from a file
+        if (i==DIV_SAMPLE_DEPTH_FCE) continue;
        if (ImGui::RadioButton(sampleDepths[i],pendingRawSampleDepth==i)) pendingRawSampleDepth=i;
       }
 

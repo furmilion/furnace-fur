@@ -33,6 +33,11 @@ void initSystemPresetsSample(std::vector<FurnaceGUISysCategory>& sysCategories) 
     }
   );
   ENTRY(
+    _("GP (Toshiba TC24SC201AF-002)"), {
+      CH(DIV_SYSTEM_GP, 1.0f, 0, "")
+    }
+  );
+  ENTRY(
     _("Capcom QSound"), {
       CH(DIV_SYSTEM_QSOUND, 1.0f, 0, "")
     }
