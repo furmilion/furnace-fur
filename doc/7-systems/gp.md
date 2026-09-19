@@ -33,9 +33,9 @@ the following options are available in the Chip Manager window:
 
 ## what is left out
 
-the chip has a resonant filter on every voice, and a reverb and chorus unit on the same die. neither is used here.
+the chip has a resonant filter on every voice, and a reverb and chorus unit driven from the same register file. neither is used here.
 
-the filter is a two pole state variable design whose coefficient runs up to the point where it self oscillates, and the values that keep it in range are the ones the SC-55 firmware supplies. the reverb and chorus are the same story: the delay line addresses and coefficients live in the firmware rather than in the chip, so without them the effects section is either silent or runs away. both are bypassed.
+the filter is a two pole state variable design. one coefficient sets the frequency and a second sets the damping, and at low damping it self oscillates. the values that keep it in range are the ones the SC-55 firmware supplies. the reverb and chorus are the same story: the delay line addresses and coefficients live in the firmware rather than in the chip, so without them the effects section is either silent or runs away. both are bypassed.
 
 the emulation core still contains all of it, so either could be switched back on if the firmware tables are recovered.
 
