@@ -883,6 +883,7 @@ void FurnaceGUI::autoDetectSystem() {
 }
 
 void FurnaceGUI::setCurIns(int newIns) {
+  insEditMacroInsChanged=true;
   curIns=newIns;
   memset(multiIns,-1,7*sizeof(int));
 }
@@ -8114,9 +8115,9 @@ bool FurnaceGUI::loop() {
               e->midiImportOptions.drumChannel=0;
             }
             for (int i=1; i<=16; i++) {
-              snprintf(strBuf,15,"%d",midiQuantizeValues[i]);
+              snprintf(strBuf,15,"%d",i);
               if (ImGui::Selectable(strBuf,e->midiImportOptions.drumChannel==i)) {
-                e->midiImportOptions.drumChannel=0;
+                e->midiImportOptions.drumChannel=i;
               }
             }
             ImGui::EndCombo();
@@ -9829,6 +9830,9 @@ FurnaceGUI::FurnaceGUI():
   prevInsData(NULL),
   cachedCurInsPtr(NULL),
   insEditMayBeDirty(false),
+  insEditMacroEnvBottom(0),
+  insEditMacroEnvTop(0),
+  insEditMacroInsChanged(false),
   pendingLayoutImport(NULL),
   pendingLayoutImportLen(0),
   pendingLayoutImportStep(0),
