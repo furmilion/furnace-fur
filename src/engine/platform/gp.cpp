@@ -252,7 +252,7 @@ void DivPlatformGP::keyOn(int ch) {
   // rather than clips, so the level is pulled down to leave room for chords.
   c.tvaStage=2;
   writeRam2(ch,4,(GP_VOICE_LEVEL<<8)|gpEnvInstant);
-  writeRam2(ch,3,((c.outVol&0x7f)<<8)|gpEnvInstant);
+  writeRam2(ch,3,((c.outVol&0xff)<<8)|gpEnvInstant);
 
   // the per voice filter is bypassed in the core, so these are left alone
   writeRam2(ch,5,0);
@@ -290,9 +290,9 @@ void DivPlatformGP::tick(bool sysTick) {
     c.std.next();
 
     if (c.std.vol.had) {
-      c.outVol=((c.vol&0x7f)*MIN(c.macroVolMul,c.std.vol.val))/c.macroVolMul;
+      c.outVol=((c.vol&0xff)*MIN(c.macroVolMul,c.std.vol.val))/c.macroVolMul;
       if (c.tvaStage!=0) {
-        writeRam2(i,3,((c.outVol&0x7f)<<8)|gpEnvInstant);
+        writeRam2(i,3,((c.outVol&0xff)<<8)|gpEnvInstant);
       }
     }
     if (NEW_ARP_STRAT) {
@@ -359,7 +359,7 @@ int DivPlatformGP::dispatch(DivCommand c) {
   switch (c.cmd) {
     case DIV_CMD_NOTE_ON: {
       DivInstrument* ins=parent->getIns(chan[c.chan].ins,DIV_INS_AMIGA);
-      chan[c.chan].macroVolMul=(ins->type==DIV_INS_AMIGA)?64:127;
+      chan[c.chan].macroVolMul=(ins->type==DIV_INS_AMIGA)?64:255;
       if (c.value!=DIV_NOTE_NULL) {
         chan[c.chan].sample=ins->amiga.getSample(c.value);
         chan[c.chan].pitchTable=samplePitchTable.get(chan[c.chan].sample);
@@ -412,7 +412,7 @@ int DivPlatformGP::dispatch(DivCommand c) {
         if (!chan[c.chan].std.vol.has) {
           chan[c.chan].outVol=c.value;
           if (chan[c.chan].tvaStage!=0) {
-            writeRam2(c.chan,3,((chan[c.chan].outVol&0x7f)<<8)|gpEnvInstant);
+            writeRam2(c.chan,3,((chan[c.chan].outVol&0xff)<<8)|gpEnvInstant);
           }
         }
       }
@@ -473,7 +473,7 @@ int DivPlatformGP::dispatch(DivCommand c) {
       chan[c.chan].setPos=true;
       break;
     case DIV_CMD_GET_VOLMAX:
-      return 127;
+      return 255;
       break;
     case DIV_CMD_MACRO_OFF:
       chan[c.chan].std.mask(c.value,true);
@@ -750,9 +750,7 @@ void DivPlatformGP::setFlags(const DivConfig& flags) {
 
   pcm.is_mk1=isMk1;
   pcm.enable_oversampling=oversample;
-  // the per voice filter is left out of the signal path, this is a plain
-  // sample chip
-  pcm.filter_bypass=true;
+  pcm.filter_bypass=false;
 
   rate=chipClock/GP_CYCLES_PER_PASS;
   if (oversample) rate*=2;
@@ -820,7 +818,7 @@ DivPlatformGP::DivPlatformGP():
   fifoPos=0;
   voiceMask=0;
   isMk1=false;
-  oversample=true;
+  oversample=false;
   memset(&pcm,0,sizeof(pcm));
   memset(regPool,0,64);
 }
