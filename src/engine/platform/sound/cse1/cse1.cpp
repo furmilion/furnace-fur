@@ -126,12 +126,11 @@ namespace CSE1_PACKED {
 
         for (size_t opi = 0; opi < CSE1_OPER_NUMBER; opi++) {
             CSE1_OPER_STATE& op = OP[opi];
-            const auto volume = !op.FLAGS_A.GET_NOT_DEFAULT_ADSR_TABLE() ? wave_table.volume_line[op.ENV_STATE.ENV_VP] : wave_table.memPCM[op.ADSR_WAVE_TABLE+op.ENV_STATE.ENV_VP];
             op.clock(wave_table, State, fm1pitch, fm2pitch);
             op.PITCH+=State->SPEC.SWEEP_FREQS[opi].FREQ_SPEED;
             const auto ov = !op.FLAGS_A.GET_NOT_DEFAULT_OUT_AND_WAVE_TABLE_TABLE() ? op.VFB : wave_table.memPCM[op.OUT_TABLE+op.VFB];
-            const CSE1_DOUBLE_SIG_REG LB = (((ov-0x8000)*State->OUT.IN_L.MI[opi]>>16)*volume>>16)>>3;
-            const CSE1_DOUBLE_SIG_REG RB = (((ov-0x8000)*State->OUT.IN_R.MI[opi]>>16)*volume>>16)>>3;
+            const CSE1_DOUBLE_SIG_REG LB = (static_cast<int16_t>(ov)*State->OUT.IN_L.MI[opi]>>16)>>3;
+            const CSE1_DOUBLE_SIG_REG RB = (static_cast<int16_t>(ov)*State->OUT.IN_R.MI[opi]>>16)>>3;
 
             LeftBuf += (State->OUT.FLAGS_A.GET_NEG_LEFT() >> opi)&1 ? -LB : LB;
             RightBuf += (State->OUT.FLAGS_A.GET_NEG_RIGHT() >> opi)&1 ? -RB : RB;
@@ -195,18 +194,17 @@ namespace CSE1_PACKED {
         CSE1_REG add_phase = 0;
         if (!wave_table.not_fm) for (size_t i = 0; i < CSE1_OPER_NUMBER; i++) {
             auto& op = state->OPS.OP[i];
-            add_phase += (static_cast<uint32_t>(op.VFB * (
-                !op.FLAGS_A.GET_NOT_DEFAULT_ADSR_TABLE() ? wave_table.volume_line[op.ENV_STATE.ENV_VP] : wave_table.memPCM[op.ADSR_WAVE_TABLE+op.ENV_STATE.ENV_VP]
-                )) >> 16) * this->MIS.MI[i] >> 13;
+            add_phase += static_cast<int32_t>(static_cast<int16_t>(op.VFB)) * this->MIS.MI[i] >> 13;
         }
         add_phase += PHASE>>16;
 
         if (FLAGS_A.GET_WAVE() < 6) {
-            const auto wv = option_wavetable(wave_table, add_phase&0xffff);
-            VFB = !FLAGS_A.GET_NOT_DEFAULT_OUT_AND_WAVE_TABLE_TABLE() ? wv : wave_table.memPCM[WAVE_TABLE_TABLE+wv];
+            const CSE1_REG wv = option_wavetable(wave_table, add_phase&0xffff);
+            VFB = ((!FLAGS_A.GET_NOT_DEFAULT_OUT_AND_WAVE_TABLE_TABLE() ? wv : wave_table.memPCM[WAVE_TABLE_TABLE+wv]^0x8000)^0x8000)+1;
         } else {
             VFB = wave_table.memPCM[PHASE];
         }
+        VFB = static_cast<int16_t>(VFB) * (!FLAGS_A.GET_NOT_DEFAULT_ADSR_TABLE() ? wave_table.volume_line[ENV_STATE.ENV_VP] : wave_table.memPCM[ADSR_WAVE_TABLE+ENV_STATE.ENV_VP]) >> 16;
     }
 
     static uint16_t sat_add_u16(const uint16_t a, const uint16_t b) noexcept {
@@ -337,7 +335,7 @@ namespace CSE1_PACKED {
                 return wave_table.triangle[index];
             }
             case SQUARE: {
-                return BIT_EX(index>this->DUTY);
+                return 0xffff-(index>this->DUTY);
             }
             case SAW: {
                 return index;
@@ -347,10 +345,10 @@ namespace CSE1_PACKED {
                     this->PHASE &= 0x0fffffff;
                     this->DUTY = (this->DUTY >> 1) | (((this->DUTY ^ (this->DUTY >> 2) ^ (this->DUTY >> 3) ^ (this->DUTY >> 5)) & 1) << 15);
                 }
-                return BIT_EX(this->DUTY & 1);
+                return 0xffff-(this->DUTY & 1);
             }
             case OPER_WAVETABLE_SAMPLE: {
-                return wave_table.memPCM[index+START_PHASE];
+                return (wave_table.memPCM[index+START_PHASE]^0x8000)-1;
             }
             default: return 0;
         }

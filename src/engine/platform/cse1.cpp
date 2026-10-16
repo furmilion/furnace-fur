@@ -438,12 +438,10 @@ void DivPlatformCSE1::renderSamples(int sysID) {
 
     if (length>0) {
       if (s->depth==DIV_SAMPLE_DEPTH_16BIT) {
-        for (unsigned int si = 0; si < length; si++) {
-            pcmMem[memPos+si] = reinterpret_cast<const uint16_t*>(originData)[si]^0x8000;
-        }
+        memcpy(&pcmMem[memPos], originData, lengthByte);
       } else {
         for (unsigned int si = 0; si < length; si++) {
-          pcmMem[memPos+si] = (static_cast<uint16_t>(originData[si]^0x80)<<8)|static_cast<uint16_t>(originData[si]^0x80);
+          pcmMem[memPos+si] = (static_cast<uint16_t>(originData[si])<<8)|static_cast<uint16_t>(originData[si]);
         }
       }
       sampleOff[i]=memPos;
