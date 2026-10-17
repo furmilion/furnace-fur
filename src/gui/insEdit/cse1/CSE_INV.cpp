@@ -10,6 +10,7 @@
 
 constexpr uint64_t gen_min = 0;
 constexpr uint16_t gen_max      = 0xffff;
+constexpr uint16_t gen_max_s      = 0xff00;
 constexpr uint16_t b14Bit_max      = 0x3fff;
 constexpr uint8_t  twoBit_max   = 0x03;
 constexpr uint8_t  threeBit_max = 0x07;
@@ -214,7 +215,7 @@ void FurnaceGUI::drawInsCSE1(DivInstrument *ins) {
                 "##AR",
                 ImGuiDataType_U16,
                 &cse1.op[i].adsr.ar,
-                &gen_min, &gen_max,
+                cse1.op[i].adsr.ar <= gen_max_s ? reinterpret_cast<const uint16_t*>(&gen_min) : &gen_max_s, &gen_max,
                 "A: %d"
                 ));
 
@@ -223,7 +224,7 @@ void FurnaceGUI::drawInsCSE1(DivInstrument *ins) {
                 "##DR",
                 ImGuiDataType_U16,
                 &cse1.op[i].adsr.dr,
-                &gen_min, &gen_max,
+                cse1.op[i].adsr.dr <= gen_max_s ? reinterpret_cast<const uint16_t*>(&gen_min) : &gen_max_s, &gen_max,
                 "D: %d"
                 ));
 
@@ -232,7 +233,7 @@ void FurnaceGUI::drawInsCSE1(DivInstrument *ins) {
                 "##SR",
                 ImGuiDataType_U16,
                 &cse1.op[i].adsr.sr,
-                &gen_min, &gen_max,
+                cse1.op[i].adsr.sr <= gen_max_s ? reinterpret_cast<const uint16_t*>(&gen_min) : &gen_max_s, &gen_max,
                 "D2: %d"
                 ));
 
@@ -250,7 +251,7 @@ void FurnaceGUI::drawInsCSE1(DivInstrument *ins) {
                 "##RR",
                 ImGuiDataType_U16,
                 &cse1.op[i].adsr.rr,
-                &gen_min, &gen_max,
+                cse1.op[i].adsr.rr <= gen_max_s ? reinterpret_cast<const uint16_t*>(&gen_min) : &gen_max_s, &gen_max,
                 "R: %d"
                 ));
 
