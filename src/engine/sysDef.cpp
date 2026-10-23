@@ -2303,6 +2303,21 @@ void DivEngine::registerSystems() {
     suEffectHandlerMap
   );
 
+  sysDefs[DIV_SYSTEM_CSE1]=new DivSysDef(
+    _("CSE-1"), NULL, 0xf2, 0, 9, 9, 9,
+    true, true, 0, false, 1U<<DIV_SAMPLE_DEPTH_16BIT, 0, 0, _("Cecnull1 Sound Engine - 1"),
+    DivChanDefFunc([](unsigned short ch) -> DivChanDef {
+      return DivChanDef(fmt::sprintf(_("Channel %d"),ch+1),
+      fmt::sprintf(_("CH%d"),ch+1),
+      DIV_CH_FM,
+      DIV_INS_CSE1,
+      DIV_INS_AMIGA
+      );
+    }),
+    {},
+    {}
+    );
+
   sysDefs[DIV_SYSTEM_MSM6295]=new DivSysDef(
     _("OKI MSM6295"), NULL, 0xaa, 0, 4, 4, 4,
     false, true, 0x161, false, 1U<<DIV_SAMPLE_DEPTH_VOX, 0, 0,

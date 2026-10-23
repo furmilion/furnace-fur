@@ -195,6 +195,11 @@ SafeWriter* DivEngine::saveText(bool separatePatterns) {
       }
     }
 
+    if (ins->type==DIV_INS_CSE1) {
+      w->writeText("- CSE1 parameters:\n");
+      w->writeText("  - TODO.\n");
+    }
+
     if (ins->type==DIV_INS_GB) {
       w->writeText("- Game Boy parameters:\n");
       w->writeText(fmt::sprintf("  - volume: %d\n",ins->gb.envVol));

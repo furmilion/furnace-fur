@@ -22,6 +22,7 @@
 #include "instrument.h"
 #include "../ta-log.h"
 #include "../fileutils.h"
+#include "platform/cse1.h"
 
 const DivInstrument defaultIns;
 
@@ -893,6 +894,14 @@ bool DivInstrumentKlattsch::operator==(const DivInstrumentKlattsch& other) {
   );
 }
 
+#define _CP(x) ((void*)x == (void*)other.x)
+#define _CA(x) (&x == &other.x)
+bool DivInstrumentCSE1::operator==(const DivInstrumentCSE1& other) const {
+  return _CP(op) && _CA(out) && _CA(special);
+}
+#undef _CP
+#undef _CA
+
 #undef _C
 
 #define CONSIDER(x,t) \
@@ -1746,6 +1755,22 @@ void DivInstrument::writeFeatureKT(SafeWriter* w) {
   FEATURE_END;
 }
 
+#include "platform/sound/cse1/cse1.hpp"
+#include "platform/cse1_sync_utils.h"
+
+void DivInstrument::writeFeatureSE(SafeWriter* w) {
+  FEATURE_BEGIN("SE");
+  const auto& cse1 = this->cse1;
+  auto bin = CSE1_PACKED::CSE1_CHANNEL_REGISTERS();
+  CSE1_REG_INS_SYNC::ins_to_reg(&cse1, &bin);
+  w->write(&bin, sizeof(CSE1_PACKED::CSE1_CHANNEL_REGISTERS));
+  for (const auto & i : cse1.op) {
+    w->write(&i.sample_tables, sizeof(DivInstrumentCSE1::Operator::sample_tables));
+    w->writeC(i.useSample | (i.pitchMode<<1));
+  }
+  FEATURE_END;
+}
+
 void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bool insName) {
   size_t blockStartSeek=0;
   size_t blockEndSeek=0;
@@ -1794,6 +1819,7 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
   bool featureS2=false;
   bool featureS3=false;
   bool featureKT=false;
+  bool featureSE=false;
 
   bool checkForWL=false;
 
@@ -2053,6 +2079,9 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
         break;
       case DIV_INS_UPD1771C:
         break;
+      case DIV_INS_CSE1:
+        featureSE=true;
+        break;
       case DIV_INS_MAX:
         break;
       case DIV_INS_NULL:
@@ -2114,6 +2143,9 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
     }
     if (klattsch!=defaultIns.klattsch) {
       featureKT=true;
+    }
+    if (cse1!=defaultIns.cse1) {
+      featureSE=true;
     }
   }
 
@@ -2273,6 +2305,9 @@ void DivInstrument::putInsData2(SafeWriter* w, bool fui, const DivSong* song, bo
   }
   if (featureKT) {
     writeFeatureKT(w);
+  }
+  if (featureSE) {
+    writeFeatureSE(w);
   }
 
   if (fui && (featureSL || featureWL)) {
@@ -3402,6 +3437,21 @@ void DivInstrument::readFeatureKT(SafeReader& reader, short version) {
   READ_FEAT_END;
 }
 
+void DivInstrument::readFeatureSE(SafeReader& reader, short version) {
+  READ_FEAT_BEGIN;
+  auto& cse1 = this->cse1;
+  auto bin = CSE1_PACKED::CSE1_CHANNEL_REGISTERS();
+  reader.read(&bin, sizeof(CSE1_PACKED::CSE1_CHANNEL_REGISTERS));
+  CSE1_REG_INS_SYNC::reg_to_ins(&bin, &cse1);
+  for (auto & i : cse1.op) {
+    reader.read(&i.sample_tables, sizeof(DivInstrumentCSE1::Operator::sample_tables));
+    const uint8_t flags = reader.readC();
+    i.useSample = flags & 1;
+    i.pitchMode = (flags>>1)&3;
+  }
+  READ_FEAT_END;
+}
+
 DivDataErrors DivInstrument::readInsDataNew(SafeReader& reader, short version, bool fui, DivSong* song) {
   unsigned char featCode[2];
   bool volIsCutoff=false;
@@ -3484,6 +3534,8 @@ DivDataErrors DivInstrument::readInsDataNew(SafeReader& reader, short version, b
       readFeatureS3(reader,version);
     } else if (memcmp(featCode,"KT",2)==0) { // Klattsch
       readFeatureKT(reader,version);
+    } else if (memcmp(featCode,"SE",2)==0) { // CSE
+      readFeatureSE(reader,version);
     } else {
       if (song==NULL && (memcmp(featCode,"SL",2)==0 || (memcmp(featCode,"WL",2)==0) || (memcmp(featCode,"LS",2)==0) || (memcmp(featCode,"LW",2)==0))) {
         // nothing

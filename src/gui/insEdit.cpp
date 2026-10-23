@@ -31,6 +31,7 @@
 #include <imgui.h>
 #include "plot_nolerp.h"
 #include "util.h"
+#include "insEdit/cse1/CSE_INV.h"
 
 #include "insEdit/insEditCommon.h"
 
@@ -441,6 +442,9 @@ void FurnaceGUI::drawInsEdit() {
             break;
           case DIV_INS_KLATTSCH:
             insEditKlattsch(ins);
+            break;
+          case DIV_INS_CSE1:
+            drawInsCSE1(ins);
             break;
           default:
             if (ImGui::BeginTabItem(_("Error"))) {

@@ -98,6 +98,7 @@
 #include "platform/dummy.h"
 #include "../ta-log.h"
 #include "song.h"
+#include "platform/cse1.h"
 
 void DivDispatchContainer::setRates(double gotRate) {
   int outs=dispatch->getOutputCount();
@@ -661,6 +662,9 @@ void DivDispatchContainer::init(DivSystem sys, DivEngine* eng, int chanCount, do
       break;
     case DIV_SYSTEM_SOUND_UNIT:
       dispatch=new DivPlatformSoundUnit;
+      break;
+    case DIV_SYSTEM_CSE1:
+      dispatch=new DivPlatformCSE1;
       break;
     case DIV_SYSTEM_MSM6258:
       dispatch=new DivPlatformMSM6258;

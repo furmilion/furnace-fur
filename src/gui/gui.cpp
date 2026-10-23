@@ -1805,7 +1805,7 @@ void FurnaceGUI::rawFreqInput(int num) {
     (pat->newData[y][DIV_PAT_RAW2]<<16)|
     (pat->newData[y][DIV_PAT_RAW3]<<24)
   );
-  
+
   unsigned int valNibbles=(bsr32(valMax)+3)>>2;
   if (!settings.pushNibble && !curNibble) {
     val=num;
@@ -2040,7 +2040,7 @@ void FurnaceGUI::keyDown(SDL_Event& ev) {
         // pattern input otherwise
         if (mapped&(FURKMOD_ALT|FURKMOD_CTRL|FURKMOD_META|FURKMOD_SHIFT)) break;
         if (warnIsOpen && !settings.warnNotePassthrough) break;
-        if (cursor.xCoarse>=0 && cursor.xCoarse<e->getTotalChannelCount() && 
+        if (cursor.xCoarse>=0 && cursor.xCoarse<e->getTotalChannelCount() &&
             curOrder>=0 && curOrder<DIV_MAX_PATTERNS &&
             cursor.y>=0 && cursor.y<DIV_MAX_ROWS &&
             (!ev.key.repeat || settings.inputRepeat)) {
@@ -5704,7 +5704,7 @@ bool FurnaceGUI::loop() {
       }
       if (ImGui::BeginMenu(settings.capitalMenuBar?_("Help"):_("help"))) {
         if (ImGui::MenuItem(_("effect list"),BIND_FOR(GUI_ACTION_WINDOW_EFFECT_LIST),effectListOpen)) effectListOpen=!effectListOpen;
-        if (ImGui::MenuItem(_("online manual"))) 
+        if (ImGui::MenuItem(_("online manual")))
 #ifdef DIV_UNSTABLE
           SDL_OpenURL("https://github.com/tildearrow/furnace/tree/master/doc");
 #else
@@ -8109,7 +8109,7 @@ bool FurnaceGUI::loop() {
           if (e->midiImportOptions.drumChannel) {
             snprintf(strBuf,15,"%d",e->midiImportOptions.drumChannel);
             midiDrumChPreview=strBuf;
-          } 
+          }
           if (ImGui::BeginCombo(_("Drum channel"),midiDrumChPreview)) {
             if (ImGui::Selectable(_("None"),e->midiImportOptions.drumChannel==0)) {
               e->midiImportOptions.drumChannel=0;
@@ -9774,6 +9774,8 @@ FurnaceGUI::FurnaceGUI():
   fmPreviewOPLL(NULL),
   fmPreviewOPZ(NULL),
   fmPreviewOPZInterface(NULL),
+  fmPreviewESFM(NULL),
+  fmPreviewCSE1(NULL),
   editString(NULL),
   pendingRawSampleDepth(8),
   pendingRawSampleChannels(1),

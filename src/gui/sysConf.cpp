@@ -2982,7 +2982,7 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
     }
     case DIV_SYSTEM_ESFM: {
       supportsCustomRate=false;
-      /*
+
       int revision=flags.getInt("revision",0);
 
       ImGui::Text("Chip revision:");
@@ -3002,7 +3002,7 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
         e->lockSave([&]() {
           flags.set("revision",revision);
         });
-      }*/
+      }
       break;
     }
     case DIV_SYSTEM_BUBSYS_WSG:
@@ -3014,7 +3014,6 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
     case DIV_SYSTEM_POWERNOISE:
     case DIV_SYSTEM_UPD1771C:
     case DIV_SYSTEM_MULTIPCM:
-      break;
     case DIV_SYSTEM_YMU759:
       supportsCustomRate=false;
       ImGui::Text(_("nothing to configure"));
@@ -3037,6 +3036,77 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
       if (altered) {
         e->lockSave([&]() {
           flags.set("quarterClock",(int)quarterClock);
+        });
+      }
+      break;
+    }
+    case DIV_SYSTEM_CSE1: {
+      constexpr int gen_min = 0;
+      constexpr int gen_max = 65535;
+
+      int revision=flags.getInt("revision",1);
+
+      ImGui::Text("Chip revision:");
+      ImGui::Indent();
+      if (ImGui::RadioButton("CSE-1",revision==0)) {
+        revision=0;
+        altered=true;
+      }
+      if (ImGui::RadioButton("CSE-1.1 (Fix\?..No No No, is REPLACE ENVELOPE!!!)",revision==1)) {
+        revision=1;
+        altered=true;
+      }
+      ImGui::Unindent();
+
+      int dvtt = flags.getInt("defaultVolumeTableType",1);
+      int dvtspeed = flags.getInt("defaultVolumeTableSpeed",0x4000);
+
+      ImGui::Text(_("Default Volume Line:"));
+      ImGui::Indent();
+      if (ImGui::RadioButton(_("Old JS Volume Line (EXPW)"),dvtt==0)) {
+        dvtt=0;
+        altered=true;
+      }
+      if (ImGui::RadioButton(_("Real Volume Line (Hardware)"),dvtt==1)) {
+        dvtt=1;
+        altered=true;
+      }
+      if (ImGui::RadioButton(_("Linear Volume Line (FastTest)"),dvtt==2)) {
+        dvtt=2;
+        altered=true;
+      }
+      if (ImGui::RadioButton(_("Exp Volume Line (Phys?)"),dvtt==3)) {
+        dvtt=3;
+        altered=true;
+      }
+      ImGui::Unindent();
+      if (ImGui::SliderScalar("Volume Table Speed", ImGuiDataType_U16, &dvtspeed, &gen_min, &gen_max)) {
+        altered=true;
+      }
+
+      bool quarterClock=flags.getBool("quarterClock",false);
+      if (ImGui::Checkbox(_("Quarter clock speed"),&quarterClock)) {
+        altered=true;
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(_("Default clock speed is 192kHz (192000Hz)."));
+      }
+
+      bool notfm=flags.getBool("not_fm",false);
+      if (ImGui::Checkbox(_("Not FM"),&notfm)) {
+        altered=true;
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(_("Warning! ...")); // TODO: 补充简介
+      }
+
+      if (altered) {
+        e->lockSave([&]() {
+          flags.set("defaultVolumeTableType",dvtt);
+          flags.set("defaultVolumeTableSpeed", dvtspeed);
+          flags.set("quarterClock",(int)quarterClock);
+          flags.set("not_fm",(int)notfm);
+          flags.set("revision",revision);
         });
       }
       break;

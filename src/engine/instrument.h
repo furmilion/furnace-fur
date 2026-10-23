@@ -102,6 +102,7 @@ enum DivInstrumentType: unsigned short {
   DIV_INS_UPD1771C=65,
   DIV_INS_SID3=66,
   DIV_INS_KLATTSCH=67,
+  DIV_INS_CSE1=68,
   DIV_INS_MAX,
   DIV_INS_NULL
 };
@@ -1067,6 +1068,127 @@ struct DivInstrumentKlattsch {
     formantShift(0) {}
 };
 
+#define CSE1_OPER_NUMBER 6
+struct DivInstrumentCSE1 {
+  struct ADSR {
+    unsigned short ar, dr, sl, sr, rr;
+    unsigned short vp;
+    unsigned char adsrState;
+    unsigned int adsrTable;
+
+    ADSR(): ar(), dr(), sl(), sr(), rr(), vp(), adsrState(), adsrTable() {}
+  };
+
+  struct Operator {
+    unsigned short mi[CSE1_OPER_NUMBER]{};
+
+    ADSR adsr;
+
+    unsigned int phase{};
+    unsigned short hpitch{};
+    unsigned short lpitch{};
+
+
+    unsigned char ml{ 1 };
+    unsigned char dn{ 4 };
+    unsigned char wave{};
+
+    unsigned char ring{};
+    unsigned char sync{};
+
+    unsigned short duty{ 32767 };
+
+    bool default_adsr_table {};
+    bool default_out_and_wt_table{};
+    uint8_t pitchMode{};
+    bool rev{};
+    bool am1{};
+    bool am2{};
+    bool fm1{};
+    bool fm2{};
+    bool useSample{};
+
+    unsigned int startP{}, endP{};
+    struct SampleTables {
+      unsigned short sampleIndex;
+      unsigned short outTable;
+      unsigned short ADSRTable;
+      unsigned short WaveTableTable;
+    } sample_tables {};
+
+    unsigned char aloop{};
+    unsigned char dloop{};
+    unsigned short env_divider{};
+
+    Operator() = default;
+  } op[CSE1_OPER_NUMBER];
+
+  struct Out {
+    unsigned short inLeft[CSE1_OPER_NUMBER];
+    unsigned short inRight[CSE1_OPER_NUMBER];
+    unsigned short outLeft;
+    unsigned short outRight;
+
+    ADSR adsr;
+    unsigned char env_div_count;
+    unsigned char env_div;
+
+    unsigned int pitch;
+
+    bool negLeft[CSE1_OPER_NUMBER+1];
+    bool negRight[CSE1_OPER_NUMBER+1];
+    unsigned char default_out_table;
+
+    unsigned int outLTable;
+    unsigned int outRTable;
+
+    Out():
+    inLeft(), inRight(), outLeft(), outRight(),
+    env_div_count(), env_div(), pitch(),
+    negLeft(), negRight(), default_out_table(), outLTable(), outRTable() {}
+  } out;
+
+  struct special {
+    struct Filter {
+      unsigned short cutoff;
+      unsigned char resonance;
+      bool in_out;
+      bool in_f1;
+      bool in_f2;
+      bool in_f3;
+      unsigned short outLeft;
+      unsigned short outRight;
+      uint8_t types;
+
+      Filter():
+      cutoff(0xFFFFu), resonance(0),
+      in_out(), in_f1(), in_f2(), in_f3(),
+      outLeft(), outRight(), types() {}
+    };
+
+    Filter filter[3];
+    unsigned short cutoffSweep[3];
+    unsigned int freqSweep[CSE1_OPER_NUMBER+1];
+
+    struct LFO {
+      unsigned char wave;
+      unsigned char freq;
+      unsigned char depth;
+      unsigned short phase;
+
+      LFO(): wave(), freq(), depth(), phase() {}
+    } lfo1, lfo2;
+
+    special(): filter(), cutoffSweep(), freqSweep() {}
+  } special;
+
+  bool operator==(const DivInstrumentCSE1 &other) const;
+  bool operator!=(const DivInstrumentCSE1& other) const {
+    return !(*this==other);
+  }
+};
+#undef CSE1_OPER_NUMBER
+
 struct DivInstrumentPOD {
   DivInstrumentType type;
   DivInstrumentFM fm;
@@ -1087,6 +1209,7 @@ struct DivInstrumentPOD {
   DivInstrumentSID2 sid2;
   DivInstrumentSID3 sid3;
   DivInstrumentKlattsch klattsch;
+  DivInstrumentCSE1 cse1;
 
   DivInstrumentPOD() :
     type(DIV_INS_FM) {
@@ -1203,6 +1326,7 @@ struct DivInstrument: DivInstrumentPOD {
   void writeFeatureS2(SafeWriter* w);
   void writeFeatureS3(SafeWriter* w);
   void writeFeatureKT(SafeWriter* w);
+  void writeFeatureSE(SafeWriter *w);
 
   void readFeatureNA(SafeReader& reader, short version);
   void readFeatureFM(SafeReader& reader, short version);
@@ -1230,6 +1354,7 @@ struct DivInstrument: DivInstrumentPOD {
   void readFeatureS2(SafeReader& reader, short version);
   void readFeatureS3(SafeReader& reader, short version);
   void readFeatureKT(SafeReader& reader, short version);
+  void readFeatureSE(SafeReader& reader, short version);
 
   DivDataErrors readInsDataOld(SafeReader& reader, short version);
   DivDataErrors readInsDataNew(SafeReader& reader, short version, bool fui, DivSong* song);

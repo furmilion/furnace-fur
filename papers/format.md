@@ -275,6 +275,7 @@ the channel count is stored in the file in order to allow Furnace to load files 
 - 0xe7: klattsch - 1 channel
 - 0xf0: SID2 - 3 channels
 - 0xf1: 5E01 - 5 channels
+- 0xf2: SGE - 9 channels
 - 0xf5: SID3 - 7 channels
 - 0xfc: Pong - 1 channel
 - 0xfd: Dummy System - 8 channels
