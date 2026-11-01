@@ -13,31 +13,25 @@ void DivPlatformCSE1::acquire(short** buf, size_t len) {
     }
 
     for (size_t i = 0; i < len; i++) {
-        chip.clock(waveTable);
-        int out[2] = {};
+      chip.clock(waveTable);
+      newVolume[0] = 0;
+      newVolume[1] = 0;
 
-        for (unsigned char j = 0; j < chans; j++) {
-            if (!isMuted[j]) {
-              oscBuf[j]->putSample(i, chip.CSE1_GET_SAMPLE(j));
-
-              auto& chip_channel = chip.CHANNELS.CHANNEL[j];
-
-              chip_channel.OUT.PITCH = static_cast<CSE1_PACKED::CSE1_DOUBLE_REG>(chan[j].freq);
-
-              out[0] += chip.CHANNELS.OUTS_L[j];
-              out[1] += chip.CHANNELS.OUTS_R[j];
-            } else {
-              oscBuf[j]->putSample(i, 0);
-            }
+      for (unsigned char j = 0; j < chans; j++) {
+        if (!isMuted[j]) {
+          oscBuf[j]->putSample(i, chip.CSE1_GET_SAMPLE(j));
+          newVolume[0] += chip.CHANNELS.OUTS_L[j];
+          newVolume[1] += chip.CHANNELS.OUTS_R[j];
+        } else {
+          oscBuf[j]->putSample(i, 0);
         }
+      }
 
-        if (out[0] < -32768) out[0] = -32768;
-        if (out[0] > 32767) out[0] = 32767;
-        buf[0][i] = out[0];
+      buf[0][i] = MAX(MIN(newVolume[0], 32767), -32768);
+      buf[1][i] = MAX(MIN(newVolume[1], 32767), -32768);
 
-        if (out[1] < -32768) out[1] = -32768;
-        if (out[1] > 32767) out[1] = 32767;
-        buf[1][i] = out[1];
+      oldVolume[0] = newVolume[0];
+      oldVolume[1] = newVolume[1];
     }
 
     for (int i = 0; i < chans; i++) {
@@ -45,10 +39,43 @@ void DivPlatformCSE1::acquire(short** buf, size_t len) {
     }
 }
 
+void DivPlatformCSE1::acquireDirect(blip_buffer_t** bb, size_t len) {
+  unsigned int sharedNeedlePos=oscBuf[0]->needle;
+  for (const auto & i : oscBuf) {
+    i->begin(len);
+  }
+  for (size_t h=0; h<len; h++) {
+    chip.clock(waveTable);
+    newVolume[0] = 0;
+    newVolume[1] = 0;
+    const unsigned int shiftedNeedlePos=sharedNeedlePos>>OSCBUF_PREC;
+    for (int c=0; c<CSE1_CHANNEL_NUMBER; c++) {
+      putSampleIKnowWhatIAmDoing(oscBuf[c],shiftedNeedlePos, !isMuted[c] ? chip.CSE1_GET_SAMPLE(c) : 0);
+      newVolume[0] += !isMuted[c] ? chip.CHANNELS.OUTS_L[c] : 0;
+      newVolume[1] += !isMuted[c] ? chip.CHANNELS.OUTS_R[c] : 0;
+    }
+    blip_add_delta(bb[0], h, newVolume[0]-oldVolume[0]);
+    blip_add_delta(bb[1], h, newVolume[1]-oldVolume[1]);
+    sharedNeedlePos+=oscBuf[0]->rateMul;
+    oldVolume[0] = newVolume[0];
+    oldVolume[1] = newVolume[1];
+  }
+  for (const auto & i : oscBuf) {
+    i->end(len);
+  }
+}
+
+bool DivPlatformCSE1::hasAcquireDirect() {
+  return !oldMixer;
+}
+
+bool DivPlatformCSE1::hasSoftPan(int ch) {
+  return true;
+}
+
 int DivPlatformCSE1::getOutputCount() {
     return 2;
 }
-
 
 void DivPlatformCSE1::muteChannel(int ch, bool mute) {
   isMuted[ch]=mute;
@@ -90,6 +117,9 @@ void DivPlatformCSE1::tick(bool sysTick) {
         }
         chan[i].keyOff=false;
       }
+
+      auto& chip_channel = chip.CHANNELS.CHANNEL[i];
+      chip_channel.OUT.PITCH = static_cast<CSE1_PACKED::CSE1_DOUBLE_REG>(chan[i].freq);
     }
     if (NEW_ARP_STRAT) {
       chan[i].handleArp();
@@ -121,7 +151,28 @@ void DivPlatformCSE1::tick(bool sysTick) {
       chan[i].m_outA = scaleVolume * (val < 0xffff ? val : 0x10000);
     }
 
+    for (size_t fi = 0; fi < CSE1_FILTER_NUMBER ; fi++) {
+      chip.CHANNELS.CHANNEL[i].SPEC.FILTERS[fi].OUT_L = chan[i].std.op[fi].am.val * chan[i].vol >> 8;
+      chip.CHANNELS.CHANNEL[i].SPEC.FILTERS[fi].OUT_R = chan[i].std.op[fi].vib.val * chan[i].vol >> 8;
+      if (chan[i].std.op[fi].dr.had) { // cutoff
+        chip.CHANNELS.CHANNEL[i].SPEC.FILTERS[fi].CUTOFF = chan[i].std.op[fi].dr.val;
+      }
+      if (chan[i].std.op[fi].d2r.had) { // res
+        chip.CHANNELS.CHANNEL[i].SPEC.FILTERS[fi].SET_RES(chan[i].std.op[fi].d2r.val);
+      }
+      if (chan[i].std.op[fi].ws.had) { // types
+        chip.CHANNELS.CHANNEL[i].SPEC.FILTERS[fi].SET_TYPES(chan[i].std.op[fi].ws.val);
+      }
+      if (chan[i].std.op[fi].tl.had) { // inputs
+        chip.CHANNELS.CHANNEL[i].SPEC.FILTERS[fi].SET_INPUTS(chan[i].std.op[fi].tl.val);
+      }
+    }
+
     for (size_t opi = 0; opi < CSE1_OPER_NUMBER ; opi++) {
+      if (chan[i].std.phaseReset.had && chan[i].std.phaseReset.val) {
+        chip.CHANNELS.CHANNEL[i].OPS.OP[opi].PHASE = chan[i].state.instrument.op[opi].phase;
+      }
+
       switch (chan[i].state.instrument.op[opi].pitchMode) {
         case 2: {
           const CSE1_PACKED::CSE1_DOUBLE_REG freq = pitchTable.get(
@@ -216,6 +267,7 @@ int DivPlatformCSE1::dispatch(DivCommand c) {
                 }
                 cse1.op[op].adsr.ar = 0xffff;
                 cse1.op[op].adsr.rr = 0xffff;
+                cse1.op[op].duty = 0;
                 cse1.op[op].env_divider = 0x1;
                 cse1.out.inLeft[op] = 0xffff;
                 cse1.out.inRight[op] = 0xffff;
@@ -244,7 +296,7 @@ int DivPlatformCSE1::dispatch(DivCommand c) {
 
             for (auto & op : cse1.op) {
               const uint16_t sampleIndex = op.sample_tables.sampleIndex;
-              if (op.useSample && sampleIndex < parent->song.sampleLen) {
+              if (op.wave >= CSE1_PACKED::OPER_WAVETABLE_SAMPLE && sampleIndex < parent->song.sampleLen) {
                 DivSample* s = parent->getSample(sampleIndex);
                 if (s && s->samples > 0) {
                   const uint32_t base = sampleOff[sampleIndex];
@@ -459,6 +511,10 @@ void DivPlatformCSE1::renderSamples(int sysID) {
 }
 void DivPlatformCSE1::reset() {
   chip.hard_reset();
+  oldVolume[0] = 0;
+  oldVolume[1] = 0;
+  newVolume[0] = 0;
+  newVolume[1] = 0;
   for (int i=0; i<chans; i++) {
     chan[i]=Channel(parent->song.compatFlags.linearPitch);
     chan[i].pitchTable=&pitchTable;
@@ -492,6 +548,7 @@ void DivPlatformCSE1::setFlags(const DivConfig& flags) {
   chipClock=192000;
   CHECK_CUSTOM_CLOCK
   chipClock = flags.getBool("quarterClock",false) ? chipClock / 4 : chipClock;
+  oldMixer = flags.getBool("oldMixer",false);
   rate=chipClock;
   for (int i = 0; i < chans; i++) {
     oscBuf[i]->setRate(rate);
@@ -499,7 +556,7 @@ void DivPlatformCSE1::setFlags(const DivConfig& flags) {
   waveTable.default_volume_line = flags.getInt("defaultVolumeTableType",1);
   waveTable.fastSpeed = flags.getInt("defaultVolumeTableSpeed",0x4000);
   waveTable.not_fm = flags.getBool("not_fm",false);
-  waveTable.chipType = flags.getInt("revision",1);
+  waveTable.chipType = static_cast<CSE1_PACKED::CSE1_CHIP_VERSION>(flags.getInt("revision",1));
   waveTable.reset();
   notifyPitchTable();
 }
@@ -531,6 +588,9 @@ int DivPlatformCSE1::init(DivEngine* p, int channels, int sugRate, const DivConf
 
   setFlags(flags);
   reset();
+
+  oldVolume[0] = 0;
+  oldVolume[1] = 0;
 
   return channels;
 }

@@ -43,17 +43,109 @@ namespace CSE1_PACKED {
         OUT.PITCH += SPEC.SWEEP_FREQS[CSE1_OPER_NUMBER].FREQ_SPEED;
         CSE1_DOUBLE_SIG_REG LeftBuf3 = 0;
         CSE1_DOUBLE_SIG_REG RightBuf3 = 0;
-        for (size_t f = 0; f < SPEC.FILTERS.size(); f++) {
-            SPEC.FILTERS[f].clock(value[f], value, LeftBuf2, RightBuf2);
-            LeftBuf3 += value[f].VFB_L*SPEC.FILTERS[f].OUT_L>>16;
-            RightBuf3 += value[f].VFB_R*SPEC.FILTERS[f].OUT_R>>16;
+
+        switch (wave_table.chipType) {
+            case CSE1_0:
+            case CSE1_1: {
+                for (size_t f = 0; f < SPEC.FILTERS.size(); f++) {
+                    SPEC.FILTERS[f].clock_1(value[f], value, LeftBuf2, RightBuf2);
+                    LeftBuf3 += value[f].VFB_L*SPEC.FILTERS[f].OUT_L>>16;
+                    RightBuf3 += value[f].VFB_R*SPEC.FILTERS[f].OUT_R>>16;
+                }
+                break;
+            }
+            case CSE1_2: {
+                for (size_t f = 0; f < SPEC.FILTERS.size(); f++) {
+                    SPEC.FILTERS[f].clock_1_2(wave_table, value[f], value, LeftBuf2, RightBuf2);
+                    LeftBuf3 += static_cast<int16_t>(bit_cast<float>(value[f].VFB_L)*32767.0f)*SPEC.FILTERS[f].OUT_L>>16;
+                    RightBuf3 += static_cast<int16_t>(bit_cast<float>(value[f].VFB_R)*32767.0f)*SPEC.FILTERS[f].OUT_R>>16;
+                }
+                break;
+            }
         }
+
 
         LeftBuf = (LeftBuf2 * wave_table.volume_line[OUT.OUT_L] >> 16) + LeftBuf3;
         RightBuf = (RightBuf2 * wave_table.volume_line[OUT.OUT_R] >> 16) + RightBuf3;
     }
 
-    void CSE1_FILTER::clock(
+    static constexpr float fastTanh(const float x) {
+        return x / std::sqrt(1.0f + x * x);
+    }
+
+    void CSE1_FILTER::clock_1_2(
+        const CSE1_CONFIG_AND_TABLE &table,
+        CSE1_FILTER_PRIVATE &filter_private,
+        const std::array<CSE1_FILTER_PRIVATE, 3> &value,
+        const CSE1_DOUBLE_SIG_REG in1,
+        const CSE1_DOUBLE_SIG_REG in2) const {
+        float inL = 0.0f;
+        float inR = 0.0f;
+        if (this->GET_INPUTS() & 1) {
+            inL += static_cast<float>(in1) * (1.0f / 32768.0f);
+            inR += static_cast<float>(in2) * (1.0f / 32768.0f);
+        }
+        if (this->GET_INPUTS() & 2) {
+            inL += bit_cast<float>(value[0].VFB_L);
+            inR += bit_cast<float>(value[0].VFB_R);
+        }
+        if (this->GET_INPUTS() & 4) {
+            inL += bit_cast<float>(value[1].VFB_L);
+            inR += bit_cast<float>(value[1].VFB_R);
+        }
+        if (this->GET_INPUTS() & 8) {
+            inL += bit_cast<float>(value[2].VFB_L);
+            inR += bit_cast<float>(value[2].VFB_R);
+        }
+
+        const float g = table.cutoffTable[this->CUTOFF];
+
+        const float q = (static_cast<float>(this->GET_RES())+1.0f) * (1.0f / 16.0f);
+        const float R = 1.0f / (2.0f * q);
+
+        const auto s1L = bit_cast<float>(filter_private.BUF_BAND_L);
+        const auto s2L = bit_cast<float>(filter_private.BUF_LOW_L);
+        const auto s1R = bit_cast<float>(filter_private.BUF_BAND_R);
+        const auto s2R = bit_cast<float>(filter_private.BUF_LOW_R);
+        const float denom = 1.0f + 2.0f * R * g + g * g;
+
+        const float hpL = (inL - (2.0f * R + g) * s1L - s2L) / denom;
+        const float bpL = g * hpL + s1L;
+        const float lpL = g * bpL + s2L;
+
+        const float hpR = (inR - (2.0f * R + g) * s1R - s2R) / denom;
+        const float bpR = g * hpR + s1R;
+        const float lpR = g * bpR + s2R;
+
+        filter_private.BUF_BAND_L = bit_cast<CSE1_DOUBLE_SIG_REG>(fastTanh(g * hpL + bpL));
+        filter_private.BUF_LOW_L = bit_cast<CSE1_DOUBLE_SIG_REG>(fastTanh(g * bpL + lpL));
+        filter_private.BUF_BAND_R = bit_cast<CSE1_DOUBLE_SIG_REG>(fastTanh(g * hpR + bpR));
+        filter_private.BUF_LOW_R = bit_cast<CSE1_DOUBLE_SIG_REG>(fastTanh(g * bpR + lpR));
+
+        float outL = 0.0f;
+        float outR = 0.0f;
+        if (this->GET_TYPES() & 1) {
+            outL += lpL;
+            outR += lpR;
+        }
+        if (this->GET_TYPES() & 2) {
+            outL += hpL;
+            outR += hpR;
+        }
+        if (this->GET_TYPES() & 4) {
+            outL += bpL;
+            outR += bpR;
+        }
+        if (this->GET_TYPES() == 0) {
+            outL += inL;
+            outR += inR;
+        }
+
+        filter_private.VFB_L = bit_cast<CSE1_DOUBLE_SIG_REG>(fastTanh(outL));
+        filter_private.VFB_R = bit_cast<CSE1_DOUBLE_SIG_REG>(fastTanh(outR));
+    }
+
+    void CSE1_FILTER::clock_1(
         CSE1_FILTER_PRIVATE& filter_private,
         const std::array<CSE1_FILTER_PRIVATE, 3>& value,
         const CSE1_DOUBLE_SIG_REG in1,
@@ -129,8 +221,8 @@ namespace CSE1_PACKED {
             op.clock(wave_table, State, fm1pitch, fm2pitch);
             op.PITCH+=State->SPEC.SWEEP_FREQS[opi].FREQ_SPEED;
             const auto ov = !op.FLAGS_A.GET_NOT_DEFAULT_OUT_AND_WAVE_TABLE_TABLE() ? op.VFB : wave_table.memPCM[op.OUT_TABLE+op.VFB];
-            const CSE1_DOUBLE_SIG_REG LB = (static_cast<int16_t>(ov)*State->OUT.IN_L.MI[opi]>>16)>>3;
-            const CSE1_DOUBLE_SIG_REG RB = (static_cast<int16_t>(ov)*State->OUT.IN_R.MI[opi]>>16)>>3;
+            const CSE1_DOUBLE_SIG_REG LB = (bit_cast<int16_t>(ov)*State->OUT.IN_L.MI[opi]>>16)>>3;
+            const CSE1_DOUBLE_SIG_REG RB = (bit_cast<int16_t>(ov)*State->OUT.IN_R.MI[opi]>>16)>>3;
 
             LeftBuf += (State->OUT.FLAGS_A.GET_NEG_LEFT() >> opi)&1 ? -LB : LB;
             RightBuf += (State->OUT.FLAGS_A.GET_NEG_RIGHT() >> opi)&1 ? -RB : RB;
@@ -180,11 +272,12 @@ namespace CSE1_PACKED {
         }
 
         switch (wave_table.chipType) {
-            case 0: {
+            case CSE1_0: {
                 this->ENV_STATE.clock_1(this, this->ADSR);
                 break;
             }
-            case 1: {
+            case CSE1_1:
+            case CSE1_2: {
                 this->ENV_STATE.clock_1_1(this, this->ADSR);
                 break;
             }
@@ -200,11 +293,11 @@ namespace CSE1_PACKED {
 
         if (FLAGS_A.GET_WAVE() < 6) {
             const CSE1_REG wv = option_wavetable(wave_table, add_phase&0xffff);
-            VFB = ((!FLAGS_A.GET_NOT_DEFAULT_OUT_AND_WAVE_TABLE_TABLE() ? wv : wave_table.memPCM[WAVE_TABLE_TABLE+wv]^0x8000)^0x8000)+1;
+            VFB = (!FLAGS_A.GET_NOT_DEFAULT_OUT_AND_WAVE_TABLE_TABLE() ? wv : wave_table.memPCM[WAVE_TABLE_TABLE+wv]^0x8000)^0x8000;
         } else {
             VFB = wave_table.memPCM[PHASE];
         }
-        VFB = static_cast<int16_t>(VFB) * (!FLAGS_A.GET_NOT_DEFAULT_ADSR_TABLE() ? wave_table.volume_line[ENV_STATE.ENV_VP] : wave_table.memPCM[ADSR_WAVE_TABLE+ENV_STATE.ENV_VP]) >> 16;
+        VFB = bit_cast<int16_t>(VFB) * (!FLAGS_A.GET_NOT_DEFAULT_ADSR_TABLE() ? wave_table.volume_line[ENV_STATE.ENV_VP] : wave_table.memPCM[ADSR_WAVE_TABLE+ENV_STATE.ENV_VP]) >> 16;
     }
 
     static uint16_t sat_add_u16(const uint16_t a, const uint16_t b) noexcept {
@@ -270,10 +363,7 @@ namespace CSE1_PACKED {
                     SET_ENV_ENUM(2);
                     return;
                 }
-                case 2: {
-                    ENV_VP = 0;
-                    return;
-                }
+                case 2:
                 case 3: {
                     ENV_VP = 0;
                     return;
@@ -299,7 +389,7 @@ namespace CSE1_PACKED {
                     if (ENV_VP <= adsr.SL) { ENV_VP = adsr.SL, SET_ENV_ENUM(2); state->ENV_DIVIDER_COUNT = ~adsr.SR; }
                     break;
                 }
-                case 2: { ENV_VP = sat_sub_u16(ENV_VP, this->GET_ENV_DIVIDER()); break; }
+                case 2:
                 case 3: { ENV_VP = sat_sub_u16(ENV_VP, this->GET_ENV_DIVIDER()); break; }
                 default: ;
             }
@@ -335,7 +425,7 @@ namespace CSE1_PACKED {
                 return wave_table.triangle[index];
             }
             case SQUARE: {
-                return 0xffff-(index>this->DUTY);
+                return BIT_EX(index>this->DUTY);
             }
             case SAW: {
                 return index;
@@ -345,36 +435,24 @@ namespace CSE1_PACKED {
                     this->PHASE &= 0x0fffffff;
                     this->DUTY = (this->DUTY >> 1) | (((this->DUTY ^ (this->DUTY >> 2) ^ (this->DUTY >> 3) ^ (this->DUTY >> 5)) & 1) << 15);
                 }
-                return 0xffff-(this->DUTY & 1);
+                return BIT_EX(this->DUTY & 1);
             }
             case OPER_WAVETABLE_SAMPLE: {
-                return (wave_table.memPCM[index+START_PHASE]^0x8000)-1;
+                return wave_table.memPCM[index+START_PHASE]^0x8000;
             }
             default: return 0;
         }
     }
 
-    CSE1_CONFIG_AND_TABLE::CSE1_CONFIG_AND_TABLE(): default_volume_line(1), memPCM(nullptr), fastSpeed(0x4000), chipType(1), not_fm(false) {
+    CSE1_CONFIG_AND_TABLE::CSE1_CONFIG_AND_TABLE(): default_volume_line(1), memPCM(nullptr), fastSpeed(0x4000), chipType(CSE1_2), not_fm(false) {
         for (size_t i = 0; i < sine.size(); i++) {
-            sine[i] = static_cast<CSE1_REG>(std::sin(static_cast<long double>(i)*2*PI/65536.0L)*32767.0+32767.0)&0xffff;
+            sine[i] = static_cast<CSE1_REG>(std::sin(static_cast<long double>(i)*2*PI/65536.0L)*32767.0+32768.0)&0xffff;
         }
         for (size_t i = 0; i < triangle.size(); i++) {
-            triangle[i] = static_cast<CSE1_REG>(std::asin(std::sin(static_cast<long double>(i)*2*PI/65536.0L))/PI*2*32767.0+32767.0)&0xffff;
+            triangle[i] = static_cast<CSE1_REG>(std::asin(std::sin(static_cast<long double>(i)*2*PI/65536.0L))/PI*2*32767.0+32768.0)&0xffff;
         }
-
-        for (size_t i = 0; i < divider_table.size(); i++) {
-            divider_table[i] = i != 0 ? 65535/i: 65535;
-        }
-
-        for (size_t i = 0; i < tan_table.size(); i++) {
-            const long double angle = static_cast<long double>(i) / 65535.0L * (PI / 2.0L);
-            const long double t = std::tan(angle);
-            if (t > 1.0e10L) {
-                tan_table[i] = 65535;
-            } else {
-                const long double normalized = t / (1.0L + t);
-                tan_table[i] = static_cast<CSE1_REG>(normalized * 65535.0L) & 0xffff;
-            }
+        for (size_t i = 0; i < cutoffTable.size(); i++) {
+            cutoffTable[i] = std::tan(static_cast<float>(PI) * static_cast<float>(i) * (0.5f / 65536.0f));
         }
     }
 

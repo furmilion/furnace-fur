@@ -3056,6 +3056,10 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
         revision=1;
         altered=true;
       }
+      if (ImGui::RadioButton("CSE-1.2 (A!Filter)",revision==2)) {
+        revision=2;
+        altered=true;
+      }
       ImGui::Unindent();
 
       int dvtt = flags.getInt("defaultVolumeTableType",1);
@@ -3100,6 +3104,11 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
         ImGui::SetTooltip(_("Warning! ...")); // TODO: 补充简介
       }
 
+      bool oldMixer = flags.getBool("oldMixer",false);
+      if (ImGui::Checkbox(_("Old Mixer"),&oldMixer)) {
+        altered=true;
+      }
+
       if (altered) {
         e->lockSave([&]() {
           flags.set("defaultVolumeTableType",dvtt);
@@ -3107,6 +3116,7 @@ bool FurnaceGUI::drawSysConf(int chan, int sysPos, DivSystem type, DivConfig& fl
           flags.set("quarterClock",(int)quarterClock);
           flags.set("not_fm",(int)notfm);
           flags.set("revision",revision);
+          flags.set("oldMixer",oldMixer);
         });
       }
       break;

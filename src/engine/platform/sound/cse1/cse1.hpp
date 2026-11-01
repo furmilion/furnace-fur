@@ -20,6 +20,7 @@
 
 #define CSE1_CHANNEL_NUMBER 9
 #define CSE1_OPER_NUMBER 6
+#define CSE1_FILTER_NUMBER 3
 
 namespace CSE1_PACKED {
     struct CSE1_OPER_STATE;
@@ -71,8 +72,6 @@ namespace CSE1_PACKED {
         CSE1_BIT_FIELD_MEMBER(REV, CSE1_REG, 11, 1, SPEC)
         CSE1_BIT_FIELD_MEMBER(NOT_DEFAULT_ADSR_TABLE, CSE1_REG, 12, 1, SPEC)
         CSE1_BIT_FIELD_MEMBER(NOT_DEFAULT_OUT_AND_WAVE_TABLE_TABLE, CSE1_REG, 13, 1, SPEC)
-        CSE1_BIT_FIELD_MEMBER(RING, CSE1_REG, 14, 1, SPEC)
-        CSE1_BIT_FIELD_MEMBER(SYNC, CSE1_REG, 15, 1, SPEC)
     };
 
     struct CSE1_ADSR {
@@ -137,7 +136,10 @@ namespace CSE1_PACKED {
         CSE1_REG FILTER_INFO;
         CSE1_BIT_FIELD_MEMBER(TYPES, CSE1_REG, 0, 3, FILTER_INFO)
 
-        void clock(CSE1_FILTER_PRIVATE &filter_private, const std::array<CSE1_FILTER_PRIVATE, 3>
+        void clock_1_2(const CSE1_CONFIG_AND_TABLE &table, CSE1_FILTER_PRIVATE &filter_private,
+            const std::array<CSE1_FILTER_PRIVATE, 3> &value, CSE1_DOUBLE_SIG_REG in1, CSE1_DOUBLE_SIG_REG in2) const;
+
+        void clock_1(CSE1_FILTER_PRIVATE &filter_private, const std::array<CSE1_FILTER_PRIVATE, 3>
             &value, CSE1_DOUBLE_SIG_REG
             in1, CSE1_DOUBLE_SIG_REG in2) const;
 
@@ -170,7 +172,7 @@ namespace CSE1_PACKED {
     };
 
     struct CSE1_SPEC {
-        std::array<CSE1_FILTER, 3> FILTERS;
+        std::array<CSE1_FILTER, CSE1_FILTER_NUMBER> FILTERS;
         std::array<CSE1_REG, 3> dummy;
         CSE1_LFO_CONFIG LFO_CONFIG;
         std::array<CSE1_SWEEP_FREQ, CSE1_OPER_NUMBER+1> SWEEP_FREQS;
@@ -210,16 +212,21 @@ namespace CSE1_PACKED {
         void clock(const CSE1_CONFIG_AND_TABLE &wave_table) noexcept;
     };
 
+    enum CSE1_CHIP_VERSION: uint16_t {
+        CSE1_0,
+        CSE1_1,
+        CSE1_2,
+    };
+
     struct CSE1_CONFIG_AND_TABLE {
         std::array<CSE1_REG, 65536> sine{};
         std::array<CSE1_REG, 65536> triangle{};
         std::array<CSE1_REG, 65536> volume_line{};
-        std::array<CSE1_REG, 65536> divider_table{};
-        std::array<CSE1_REG, 65536> tan_table{};
+        std::array<float, 65536> cutoffTable{};
         CSE1_REG default_volume_line;
         CSE1_REG* memPCM;
         CSE1_REG fastSpeed;
-        CSE1_REG chipType;
+        CSE1_CHIP_VERSION chipType;
         bool not_fm;
 
         CSE1_CONFIG_AND_TABLE();
