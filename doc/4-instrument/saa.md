@@ -16,8 +16,10 @@ the SAA1099 instrument editor consists of these macros:
 - **Pitch**: fine pitch.
 - **Envelope**: envelope generator settings:
   - **enable**: enables the envelope generator.
-  - **N/A**: has no effect.
-  - **fixed**: toggles whether to use a fixed, slow frequency or lock to the frequency of channel 2 or 5 (depending on where the instrument plays).
+  - **timer square**: enables a square envelope mode (useful for PWM).
+    - requires **use timer** to be enabled.
+  - **use timer**: toggles whether to use a software timer or lock to the frequency of channel 2 or 5 (depending on where the instrument plays).
+    - in the timer mode, Furnace will periodically knock the envelope register to cycle envelopes.
   - **resolution**: increases the envelope generator pitch resolution.
   - **direction**: inverts the envelope.
   - **cut**: cuts the envelope (producing saw wave out of tri wave)
